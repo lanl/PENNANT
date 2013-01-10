@@ -1,1 +1,8 @@
-Dummy README file - repo is under construction
+PENNANT is an unstructured mesh physics mini-app designed for advanced
+architecture research.  It contains mesh data structures and a few
+physics algorithms adapted from the LANL rad-hydro code FLAG, and gives
+a sample of the typical memory access patterns of FLAG.
+
+Further documentation can be found in the 'doc' directory of the
+PENNANT distribution.
+
