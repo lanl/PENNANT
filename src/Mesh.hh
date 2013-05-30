@@ -58,6 +58,10 @@ public:
     int* mapss3;       // map: side -> previous side
     int* mapss4;       // map: side -> next side
 
+    // point-to-corner inverse map is stored as a linked list...
+    int* mappcfirst;   // map:  point -> first corner
+    int* mapccnext;    // map:  corner -> next corner
+
     int* znump;        // number of points in zone
 
     double2* px;       // point coordinates
@@ -91,6 +95,9 @@ public:
     int numpch;                    // number of point chunks
     std::vector<int> pchpfirst;    // start/stop index for point chunks
     std::vector<int> pchplast;
+    int numzch;                    // number of zone chunks
+    std::vector<int> zchzfirst;    // start/stop index for zone chunks
+    std::vector<int> zchzlast;
 
     Mesh(const InputFile* inp);
     ~Mesh();
@@ -107,6 +114,9 @@ public:
 
     // populate chunk information
     void initChunks();
+
+    // populate inverse map
+    void initInvMap();
 
     // write mesh statistics
     void writeStats();
@@ -175,11 +185,22 @@ public:
 
     // compute characteristic lengths
     void calcCharLen(
-            const double2* px,
-            const double2* zx,
+            const double* sarea,
             double* zdl,
             const int sfirst,
             const int slast);
+
+    // gather corner variables to points (double or double2)
+    void gatherToPoints(
+            const double* cvar,
+            double* pvar,
+            const int pfirst,
+            const int plast);
+    void gatherToPoints(
+            const double2* cvar,
+            double2* pvar,
+            const int pfirst,
+            const int plast);
 
 }; // class Mesh
 

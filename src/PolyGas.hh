@@ -49,7 +49,6 @@ public:
             const double* zr,
             const double* ze,
             double* zp,
-            double* z0pre,
             double* z0per,
             double* zss,
             const int zfirst,

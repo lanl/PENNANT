@@ -15,6 +15,12 @@ def usage():
     print "                   (default for both = 1.0)"
     sys.exit(0)
 
+def writecoords(file, np, x):
+    for i in range(np):
+        if i % 10 == 0:  s = "  "
+        s += "%16.8E" % x[i]
+        if (i % 10 == 9) or (i == np - 1):  file.write("%s\n" % s)
+
 nargs = len(sys.argv)
 nzx = 0
 nzy = 0
@@ -45,40 +51,41 @@ file.write("gmvinput ascii\n")
 # write node header
 file.write("nodes  %9d\n" % np)
 
-# write node x coords
-for i in range(np):
-    ix = i % npx
-    if i % 10 == 0:  s = "  "
-    s += "%16.8E" % (lenx * float(ix) / nzx)
-    if (i % 10 == 9) or (i == np - 1):  file.write("%s\n" % s)
+# write node coordinates
+x = np * [0]
+y = np * [0]
+ijtop = np * [0]
+for n in range(np):
+    i = n % npx
+    j = n / npx
+    x[n] = (lenx * float(i) / nzx)
+    y[n] = (leny * float(j) / nzy)
+    ijtop[j * npx + i] = n
 
-# write node y coords
-for i in range(np):
-    iy = i / npx
-    if i % 10 == 0:  s = "  "
-    s += "%16.8E" % (leny * float(iy) / nzy)
-    if (i % 10 == 9) or (i == np - 1):  file.write("%s\n" % s)
-
-# write node z coords (always 0 in 2D)
-for i in range(np):
-    if i % 10 == 0:  s = "  "
-    s += "  0.00000000E+00"
-    if (i % 10 == 9) or (i == np - 1):  file.write("%s\n" % s)
+writecoords(file, np, x)
+writecoords(file, np, y)
+writecoords(file, np, np * [0])
 
 # write cell header
 file.write("cells  %9d\n" % nz)
 
 # write cells
-for i in range(nz):
-    ix = i % nzx
-    iy = i / nzx
+ztop = nz * [[]]
+for n in range(nz):
+    i = n % nzx
+    j = n / nzx
+    # +1 is to convert from 0-based to 1-based
+    p0 = ijtop[j * npx + i] + 1
+    p1 = ijtop[j * npx + (i+1)] + 1
+    p2 = ijtop[(j+1) * npx + (i+1)] + 1
+    p3 = ijtop[(j+1) * npx + i] + 1
+    ztop[n] = [p0, p1, p2, p3]
+
+for n in range(nz):
     file.write("  general          1\n")
     file.write("             4\n")
-    p0 = iy * npx + ix + 1
-    p1 = p0 + 1
-    p2 = p1 + npx
-    p3 = p2 - 1
-    file.write("     %9d %9d %9d %9d\n" % (p0, p1, p2, p3))
+    pl = ztop[n]
+    file.write("     %9d %9d %9d %9d\n" % (pl[0], pl[1], pl[2], pl[3]))
 
 # write end-of-file marker
 file.write("endgmv\n")

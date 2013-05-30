@@ -36,15 +36,8 @@ void QCS::calcForce(
         double2* sf,
         const int sfirst,
         const int slast) {
-
-    const Mesh* mesh = hydro->mesh;
-    const int nums = mesh->nums;
-    const int numz = mesh->numz;
-
     int cfirst = sfirst;
     int clast = slast;
-    int zfirst = mesh->mapsz[sfirst];
-    int zlast = (slast < nums ? mesh->mapsz[slast] : numz);
 
     // declare temporary variables
     double* c0area = Memory::alloc<double>(clast - cfirst);
@@ -125,13 +118,14 @@ void QCS::setCornerDiv(
     // [1] Compute a zone-centered velocity
     fill(&z0uc[0], &z0uc[zlast-zfirst], double2(0., 0.));
     for (int c = cfirst; c < clast; ++c) {
-        int p = mesh->mapcp[c];
-        int z = mesh->mapcz[c];
+        int p = mesh->mapsp1[c];
+        int z = mesh->mapsz[c];
         int z0 = z - zfirst;
         z0uc[z0] += pu[p] / (double) znump[z];
     }
 
     // [2] Divergence at the corner
+    #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s2 = c; // would be mapcs2, if we had that map
         int s = mesh->mapss3[s2];
@@ -143,6 +137,9 @@ void QCS::setCornerDiv(
         // Points
         int p1 = mesh->mapsp1[s];
         int p2 = mesh->mapsp2[s2];
+        // Edges
+        int e1 = mesh->mapse[s];
+        int e2 = mesh->mapse[s2];
 
         // Velocities and positions
         // 0 = point p
@@ -150,27 +147,27 @@ void QCS::setCornerDiv(
         xp0 = px[p];
         // 1 = edge e2
         up1 = 0.5 * (pu[p] + pu[p2]);
-        xp1 = 0.5 * (px[p] + px[p2]);
+        xp1 = ex[e2];
         // 2 = zone center z
         up2 = z0uc[z0];
         xp2 = zx[z];
         // 3 = edge e1
         up3 = 0.5 * (pu[p1] + pu[p]);
-        xp3 = 0.5 * (px[p1] + px[p]);
+        xp3 = ex[e1];
 
         // compute 2d cartesian volume of corner
         double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
         c0area[c0] = cvolume;
 
         // compute cosine angle
-        double2 v1 = xp1 - xp0;
-        double2 v2 = xp3 - xp0;
-        double de1 = length(v1);
-        double de2 = length(v2);
-        double minelen = 2.0 * min(de1, de2);
+        double2 v1 = xp3 - xp0;
+        double2 v2 = xp1 - xp0;
+        double de1 = elen[e1];
+        double de2 = elen[e2];
+        double minelen = min(de1, de2);
         c0cos[c0] = ((minelen < 1.e-12) ?
                 0. :
-                dot(v1, v2) / (de1 * de2));
+                4. * dot(v1, v2) / (de1 * de2));
 
         // compute divergence of corner
         c0div[c0] = (cross(up2 - up0, xp3 - xp1) -
@@ -231,9 +228,10 @@ void QCS::setQCnForce(
     const double gammap1 = qgamma + 1.0;
 
     // [4.1] Compute the c0rmu (real Kurapatenko viscous scalar)
+    #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int c0 = c - cfirst;
-        int z = mesh->mapcz[c];
+        int z = mesh->mapsz[c];
 
         // Kurapatenko form of the viscosity
         double ztmp2 = q2 * 0.25 * gammap1 * c0du[c0];
@@ -246,6 +244,7 @@ void QCS::setQCnForce(
     } // for c
 
     // [4.2] Compute the c0qe for each corner
+    #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s4 = c;
         int s = mesh->mapss3[s4];
@@ -287,6 +286,7 @@ void QCS::setForce(
     double* c0w = Memory::alloc<double>(clast - cfirst);
 
     // [5.1] Preparation of extra variables
+    #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int c0 = c - cfirst;
         double csin2 = 1.0 - c0cos[c0] * c0cos[c0];
@@ -295,6 +295,7 @@ void QCS::setForce(
     } // for c
 
     // [5.2] Set-Up the forces on corners
+    #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         // Associated corners 1 and 2, and edge
         int c1 = s;

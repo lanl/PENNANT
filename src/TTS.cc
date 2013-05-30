@@ -53,11 +53,14 @@ void TTS::calcForce(
     //    Notes: smf stores (sm/zm)
     //           svfac stores (sv/zv)
 
-    for (int s = sfirst; s < slast; ++s) {
-        int z = hydro->mesh->mapsz[s];
+    const Mesh* mesh = hydro->mesh;
 
-        double svfac = sarea[s] / zarea[z];
-        double srho = zr[z] * smf[s] / svfac;
+    #pragma ivdep
+    for (int s = sfirst; s < slast; ++s) {
+        int z = mesh->mapsz[s];
+
+        double svfacinv = zarea[z] / sarea[s];
+        double srho = zr[z] * smf[s] * svfacinv;
         double sstmp = max(zss[z], ssmin);
         sstmp = alfa * sstmp * sstmp;
         double sdp = sstmp * (srho - zr[z]);

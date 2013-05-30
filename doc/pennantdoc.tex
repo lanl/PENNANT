@@ -24,7 +24,7 @@
 \author{Charles R. Ferenbaugh \\
         Los Alamos National Laboratory \\
         {\tt cferenba@lanl.gov}}
-\date{Version 0.4 -- January 2013}
+\date{Version 0.5 -- May 2013}
 \maketitle
 
 PENNANT is an unstructured mesh physics mini-app designed for advanced
@@ -231,29 +231,24 @@ The maximum chunk size is controlled by the input file parameter
 sides in the mesh, the entire mesh is treated as a single chunk
 (this is the default).
 
-In the current chunking approach, the list of points is simply divided
-into chunks of size {\tt chunksize} (except for the final, leftover chunk).
-The list of sides is handled similarly, except that
+In the current chunking approach, the lists of points and zones are
+simply divided into chunks of size {\tt chunksize} (except for the final,
+leftover chunk).  The list of sides is handled similarly, except that
 the size of each individual chunk is rounded down slightly if necessary
 so that each zone has all of its sides in the same chunk.  For each chunk,
 the {\em first} and {\em last} indices of the chunk are stored.
 (Note that {\em last} is actually one index beyond the end of the chunk,
 in a similar manner to STL iterators, so that the sides in a side chunk
-are those with $s_{first} \le s < s_{last}$.)  The total numbers of point
-and side chunks ({\tt numpch} and {\tt numsch}, resp.) are also stored.
-
-Chunk processing for other mesh entities is tied to either point or
-side chunking, as appropriate.  Zone and corner chunks correspond to
-side chunks, while boundary point chunks correspond to point chunks.
-(Edge chunking is not needed; the code has been written in such a way
-that there are no loops over edges.)
+are those with $s_{first} \le s < s_{last}$.)  The total numbers of each
+type of chunk ({\tt numXch}, where {\tt X} may be {\tt p}, {\tt s}, or
+{\tt z}) are also stored.
 
 Then, nearly all of the routines in the main hydro cycle have been
 modified to take as input first and last indices of the appropriate
 mesh entity.  This allows the hydro processing to be divided into
-four phases, two on point chunks, and two more on side chunks.
-Within each phase, all chunks are independent and can be processed
-in parallel.
+five phases, two on point chunks, two on side chunks, and one on zone
+chunks.  Within each phase, all chunks are independent and can be
+processed in parallel.
 See {\tt Hydro::doCycle()} for the complete code flow.
 
 A few of the helper routines, particularly in the {\tt QCS} class,
@@ -411,6 +406,9 @@ this work.
 Thanks also to the Lagrangian Applications Project members who have
 contributed to the FLAG code; parts of the PENNANT code and documentation
 are adapted from their work.
+And finally, thanks to the participants in the Intel EPOCH workshop
+in the summer of 2012; several optimization ideas from that workshop
+have been incorporated into subsequent PENNANT versions.
 
 
 \begin{thebibliography}{9}
@@ -462,6 +460,7 @@ K.B. Wallick.
 \section{Version Log}
 
 \begin{description}
+\item[0.5] May 2013.  Further optimizations.
 \item[0.4] January 2013.  First open-source release.
 Fixed a bug in QCS and added some optimizations.
 Added Sedov and Leblanc test problems, and some new input keywords to

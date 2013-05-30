@@ -40,25 +40,25 @@ void PolyGas::calcStateAtHalf(
         const int zfirst,
         const int zlast) {
 
-    double* z0pre = Memory::alloc<double>(zlast - zfirst);
     double* z0per = Memory::alloc<double>(zlast - zfirst);
 
     const double dth = 0.5 * dt;
 
     // compute EOS at beginning of time step
-    calcEOS(zr0, ze, zp, z0pre, z0per, zss, zfirst, zlast);
+    calcEOS(zr0, ze, zp, z0per, zss, zfirst, zlast);
 
     // now advance pressure to the half-step
+    #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
         int z0 = z - zfirst;
-        double dv = (zvolp[z] - zvol0[z]) / zm[z];
+        double zminv = 1. / zm[z];
+        double dv = (zvolp[z] - zvol0[z]) * zminv;
         double bulk = zr0[z] * zss[z] * zss[z];
         double denom = 1. + 0.5 * z0per[z0] * dv;
-        double src = zwrate[z] * dth / zm[z];
+        double src = zwrate[z] * dth * zminv;
         zp[z] += (z0per[z0] * src - zr0[z] * bulk * dv) / denom;
     }
 
-    Memory::free(z0pre);
     Memory::free(z0per);
 }
 
@@ -67,7 +67,6 @@ void PolyGas::calcEOS(
         const double* zr,
         const double* ze,
         double* zp,
-        double* z0pre,
         double* z0per,
         double* zss,
         const int zfirst,
@@ -76,6 +75,7 @@ void PolyGas::calcEOS(
     const double gm1 = gamma - 1.;
     const double ss2 = max(ssmin * ssmin, 1.e-99);
 
+    #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
         int z0 = z - zfirst;
         double rx = zr[z];
@@ -85,7 +85,6 @@ void PolyGas::calcEOS(
         double perx = gm1 * rx;
         double csqd = max(ss2, prex + perx * px / (rx * rx));
         zp[z] = px;
-        z0pre[z0] = prex;
         z0per[z0] = perx;
         zss[z] = sqrt(csqd);
     }
@@ -102,6 +101,7 @@ void PolyGas::calcForce(
 
     const Mesh* mesh = hydro->mesh;
 
+    #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = mesh->mapsz[s];
         double2 sfx = -zp[z] * ssurfp[s];

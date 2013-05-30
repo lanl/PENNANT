@@ -57,7 +57,7 @@ public:
     double2* pap;      // point acceleration
     double2* pf;       // point force
     double* pmaswt;    // point mass, weighted by 1/r
-    double* smaswt;    // side contribution to pmaswt
+    double* cmaswt;    // corner contribution to pmaswt
 
     double* zm;        // zone mass
     double* zr;        // zone density
@@ -74,13 +74,17 @@ public:
     double2* sfp;      // side force from pressure
     double2* sfq;      // side force from artificial visc.
     double2* sft;      // side force from tts
+    double2* cftot;    // corner force, total from all sources
 
     Hydro(const InputFile* inp, Mesh* m);
     ~Hydro();
 
     void init();
 
-    void initRadialVel(const double vel);
+    void initRadialVel(
+            const double vel,
+            const int pfirst,
+            const int plast);
 
     void doCycle(const double dt);
 
@@ -102,25 +106,19 @@ public:
             const int pfirst,
             const int plast);
 
-    void calcPtMass(
+    void calcCrnrMass(
             const double* zr,
             const double* zarea,
             const double* smf,
-            double* smaswt,
+            double* cmaswt,
             const int sfirst,
             const int slast);
 
-    void sumMass(
-            const double* smass,
-            double* pmass,
-            const int sfirst,
-            const int slast);
-
-    void sumForce(
+    void sumCrnrForce(
             const double2* sf,
             const double2* sf2,
             const double2* sf3,
-            double2* pf,
+            double2* cftot,
             const int sfirst,
             const int slast);
 

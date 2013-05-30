@@ -64,10 +64,8 @@ void Mesh::init() {
     numz = cellstart.size();
     nums = cellnodes.size();
 
-    // copy node positions to mesh, apply scaling factor
+    // copy node positions to mesh
     px = Memory::alloc<double2>(nump);
-    for (int p = 0; p < nump; ++p)
-        px[p] = nodepos[p] * meshscale;
 
     // copy cell sizes to mesh
     znump = Memory::alloc<int>(numz);
@@ -86,6 +84,9 @@ void Mesh::init() {
 
     // populate chunk information
     initChunks();
+
+    // create inverse map for corner-to-point gathers
+    initInvMap();
 
     // write mesh statistics
     writeStats();
@@ -112,10 +113,19 @@ void Mesh::init() {
     smf = Memory::alloc<double>(nums);
 
     // do a few initial calculations
-    #pragma omp parallel for
-    for (int ch = 0; ch < numsch; ++ch) {
-        int sfirst = schsfirst[ch];
-        int slast = schslast[ch];
+    #pragma omp parallel for schedule(static)
+    for (int pch = 0; pch < numpch; ++pch) {
+        int pfirst = pchpfirst[pch];
+        int plast = pchplast[pch];
+        // apply scaling factor to node coordinates
+        for (int p = pfirst; p < plast; ++p)
+            px[p] = nodepos[p] * meshscale;
+
+    }
+    #pragma omp parallel for schedule(static)
+    for (int sch = 0; sch < numsch; ++sch) {
+        int sfirst = schsfirst[sch];
+        int slast = schslast[sch];
         calcCtrs(px, ex, zx, sfirst, slast);
         calcVols(px, zx, sarea, svol, zarea, zvol, sfirst, slast);
         calcSideFracs(sarea, zarea, smf, sfirst, slast);
@@ -243,6 +253,41 @@ void Mesh::initChunks() {
     }
     numpch = pchpfirst.size();
 
+    // compute zone chunks
+    int z1, z2 = 0;
+    while (z2 < numz) {
+        z1 = z2;
+        z2 = min(z2 + chunksize, numz);
+        zchzfirst.push_back(z1);
+        zchzlast.push_back(z2);
+    }
+    numzch = zchzfirst.size();
+
+}
+
+
+void Mesh::initInvMap() {
+    mappcfirst = Memory::alloc<int>(nump);
+    mapccnext = Memory::alloc<int>(nums);
+
+    vector<pair<int, int> > pcpair(nums);
+    for (int c = 0; c < numc; ++c)
+        pcpair[c] = make_pair(mapcp[c], c);
+    sort(pcpair.begin(), pcpair.end());
+    for (int i = 0; i < numc; ++i) {
+        int p = pcpair[i].first;
+        int pp = pcpair[i+1].first;
+        int pm = pcpair[i-1].first;
+        int c = pcpair[i].second;
+        int cp = pcpair[i+1].second;
+
+        if (i == 0 || p != pm)  mappcfirst[p] = c;
+        if (i+1 == numc || p != pp)
+            mapccnext[c] = -1;
+        else
+            mapccnext[c] = cp;
+    }
+
 }
 
 
@@ -366,6 +411,7 @@ void Mesh::calcVols(
 
     int nserr = 0;
 
+    const double third = 1. / 3.;
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mapsp1[s];
         int p2 = mapsp2[s];
@@ -373,7 +419,7 @@ void Mesh::calcVols(
 
         // compute side volumes, sum to zone
         double sa = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
-        double sv = sa * (px[p1].x + px[p2].x + zx[z].x) / 3.;
+        double sv = third * sa * (px[p1].x + px[p2].x + zx[z].x);
         sarea[s] = sa;
         svol[s] = sv;
         zarea[z] += sa;
@@ -401,6 +447,7 @@ void Mesh::calcSideFracs(
         const int sfirst,
         const int slast) {
 
+    #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = mapsz[s];
         smf[s] = sarea[s] / zarea[z];
@@ -415,6 +462,7 @@ void Mesh::calcSurfVecs(
         const int sfirst,
         const int slast) {
 
+    #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = mapsz[s];
         int e = mapse[s];
@@ -444,8 +492,7 @@ void Mesh::calcEdgeLen(
 
 
 void Mesh::calcCharLen(
-        const double2* px,
-        const double2* zx,
+        const double* sarea,
         double* zdl,
         const int sfirst,
         const int slast) {
@@ -455,15 +502,48 @@ void Mesh::calcCharLen(
     fill(&zdl[zfirst], &zdl[zlast], 1.e99);
 
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = mapsp1[s];
-        int p2 = mapsp2[s];
         int z = mapsz[s];
+        int e = mapse[s];
 
-        double area = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
-        double base = length(px[p2] - px[p1]);
+        double area = sarea[s];
+        double base = elen[e];
         double fac = (znump[z] == 3 ? 3. : 4.);
         double sdl = fac * area / base;
         zdl[z] = min(zdl[z], sdl);
     }
+}
+
+
+void Mesh::gatherToPoints(
+        const double* cvar,
+        double* pvar,
+        const int pfirst,
+        const int plast) {
+
+    for (int p = pfirst; p < plast; ++p) {
+        double x = 0.;
+        for (int s = mappcfirst[p]; s >= 0; s = mapccnext[s]) {
+            x += cvar[s];
+        }
+        pvar[p] = x;
+    }
+
+}
+
+
+void Mesh::gatherToPoints(
+        const double2* cvar,
+        double2* pvar,
+        const int pfirst,
+        const int plast) {
+
+    for (int p = pfirst; p < plast; ++p) {
+        double2 x(0., 0.);
+        for (int s = mappcfirst[p]; s >= 0; s = mapccnext[s]) {
+            x += cvar[s];
+        }
+        pvar[p] = x;
+    }
+
 }
 

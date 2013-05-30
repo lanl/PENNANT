@@ -31,7 +31,7 @@ using namespace std;
 Driver::Driver(const InputFile* inp, const string& pname)
         : probname(pname) {
     cout << "********************" << endl;
-    cout << "Running PENNANT v0.4" << endl;
+    cout << "Running PENNANT v0.5" << endl;
     cout << "********************" << endl;
     cout << endl;
 
