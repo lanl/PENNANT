@@ -30,6 +30,13 @@ public:
     std::vector<int> others;       // same, for n-sided zones, n > 4
     std::vector<int> mapzs;        // map: zone -> first side
 
+    // parallel info, meaningful on PE 0 only:
+    std::vector<int> pentris;      // number of tris on each PE
+    std::vector<int> penquads;     // same, for quads
+    std::vector<int> penothers;    // same, for others
+    int gntris, gnquads, gnothers; // total number across all PEs
+                                   //     of tris/quads/others
+
     ExportGold(Mesh* m);
     ~ExportGold();
 

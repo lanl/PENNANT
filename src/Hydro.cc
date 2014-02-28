@@ -19,6 +19,7 @@
 #include <sstream>
 #include <iomanip>
 
+#include "Parallel.hh"
 #include "Memory.hh"
 #include "InputFile.hh"
 #include "Mesh.hh"
@@ -67,9 +68,6 @@ Hydro::~Hydro() {
 
 
 void Hydro::init() {
-
-    dtrec = 1.e99;
-    msgdtrec = "Hydro default";
 
     const int numpch = mesh->numpch;
     const int numzch = mesh->numzch;
@@ -144,6 +142,8 @@ void Hydro::init() {
             fill(&pu[pfirst], &pu[plast], double2(0., 0.));
     }  // for pch
 
+    resetDtHydro();
+
 }
 
 
@@ -191,8 +191,6 @@ void Hydro::doCycle(
     double* smf = mesh->smf;
     double* zdl = mesh->zdl;
 
-    double dth = 0.5 * dt;
-
     // Begin hydro cycle
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < numpch; ++pch) {
@@ -205,7 +203,7 @@ void Hydro::doCycle(
 
         // ===== Predictor step =====
         // 1. advance mesh to center of time step
-        advPosHalf(px0, pu0, dth, pxp, pfirst, plast);
+        advPosHalf(px0, pu0, dt, pxp, pfirst, plast);
     } // for pch
 
     #pragma omp parallel for schedule(static)
@@ -241,14 +239,16 @@ void Hydro::doCycle(
         qcs->calcForce(sfq, sfirst, slast);
         sumCrnrForce(sfp, sfq, sft, cftot, sfirst, slast);
     }  // for sch
+    mesh->checkBadSides();
+
+    // sum corner masses, forces to points
+    mesh->sumToPoints(cmaswt, pmaswt);
+    mesh->sumToPoints(cftot, pf);
 
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < numpch; ++pch) {
         int pfirst = mesh->pchpfirst[pch];
         int plast = mesh->pchplast[pch];
-
-        mesh->gatherToPoints(cmaswt, pmaswt, pfirst, plast);
-        mesh->gatherToPoints(cftot, pf, pfirst, plast);
 
         // 4a. apply boundary conditions
         for (int i = 0; i < bcs.size(); ++i) {
@@ -284,6 +284,7 @@ void Hydro::doCycle(
         calcWork(sfp, sfq, pu0, pu, pxp, dt, zw, zetot,
                 sfirst, slast);
     }  // for sch
+    mesh->checkBadSides();
 
     #pragma omp parallel for schedule(static)
     for (int zch = 0; zch < mesh->numzch; ++zch) {
@@ -312,9 +313,11 @@ void Hydro::advPosHalf(
         const int pfirst,
         const int plast) {
 
+    double dth = 0.5 * dt;
+
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        pxp[p] = px0[p] + pu0[p] * dt;
+        pxp[p] = px0[p] + pu0[p] * dth;
     }
 }
 
@@ -368,7 +371,6 @@ void Hydro::sumCrnrForce(
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int s3 = mesh->mapss3[s];
-        int z = mesh->mapsz[s];
 
         double2 f = (sf[s] + sf2[s] + sf3[s]) -
                     (sf[s3] + sf2[s3] + sf3[s3]);
@@ -426,6 +428,8 @@ void Hydro::calcWork(
     // where force is the force of the element on the node
     // and vavg is the average velocity of the node over the time period
 
+    const double dth = 0.5 * dt;
+
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->mapsp1[s];
         int p2 = mesh->mapsp2[s];
@@ -434,7 +438,7 @@ void Hydro::calcWork(
         double2 sftot = sf[s] + sf2[s];
         double sd1 = dot( sftot, (pu0[p1] + pu[p1]));
         double sd2 = dot(-sftot, (pu0[p2] + pu[p2]));
-        double dwork = -0.5 * dt * (sd1 * px[p1].x + sd2 * px[p2].x);
+        double dwork = -dth * (sd1 * px[p1].x + sd2 * px[p2].x);
 
         zetot[z] += dwork;
         zw[z] += dwork;
@@ -490,7 +494,7 @@ void Hydro::calcDtCourant(
     double dtnew = 1.e99;
     int zmin = -1;
     for (int z = zfirst; z < zlast; ++z) {
-        double cdu = max(zss[z], fuzz);
+        double cdu = max(zdu[z], max(zss[z], fuzz));
         double zdthyd = zdl[z] * cfl / cdu;
         zmin = (zdthyd < dtnew ? z : zmin);
         dtnew = (zdthyd < dtnew ? zdthyd : dtnew);

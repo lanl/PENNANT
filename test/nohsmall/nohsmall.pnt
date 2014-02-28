@@ -1,6 +1,7 @@
 cstop   10
 tstop   0.6
-meshfile  radial2x20.gmv
+meshtype pie
+meshparams 2 20
 uinitradial -1.0
 bcx     0.0
 bcy     0.0

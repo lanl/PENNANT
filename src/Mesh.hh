@@ -20,7 +20,8 @@
 
 // forward declarations
 class InputFile;
-class ImportGMV;
+class GenMesh;
+class WriteXY;
 class ExportGold;
 
 
@@ -28,12 +29,11 @@ class Mesh {
 public:
 
     // children
-    ImportGMV* igmv;
+    GenMesh* gmesh;
+    WriteXY* wxy;
     ExportGold* egold;
 
     // parameters
-    std::string meshfile;          // name of mesh input file
-    double meshscale;              // factor for scaling input mesh
     int chunksize;                 // max size for processing chunks
     std::vector<double> subregion; // bounding box for a subregion
                                    // if nonempty, should have 4 entries:
@@ -43,16 +43,11 @@ public:
     // (See documentation for more details on the mesh
     //  data structures...)
     int nump, nume, numz, nums, numc;
-                                   // number of points, edges, zones,
-                                   // sides, corners, resp.
-    int* mapcz;        // map: corner -> zone
-    int* mapcp;        // map: corner -> point
-    int* mapep1;       // maps: edge -> points 1 and 2
-    int* mapep2;
+                       // number of points, edges, zones,
+                       // sides, corners, resp.
+    int numsbad;       // number of bad sides (negative volume)
     int* mapsp1;       // maps: side -> points 1 and 2
     int* mapsp2;
-    int* mapsc1;       // maps: side -> corners 1 and 2
-    int* mapsc2;
     int* mapsz;        // map: side -> zone
     int* mapse;        // map: side -> edge
     int* mapss3;       // map: side -> previous side
@@ -61,6 +56,20 @@ public:
     // point-to-corner inverse map is stored as a linked list...
     int* mappcfirst;   // map:  point -> first corner
     int* mapccnext;    // map:  corner -> next corner
+
+    // mpi comm variables
+    int nummstrpe;     // number of messages mype sends to master pes
+    int numslvpe;      // number of messages mype receives from slave pes
+    int numprx;        // number of proxies on mype
+    int numslv;        // number of slaves on mype
+    int* mapslvpepe;   // map: slave pe -> (global) pe
+    int* mapslvpeprx1; // map: slave pe -> first proxy in proxy buffer
+    int* mapprxp;      // map: proxy -> corresponding (master) point
+    int* slvpenumprx;  // number of proxies for each slave pe
+    int* mapmstrpepe;  // map: master pe -> (global) pe
+    int* mstrpenumslv; // number of slaves for each master pe
+    int* mapmstrpeslv1;// map: master pe -> first slave in slave buffer
+    int* mapslvp;      // map: slave -> corresponding (slave) point
 
     int* znump;        // number of points in zone
 
@@ -110,13 +119,20 @@ public:
             std::vector<int>& cellsize,
             std::vector<int>& cellnodes);
     void initEdges();
-    void initCorners();
 
     // populate chunk information
     void initChunks();
 
     // populate inverse map
     void initInvMap();
+
+    void initParallel(
+            std::vector<int>& slavemstrpes,
+            std::vector<int>& slavemstrcounts,
+            std::vector<int>& slavepoints,
+            std::vector<int>& masterslvpes,
+            std::vector<int>& masterslvcounts,
+            std::vector<int>& masterpoints);
 
     // write mesh statistics
     void writeStats();
@@ -160,6 +176,10 @@ public:
             const int sfirst,
             const int slast);
 
+    // check to see if previous volume computation had any
+    // sides with negative volumes
+    void checkBadSides();
+
     // compute side mass fractions
     void calcSideFracs(
             const double* sarea,
@@ -190,17 +210,31 @@ public:
             const int sfirst,
             const int slast);
 
-    // gather corner variables to points (double or double2)
-    void gatherToPoints(
-            const double* cvar,
-            double* pvar,
-            const int pfirst,
-            const int plast);
-    void gatherToPoints(
-            const double2* cvar,
-            double2* pvar,
-            const int pfirst,
-            const int plast);
+    // sum corner variables to points (double or double2)
+    template <typename T>
+    void sumToPoints(
+            const T* cvar,
+            T* pvar);
+
+    // helper routines for sumToPoints
+    template <typename T>
+    void sumOnProc(
+            const T* cvar,
+            T* pvar);
+    template <typename T>
+    void sumAcrossProcs(T* pvar);
+    template <typename T>
+    void parallelGather(
+            const T* pvar,
+            T* prxvar);
+    template <typename T>
+    void parallelSum(
+            T* pvar,
+            T* prxvar);
+    template <typename T>
+    void parallelScatter(
+            T* pvar,
+            const T* prxvar);
 
 }; // class Mesh
 

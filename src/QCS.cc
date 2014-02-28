@@ -72,6 +72,9 @@ void QCS::calcForce(
     // [5] Compute the Q forces
     setForce(c0area, c0qe, c0cos, sf, sfirst, slast);
 
+    // [6] Set velocity difference to use to compute timestep
+    setVelDiff(sfirst, slast);
+
     Memory::free(c0area);
     Memory::free(c0evol);
     Memory::free(c0du);
@@ -121,13 +124,18 @@ void QCS::setCornerDiv(
         int p = mesh->mapsp1[c];
         int z = mesh->mapsz[c];
         int z0 = z - zfirst;
-        z0uc[z0] += pu[p] / (double) znump[z];
+        z0uc[z0] += pu[p];
+    }
+
+    for (int z = zfirst; z < zlast; ++z) {
+        int z0 = z - zfirst;
+        z0uc[z0] /= (double) znump[z];
     }
 
     // [2] Divergence at the corner
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
-        int s2 = c; // would be mapcs2, if we had that map
+        int s2 = c;
         int s = mesh->mapss3[s2];
         // Associated zone, corner, point
         int z = mesh->mapsz[s];
@@ -192,9 +200,9 @@ void QCS::setCornerDiv(
         evol = min(evol, 2.0 * minelen);
 
         // compute delta velocity
-        double dv1 = length(up1 + up2 - up0 - up3);
-        double dv2 = length(up2 + up3 - up0 - up1);
-        double du = max(dv1, dv2);
+        double dv1 = length2(up1 + up2 - up0 - up3);
+        double dv2 = length2(up2 + up3 - up0 - up1);
+        double du = sqrt(max(dv1, dv2));
 
         c0evol[c0] = (c0div[c0] < 0.0 ? evol : 0.);
         c0du[c0]   = (c0div[c0] < 0.0 ? du   : 0.);
@@ -313,5 +321,49 @@ void QCS::setForce(
     } // for s
 
     Memory::free(c0w);
+}
+
+
+// Routine number [6] in the full algorithm
+void QCS::setVelDiff(
+        const int sfirst,
+        const int slast) {
+
+    const Mesh* mesh = hydro->mesh;
+    const int nums = mesh->nums;
+    const int numz = mesh->numz;
+    int zfirst = mesh->mapsz[sfirst];
+    int zlast = (slast < nums ? mesh->mapsz[slast] : numz);
+    const double2* px = mesh->pxp;
+    const double2* pu = hydro->pu;
+    const double* zss = hydro->zss;
+    double* zdu = hydro->zdu;
+    const double* elen = mesh->elen;
+
+    double* z0tmp = Memory::alloc<double>(zlast - zfirst);
+
+    fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
+    for (int s = sfirst; s < slast; ++s) {
+        int p1 = mesh->mapsp1[s];
+        int p2 = mesh->mapsp2[s];
+        int z = mesh->mapsz[s];
+        int e = mesh->mapse[s];
+        int z0 = z - zfirst;
+
+        double2 dx = px[p2] - px[p1];
+        double2 du = pu[p2] - pu[p1];
+        double lenx = elen[e];
+        double dux = dot(du, dx);
+        dux = (lenx > 0. ? abs(dux) / lenx : 0.);
+
+        z0tmp[z0] = max(z0tmp[z0], dux);
+    }
+
+    for (int z = zfirst; z < zlast; ++z) {
+        int z0 = z - zfirst;
+        zdu[z] = q1 * zss[z] + 2. * q2 * z0tmp[z0];
+    }
+
+    Memory::free(z0tmp);
 }
 

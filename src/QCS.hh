@@ -63,6 +63,10 @@ public:
             const int sfirst,
             const int slast);
 
+    void setVelDiff(
+            const int sfirst,
+            const int slast);
+
 };  // class QCS
 
 

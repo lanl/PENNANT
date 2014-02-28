@@ -14,9 +14,6 @@
 #define VEC2_HH_
 
 #include <cmath>
-#include <string>
-#include <sstream>
-#include <ostream>
 
 
 // This struct is defined with all functions inline,
@@ -26,7 +23,7 @@ struct double2
 {
     typedef double value_type;
     double x, y;
-    inline double2() {}
+    inline double2() : x(0.), y(0.) {}
     inline double2(const double& x_, const double& y_) : x(x_), y(y_) {}
     inline double2(const double2& v2) : x(v2.x), y(v2.y) {}
     inline ~double2() {}

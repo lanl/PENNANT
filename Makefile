@@ -32,16 +32,24 @@ CXXFLAGS_OPENMP := -openmp
 
 # end compiler-dependent flags
 
-LD := $(CXX)
-
 # select optimized or debug
-CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS)
-#CXXFLAGS := $(CXXFLAGS_DEBUG) $(CPPFLAGS)
+CXXFLAGS := $(CXXFLAGS_OPT)
+#CXXFLAGS := $(CXXFLAGS_DEBUG)
+
+# add mpi to compile (comment out for serial build)
+# the following assumes the existence of an mpi compiler
+# wrapper called mpicxx
+CXX := mpicxx
+CXXFLAGS += -DUSE_MPI
 
 # add openmp flags (comment out for serial build)
 CXXFLAGS += $(CXXFLAGS_OPENMP)
 LDFLAGS += $(CXXFLAGS_OPENMP)
 
+LD := $(CXX)
+
+
+# begin rules
 all : $(BINARY)
 
 -include $(DEPS)
@@ -62,8 +70,9 @@ $(BUILDDIR)/%.d : $(SRCDIR)/%.cc
 	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -MM $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
 
 define maketargetdir
-	-@mkdir -p $(dir $@) > /dev/null 2>&1
+	-@mkdir -p $(dir $@) >/dev/null 2>&1
 endef
 
+.PHONY : clean
 clean :
 	rm -f $(BINARY) $(OBJS) $(DEPS)

@@ -11,8 +11,10 @@
  */
 
 #include <cstdlib>
+#include <string>
 #include <iostream>
 
+#include "Parallel.hh"
 #include "InputFile.hh"
 #include "Driver.hh"
 
@@ -21,9 +23,12 @@ using namespace std;
 
 int main(const int argc, const char** argv)
 {
+    Parallel::init();
+
     if (argc != 2) {
-       cerr << "Usage: pennant <filename>" << endl;
-       exit(1);
+        if (Parallel::mype == 0)
+            cerr << "Usage: pennant <filename>" << endl;
+        exit(1);
     }
 
     const char* filename = argv[1];
@@ -38,6 +43,8 @@ int main(const int argc, const char** argv)
     Driver drv(&inp, probname);
 
     drv.run();
+
+    Parallel::final();
 
     return 0;
 
