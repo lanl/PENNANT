@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <cstdio>
+#include <cstring>
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -486,7 +488,7 @@ void Hydro::calcEnergy(
 void Hydro::calcDtCourant(
         const double* zdl,
         double& dtrec,
-        string& msgdtrec,
+        char* msgdtrec,
         const int zfirst,
         const int zlast) {
 
@@ -502,9 +504,7 @@ void Hydro::calcDtCourant(
 
     if (dtnew < dtrec) {
         dtrec = dtnew;
-        ostringstream oss;
-        oss << "Hydro Courant limit for z = " << setw(6) << zmin;
-        msgdtrec = oss.str();
+        snprintf(msgdtrec, 80, "Hydro Courant limit for z = %d", zmin);
     }
 
 }
@@ -515,7 +515,7 @@ void Hydro::calcDtVolume(
         const double* zvol0,
         const double dtlast,
         double& dtrec,
-        string& msgdtrec,
+        char* msgdtrec,
         const int zfirst,
         const int zlast) {
 
@@ -529,9 +529,7 @@ void Hydro::calcDtVolume(
     double dtnew = dtlast * cflv / dvovmax;
     if (dtnew < dtrec) {
         dtrec = dtnew;
-        ostringstream oss;
-        oss << "Hydro dV/V limit for z = " << setw(6) << zmax;
-        msgdtrec = oss.str();
+        snprintf(msgdtrec, 80, "Hydro dV/V limit for z = %d", zmax);
     }
 
 }
@@ -546,16 +544,19 @@ void Hydro::calcDtHydro(
         const int zlast) {
 
     double dtchunk = 1.e99;
-    string msgdtchunk;
+    char msgdtchunk[80];
 
     calcDtCourant(zdl, dtchunk, msgdtchunk, zfirst, zlast);
     calcDtVolume(zvol, zvol0, dtlast, dtchunk, msgdtchunk,
             zfirst, zlast);
-    #pragma omp critical
-    {
-        if (dtchunk < dtrec) {
-            dtrec = dtchunk;
-            msgdtrec = msgdtchunk;
+    if (dtchunk < dtrec) {
+        #pragma omp critical
+        {
+            // redundant test needed to avoid race condition
+            if (dtchunk < dtrec) {
+                dtrec = dtchunk;
+                strncpy(msgdtrec, msgdtchunk, 80);
+            }
         }
     }
 
@@ -568,7 +569,7 @@ void Hydro::getDtHydro(
 
     if (dtrec < dtnew) {
         dtnew = dtrec;
-        msgdtnew = msgdtrec;
+        msgdtnew = string(msgdtrec);
     }
 
 }
@@ -577,6 +578,6 @@ void Hydro::getDtHydro(
 void Hydro::resetDtHydro() {
 
     dtrec = 1.e99;
-    msgdtrec = "Hydro default";
+    strcpy(msgdtrec, "Hydro default");
 
 }

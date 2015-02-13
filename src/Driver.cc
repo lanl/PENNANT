@@ -38,7 +38,7 @@ Driver::Driver(const InputFile* inp, const string& pname)
 
     if (mype == 0) {
         cout << "********************" << endl;
-        cout << "Running PENNANT v0.6" << endl;
+        cout << "Running PENNANT v0.7" << endl;
         cout << "********************" << endl;
         cout << endl;
 
@@ -82,12 +82,13 @@ void Driver::run() {
     time = 0.0;
     cycle = 0;
 
-    double tbegin;
+    double tbegin, tlast;
     if (mype == 0) {
         // get starting timestamp
         struct timeval sbegin;
         gettimeofday(&sbegin, NULL);
         tbegin = sbegin.tv_sec + sbegin.tv_usec * 1.e-6;
+        tlast = tbegin;
     }
 
     // main event loop
@@ -105,12 +106,20 @@ void Driver::run() {
 
         if (mype == 0 &&
                 (cycle == 1 || cycle % dtreport == 0)) {
+            struct timeval scurr;
+            gettimeofday(&scurr, NULL);
+            double tcurr = scurr.tv_sec + scurr.tv_usec * 1.e-6;
+            double tdiff = tcurr - tlast;
+
             cout << scientific << setprecision(5);
             cout << "End cycle " << setw(6) << cycle
                  << ", time = " << setw(11) << time
-                 << ", dt = " << setw(11) << dt << endl;
+                 << ", dt = " << setw(11) << dt
+                 << ", wall = " << setw(11) << tdiff << endl;
             cout << "dt limiter: " << msgdt << endl;
-        }
+
+            tlast = tcurr;
+        } // if mype...
 
     } // while cycle...
 

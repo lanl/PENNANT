@@ -1,4 +1,15 @@
-PENNANT Description:
+The PENNANT Mini-App
+
+Charles R. Ferenbaugh
+Los Alamos National Laboratory
+cferenba@lanl.gov
+
+Version 0.7 -- February 2015
+LA-CC-12-021
+https://github.com/losalamos/PENNANT
+
+
+Description:
 
 PENNANT is an unstructured mesh physics mini-app designed for advanced
 architecture research.  It contains mesh data structures and a few
@@ -10,6 +21,9 @@ PENNANT distribution.
 
 
 Version Log:
+
+0.7, February 2015:
+     Further optimizations for MPI+OpenMP.
 
 0.6, February 2014:
      First MPI version.  MPI capability is working and mostly

@@ -115,9 +115,9 @@ public:
 
     // populate mapping arrays
     void initSides(
-            std::vector<int>& cellstart,
-            std::vector<int>& cellsize,
-            std::vector<int>& cellnodes);
+            const std::vector<int>& cellstart,
+            const std::vector<int>& cellsize,
+            const std::vector<int>& cellnodes);
     void initEdges();
 
     // populate chunk information
@@ -127,12 +127,12 @@ public:
     void initInvMap();
 
     void initParallel(
-            std::vector<int>& slavemstrpes,
-            std::vector<int>& slavemstrcounts,
-            std::vector<int>& slavepoints,
-            std::vector<int>& masterslvpes,
-            std::vector<int>& masterslvcounts,
-            std::vector<int>& masterpoints);
+            const std::vector<int>& slavemstrpes,
+            const std::vector<int>& slavemstrcounts,
+            const std::vector<int>& slavepoints,
+            const std::vector<int>& masterslvpes,
+            const std::vector<int>& masterslvcounts,
+            const std::vector<int>& masterpoints);
 
     // write mesh statistics
     void writeStats();

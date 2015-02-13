@@ -50,7 +50,7 @@ public:
     std::vector<double> bcy;    // y values of y-plane fixed boundaries
 
     double dtrec;               // maximum timestep for hydro
-    std::string msgdtrec;       // message:  reason for dtrec
+    char msgdtrec[80];          // message:  reason for dtrec
 
     double2* pu;       // point velocity
     double2* pu0;      // point velocity, start of cycle
@@ -168,7 +168,7 @@ public:
     void calcDtCourant(
             const double* zdl,
             double& dtrec,
-            std::string& msgdtrec,
+            char* msgdtrec,
             const int zfirst,
             const int zlast);
 
@@ -177,7 +177,7 @@ public:
             const double* zvol0,
             const double dtlast,
             double& dtrec,
-            std::string& msgdtrec,
+            char* msgdtrec,
             const int zfirst,
             const int zlast);
 

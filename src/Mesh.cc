@@ -159,9 +159,9 @@ void Mesh::init() {
 
 
 void Mesh::initSides(
-        std::vector<int>& cellstart,
-        std::vector<int>& cellsize,
-        std::vector<int>& cellnodes) {
+        const vector<int>& cellstart,
+        const vector<int>& cellsize,
+        const vector<int>& cellnodes) {
 
     mapsp1 = Memory::alloc<int>(nums);
     mapsp2 = Memory::alloc<int>(nums);
@@ -285,12 +285,12 @@ void Mesh::initInvMap() {
 
 
 void Mesh::initParallel(
-        std::vector<int>& slavemstrpes,
-        std::vector<int>& slavemstrcounts,
-        std::vector<int>& slavepoints,
-        std::vector<int>& masterslvpes,
-        std::vector<int>& masterslvcounts,
-        std::vector<int>& masterpoints) {
+        const vector<int>& slavemstrpes,
+        const vector<int>& slavemstrcounts,
+        const vector<int>& slavepoints,
+        const vector<int>& masterslvpes,
+        const vector<int>& masterslvcounts,
+        const vector<int>& masterpoints) {
     if (Parallel::numpe == 1) return;
 
     nummstrpe = slavemstrpes.size();
@@ -492,8 +492,10 @@ void Mesh::calcVols(
 
     } // for s
 
-    #pragma omp atomic
-    numsbad += count;
+    if (count > 0) {
+        #pragma omp atomic
+        numsbad += count;
+    }
 
 }
 

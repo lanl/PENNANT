@@ -19,7 +19,7 @@
 \author{Charles R. Ferenbaugh \\
         Los Alamos National Laboratory \\
         {\tt cferenba@lanl.gov}}
-\date{Version 0.6 -- February 2014 \\
+\date{Version 0.7 -- February 2015 \\
       LA-CC-12-021 \\
       \url{https://github.com/losalamos/PENNANT}}
 \maketitle
@@ -42,7 +42,7 @@ choose between optimized/debug and serial/OpenMP/MPI builds.  Then
 a simple ``{\tt make}'' command will create a {\tt build} subdirectory and
 build the {\tt pennant} binary in that directory.
 
-PENNANT has been tested under GCC 4.7.2, PGI 13.10, and Intel 13.1.3.
+PENNANT has been tested under GCC 4.7.2, PGI 13.10, and Intel 14.0.4.
 Building under other compilers should require only minor changes.
 
 \subsection{Running tests}
@@ -133,7 +133,7 @@ Sample outputs are shown in Figure~\ref{fig:output}.
 \subsection{Input file parameters}
 
 In most cases, there is no need for users to modify input files.  However,
-here a few parameters that ambitious users might want to know about:
+here are a few parameters that ambitious users might want to know about:
 \begin{description}
     \item[{\tt cstop}]  Stop run when problem reaches given cycle number.
     \item[{\tt tstop}]  Stop run when problem reaches given simulation time.
@@ -209,7 +209,7 @@ of zone volumes.  There are scalar variables of the form
 PENNANT also stores various mapping arrays from sides to other entity
 types.  These are shown in Figure~\ref{fig:side}.
 Given a side $s$, the following mapping arrays are available:
-\begin{itemize}
+\begin{itemize} \itemsep1pt \parskip0pt
 \item {\tt mapsz} gives the zone $z$ of which $s$ is a subregion.
 \item {\tt mapse} gives the edge $e$ on the boundary of $s$.
 \item {\tt mapsp1} and {\tt mapsp2} give the two mesh points $p_1$ and
@@ -330,7 +330,7 @@ processors in three stages:
     \label{fig:decomp}
 \end{figure}
 
-\begin{enumerate}
+\begin{enumerate} \itemsep1pt \parskip0pt
     \item In {\tt Mesh::parallelGather},
         slave point values are assembled into messages, and sent
         to corresponding {\em proxy} points on the same rank as
@@ -412,7 +412,7 @@ then used to advance all variables to the end of the timestep.
 To implement the predictor-corrector scheme, it is necessary to store
 multiple values of some of the problem variables.  This is done
 using the following notation convention:
-\begin{itemize}
+\begin{itemize} \itemsep1pt \parskip0pt
 \item suffix $0$ = the beginning of the timestep (``cycle n'')
 \item suffix $p$ = half-way through the timestep (``cycle n + 1/2'')
 \item no suffix = completion of the timestep    (``cycle n + 1'')
@@ -549,6 +549,9 @@ K.B. Wallick.
 \section{Version Log}
 
 \begin{description}
+\item[0.7] February 2015 \\
+     Further optimizations for MPI+OpenMP.
+
 \item[0.6] February 2014 \\
      First MPI version.  MPI capability is working and mostly
      optimized; MPI+OpenMP is working but needs optimization.
