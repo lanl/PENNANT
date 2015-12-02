@@ -4,7 +4,7 @@ Charles R. Ferenbaugh
 Los Alamos National Laboratory
 cferenba@lanl.gov
 
-Version 0.7 -- February 2015
+Version 0.8 -- November 2015
 LA-CC-12-021
 https://github.com/losalamos/PENNANT
 
@@ -21,6 +21,10 @@ PENNANT distribution.
 
 
 Version Log:
+
+0.8, November 2015:
+     Added multi-node test problems.  Added information for
+     APEX benchmark testing.
 
 0.7, February 2015:
      Further optimizations for MPI+OpenMP.

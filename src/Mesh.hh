@@ -38,6 +38,8 @@ public:
     std::vector<double> subregion; // bounding box for a subregion
                                    // if nonempty, should have 4 entries:
                                    // xmin, xmax, ymin, ymax
+    bool writexy;                  // flag:  write .xy file?
+    bool writegold;                // flag:  write Ensight file?
 
     // mesh variables
     // (See documentation for more details on the mesh

@@ -38,7 +38,7 @@ Driver::Driver(const InputFile* inp, const string& pname)
 
     if (mype == 0) {
         cout << "********************" << endl;
-        cout << "Running PENNANT v0.7" << endl;
+        cout << "Running PENNANT v0.8" << endl;
         cout << "********************" << endl;
         cout << endl;
 

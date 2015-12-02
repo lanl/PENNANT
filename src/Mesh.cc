@@ -46,6 +46,9 @@ Mesh::Mesh(const InputFile* inp) :
         exit(1);
     }
 
+    writexy = inp->getInt("writexy", 0);
+    writegold = inp->getInt("writegold", 0);
+
     gmesh = new GenMesh(inp);
     wxy = new WriteXY(this);
     egold = new ExportGold(this);
@@ -371,8 +374,16 @@ void Mesh::write(
         const double* ze,
         const double* zp) {
 
-    wxy->write(probname, zr, ze, zp);
-    egold->write(probname, cycle, time, zr, ze, zp);
+    if (writexy) {
+        if (Parallel::mype == 0)
+            cout << "Writing .xy file..." << endl;
+        wxy->write(probname, zr, ze, zp);
+    }
+    if (writegold) {
+        if (Parallel::mype == 0) 
+            cout << "Writing gold file..." << endl;
+        egold->write(probname, cycle, time, zr, ze, zp);
+    }
 
 }
 
@@ -594,11 +605,13 @@ void Mesh::parallelGather(
     // This routine gathers slave values for which MYPE owns the masters.
     const int tagmpi = 100;
     const int type_size = sizeof(T);
-    std::vector<T> slvvar(numslv);
+//    std::vector<T> slvvar(numslv);
+    T* slvvar = Memory::alloc<T>(numslv);
 
     // Post receives for incoming messages from slaves.
     // Store results in proxy buffer.
-    vector<MPI_Request> request(numslvpe);
+//    vector<MPI_Request> request(numslvpe);
+    MPI_Request* request = Memory::alloc<MPI_Request>(numslvpe);
     for (int slvpe = 0; slvpe < numslvpe; ++slvpe) {
         int pe = mapslvpepe[slvpe];
         int nprx = slvpenumprx[slvpe];
@@ -623,7 +636,8 @@ void Mesh::parallelGather(
     }
 
     // Wait for all receives to complete.
-    vector<MPI_Status> status(numslvpe);
+//    vector<MPI_Status> status(numslvpe);
+    MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
     int ierr = MPI_Waitall(numslvpe, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
@@ -631,6 +645,10 @@ void Mesh::parallelGather(
         cerr << "Exiting..." << endl;
         exit(1);
     }
+
+    Memory::free(slvvar);
+    Memory::free(request);
+    Memory::free(status);
 #endif
 }
 
@@ -665,11 +683,13 @@ void Mesh::parallelScatter(
     // owned by other PEs.
     const int tagmpi = 200;
     const int type_size = sizeof(T);
-    std::vector<T> slvvar(numslv);
+//    std::vector<T> slvvar(numslv);
+    T* slvvar = Memory::alloc<T>(numslv);
 
     // Post receives for incoming messages from masters.
     // Store results in slave buffer.
-    vector<MPI_Request> request(nummstrpe);
+//    vector<MPI_Request> request(nummstrpe);
+    MPI_Request* request = Memory::alloc<MPI_Request>(nummstrpe);
     for (int mstrpe = 0; mstrpe < nummstrpe; ++mstrpe) {
         int pe = mapmstrpepe[mstrpe];
         int nslv = mstrpenumslv[mstrpe];
@@ -688,7 +708,8 @@ void Mesh::parallelScatter(
     }
 
     // Wait for all receives to complete.
-    vector<MPI_Status> status(nummstrpe);
+//    vector<MPI_Status> status(nummstrpe);
+    MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
     int ierr = MPI_Waitall(nummstrpe, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
@@ -702,6 +723,10 @@ void Mesh::parallelScatter(
         int p = mapslvp[slv];
         pvar[p] = slvvar[slv];
     }
+
+    Memory::free(slvvar);
+    Memory::free(request);
+    Memory::free(status);
 #endif
 }
 
@@ -709,10 +734,12 @@ void Mesh::parallelScatter(
 template <typename T>
 void Mesh::sumAcrossProcs(T* pvar) {
     if (Parallel::numpe == 1) return;
-    std::vector<T> prxvar(numprx);
+//    std::vector<T> prxvar(numprx);
+    T* prxvar = Memory::alloc<T>(numprx);
     parallelGather(pvar, &prxvar[0]);
     parallelSum(pvar, &prxvar[0]);
     parallelScatter(pvar, &prxvar[0]);
+    Memory::free(prxvar);
 }
 
 
