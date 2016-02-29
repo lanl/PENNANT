@@ -18,7 +18,7 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
-#include <sstream>
+#include <iostream>
 #include <iomanip>
 
 #include "Parallel.hh"
@@ -485,6 +485,50 @@ void Hydro::calcEnergy(
 }
 
 
+void Hydro::sumEnergy(
+        const double* zetot,
+        const double* zarea,
+        const double* zvol,
+        const double* zm,
+        const double* smf,
+        const double2* px,
+        const double2* pu,
+        double& ei,
+        double& ek,
+        const int zfirst,
+        const int zlast,
+        const int sfirst,
+        const int slast) {
+
+    // compute internal energy
+    double sumi = 0.; 
+    for (int z = zfirst; z < zlast; ++z) {
+        sumi += zetot[z];
+    }
+    // multiply by 2\pi for cylindrical geometry
+    ei += sumi * 2 * M_PI;
+
+    // compute kinetic energy
+    // in each individual zone:
+    // zone ke = zone mass * (volume-weighted average of .5 * u ^ 2)
+    //         = zm sum(c in z) [cvol / zvol * .5 * u ^ 2]
+    //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]
+    double sumk = 0.; 
+    for (int s = sfirst; s < slast; ++s) {
+        int s3 = mesh->mapss3[s];
+        int p1 = mesh->mapsp1[s];
+        int z = mesh->mapsz[s];
+
+        double cvol = zarea[z] * px[p1].x * 0.5 * (smf[s] + smf[s3]);
+        double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);
+        sumk += cke;
+    }
+    // multiply by 2\pi for cylindrical geometry
+    ek += sumk * 2 * M_PI;
+
+}
+
+
 void Hydro::calcDtCourant(
         const double* zdl,
         double& dtrec,
@@ -581,3 +625,42 @@ void Hydro::resetDtHydro() {
     strcpy(msgdtrec, "Hydro default");
 
 }
+
+
+void Hydro::writeEnergyCheck() {
+
+    using Parallel::mype;
+    
+    double ei = 0.;
+    double ek = 0.;
+    #pragma omp parallel for schedule(static)
+    for (int sch = 0; sch < mesh->numsch; ++sch) {
+        int sfirst = mesh->schsfirst[sch];
+        int slast = mesh->schslast[sch];
+        int zfirst = mesh->schzfirst[sch];
+        int zlast = mesh->schzlast[sch];
+
+        double eichunk = 0.;
+        double ekchunk = 0.;
+        sumEnergy(zetot, mesh->zarea, mesh->zvol, zm, mesh->smf,
+                mesh->px, pu, eichunk, ekchunk,
+                zfirst, zlast, sfirst, slast);
+        #pragma omp critical
+        {
+            ei += eichunk;
+            ek += ekchunk;
+        }
+    }
+
+    Parallel::globalSum(ei);
+    Parallel::globalSum(ek);
+
+    if (mype == 0) {
+        cout << scientific << setprecision(6);
+        cout << "Energy check:  "
+             << "total energy  = " << setw(14) << ei + ek << endl;
+        cout << "(internal = " << setw(14) << ei
+             << ", kinetic = " << setw(14) << ek << ")" << endl;
+    }
+
+ }

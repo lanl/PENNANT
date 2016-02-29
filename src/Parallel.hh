@@ -13,6 +13,8 @@
 #ifndef PARALLEL_HH_
 #define PARALLEL_HH_
 
+#include <stdint.h>
+
 #ifdef USE_MPI
 #include "mpi.h"
 #endif
@@ -34,7 +36,9 @@ namespace Parallel {
     void globalMinLoc(double& x, int& xpe);
                                 // find minimum over all PEs, and
                                 // report which PE had the minimum
-    void globalSum(int& x);     // find sum over all PEs
+    void globalSum(int& x);     // find sum over all PEs - overloaded
+    void globalSum(int64_t& x);
+    void globalSum(double& x);
     void gather(const int x, int* y);
                                 // gather list of ints from all PEs
     void scatter(const int* x, int& y);

@@ -79,6 +79,26 @@ void globalSum(int& x) {
 }
 
 
+void globalSum(int64_t& x) {
+    if (numpe == 1) return;
+#ifdef USE_MPI
+    int64_t y;
+    MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
+    x = y;
+#endif
+}
+
+
+void globalSum(double& x) {
+    if (numpe == 1) return;
+#ifdef USE_MPI
+    double y;
+    MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    x = y;
+#endif
+}
+
+
 void gather(int x, int* y) {
     if (numpe == 1) {
         y[0] = x;

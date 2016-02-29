@@ -12,6 +12,7 @@
 
 #include "Mesh.hh"
 
+#include <stdint.h>
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -331,13 +332,13 @@ void Mesh::initParallel(
 
 void Mesh::writeStats() {
 
-    int gnump = nump;
+    int64_t gnump = nump;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
     if (Parallel::numpe > 1) gnump -= numslv;
-    int gnumz = numz;
-    int gnums = nums;
-    int gnume = nume;
+    int64_t gnumz = numz;
+    int64_t gnums = nums;
+    int64_t gnume = nume;
     int gnumpch = numpch;
     int gnumzch = numzch;
     int gnumsch = numsch;

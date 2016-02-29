@@ -19,7 +19,7 @@
 \author{Charles R. Ferenbaugh \\
         Los Alamos National Laboratory \\
         {\tt cferenba@lanl.gov}}
-\date{Version 0.8 -- November 2015 \\
+\date{Version 0.9 -- February 2016 \\
       LA-CC-12-021 \\
       \url{https://github.com/losalamos/PENNANT}}
 \maketitle
@@ -44,7 +44,7 @@ choose between optimized/debug and serial/OpenMP/MPI builds.  Then
 a simple ``{\tt make}'' command will create a {\tt build} subdirectory and
 build the {\tt pennant} binary in that directory.
 
-PENNANT has been tested under GCC 4.7.2, PGI 13.10, and Intel 15.0.0.
+PENNANT has been tested under GCC 5.1.0, PGI 15.3, and Intel 15.0.3.
 Building under other compilers should require only minor changes.
 
 \subsection{Running tests}
@@ -81,6 +81,7 @@ problems specifically labeled as multi-node.
     Leblanc problems, multi-node versions: \\
     leblancx4  & $3.69 \times 10^6$ & rectangle & quad \\
     leblancx16 & $5.90 \times 10^7$ & rectangle & quad \\
+    leblancx64 & $9.44 \times 10^8$ & rectangle & quad \\
     \hline
     Noh problems~\cite{noh}: \\
     nohsmall   &     40 & radial    & triangle/quad \\
@@ -471,6 +472,21 @@ are needed at all times.
 \end{tabular}
 \end{table}
 
+\subsection{Energy check}
+
+The hydro algorithms in PENNANT are intended to conserve total energy
+as a simulation progresses.  However, in the 2D cylindrical geometry
+used by PENNANT, the conservation is not always exact.  An energy
+check diagnostic is printed at the beginning and end of each run to
+verify conservation.  For the {\tt leblanc} problems, energy is
+typically conserved to within the accuracy of the printout (seven
+decimal places).  For other problems, there can be a relative error
+of about $2\times 10^{-4}$ (for the {\tt noh} problems) or
+$2\times 10^{-2}$ (for the {\tt sedov} problems).  These errors are
+due to limitations of the numerical algorithms in the cylindrical case,
+and should not change significantly between different platforms or
+implementations of PENNANT.
+
 \subsection{Material model}
 
 PENNANT provides finite-volume, arbitrary-polygon cells with a
@@ -512,7 +528,9 @@ Thanks to Mikhail Shashkov and the ASCR ``Mimetic Methods for PDEs''
 project, and the ASC Hydrodynamics project, for providing support for
 this work.  Thanks to Pat McCormick and the ASC Programming Models
 project for providing some additional support for development of the
-MPI version.
+MPI version.  Thanks to Sriram Swaminarayan and the ASC Code Strategies
+for Emerging Platforms project for supporting PENNANT modifications
+for the APEX NERSC-9/Crossroads procurement.
 
 Thanks also to the Lagrangian Applications Project members who have
 contributed to the FLAG code; parts of the PENNANT code and documentation
@@ -584,6 +602,10 @@ K.B. Wallick.
 \section{Version Log}
 
 \begin{description}
+\item[0.9] February 2016 \\
+     Added leblancx64 problem.  Added energy check diagnostic
+     for verifying large problems.
+
 \item[0.8] November 2015 \\
      Added multi-node test problems.  Added information for
      APEX benchmark testing.

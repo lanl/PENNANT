@@ -165,6 +165,21 @@ public:
             const int zfirst,
             const int zlast);
 
+    void sumEnergy(
+            const double* zetot,
+            const double* zarea,
+            const double* zvol,
+            const double* zm,
+            const double* smf,
+            const double2* px,
+            const double2* pu,
+            double& ei,
+            double& ek,
+            const int zfirst,
+            const int zlast,
+            const int sfirst,
+            const int slast);
+
     void calcDtCourant(
             const double* zdl,
             double& dtrec,
@@ -194,6 +209,8 @@ public:
             std::string& msgdtnew);
 
     void resetDtHydro();
+
+    void writeEnergyCheck();
 
 }; // class Hydro
 

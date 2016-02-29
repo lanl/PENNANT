@@ -38,7 +38,7 @@ Driver::Driver(const InputFile* inp, const string& pname)
 
     if (mype == 0) {
         cout << "********************" << endl;
-        cout << "Running PENNANT v0.8" << endl;
+        cout << "Running PENNANT v0.9" << endl;
         cout << "********************" << endl;
         cout << endl;
 
@@ -81,6 +81,9 @@ void Driver::run() {
 
     time = 0.0;
     cycle = 0;
+
+    // do energy check
+    hydro->writeEnergyCheck();
 
     double tbegin, tlast;
     if (mype == 0) {
@@ -146,6 +149,9 @@ void Driver::run() {
         cout << "************************************" << endl;
 
     } // if mype
+
+    // do energy check
+    hydro->writeEnergyCheck();
 
     // do final mesh output
     mesh->write(probname, cycle, time,
