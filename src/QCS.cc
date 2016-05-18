@@ -102,7 +102,7 @@ void QCS::setCornerDiv(
     const int nums = mesh->num_sides;
     const int numz = mesh->num_zones;
 
-    const double2* pu = hydro->pu;
+    const double2* pu = hydro->pt_vel;
     const double2* px = mesh->pt_x_pred;
     const double2* ex = mesh->edge_x_pred;
     const double2* zx = mesh->zone_x_pred;
@@ -223,9 +223,9 @@ void QCS::setQCnForce(
 
     const Mesh* mesh = hydro->mesh;
 
-    const double2* pu = hydro->pu;
-    const double* zrp = hydro->zrp;
-    const double* zss = hydro->zss;
+    const double2* pu = hydro->pt_vel;
+    const double* zrp = hydro->zone_rho_pred;
+    const double* zss = hydro->zone_sound_speed;
     const double* elen = mesh->edege_len;
 
     int cfirst = sfirst;
@@ -335,9 +335,9 @@ void QCS::setVelDiff(
     int zfirst = mesh->map_side2zone[sfirst];
     int zlast = (slast < nums ? mesh->map_side2zone[slast] : numz);
     const double2* px = mesh->pt_x_pred;
-    const double2* pu = hydro->pu;
-    const double* zss = hydro->zss;
-    double* zdu = hydro->zdu;
+    const double2* pu = hydro->pt_vel;
+    const double* zss = hydro->zone_sound_speed;
+    double* zdu = hydro->zone_dvel;
     const double* elen = mesh->edege_len;
 
     double* z0tmp = Memory::alloc<double>(zlast - zfirst);

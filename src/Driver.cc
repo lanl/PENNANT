@@ -155,7 +155,7 @@ void Driver::run() {
 
     // do final mesh output
     mesh->write(probname, cycle, time,
-            hydro->zr, hydro->ze, hydro->zp);
+            hydro->zone_rho, hydro->zone_energy_density, hydro->zone_pres);
 
 }
 
