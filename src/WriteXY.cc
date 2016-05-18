@@ -34,7 +34,7 @@ void WriteXY::write(
 
     using Parallel::numpe;
     using Parallel::mype;
-    const int numz = mesh->numz;
+    const int numz = mesh->num_zones;
 
     int gnumz = numz;
     Parallel::globalSum(gnumz);

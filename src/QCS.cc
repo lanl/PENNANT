@@ -99,20 +99,20 @@ void QCS::setCornerDiv(
             const int slast) {
 
     const Mesh* mesh = hydro->mesh;
-    const int nums = mesh->nums;
-    const int numz = mesh->numz;
+    const int nums = mesh->num_sides;
+    const int numz = mesh->num_zones;
 
     const double2* pu = hydro->pu;
-    const double2* px = mesh->pxp;
-    const double2* ex = mesh->exp;
-    const double2* zx = mesh->zxp;
-    const double* elen = mesh->elen;
+    const double2* px = mesh->pt_x_pred;
+    const double2* ex = mesh->edge_x_pred;
+    const double2* zx = mesh->zone_x_pred;
+    const double* elen = mesh->edege_len;
     const int* znump = mesh->znump;
 
     int cfirst = sfirst;
     int clast = slast;
-    int zfirst = mesh->mapsz[sfirst];
-    int zlast = (slast < nums ? mesh->mapsz[slast] : numz);
+    int zfirst = mesh->map_side2zone[sfirst];
+    int zlast = (slast < nums ? mesh->map_side2zone[slast] : numz);
 
     double2* z0uc = Memory::alloc<double2>(zlast - zfirst);
     double2 up0, up1, up2, up3;
@@ -121,8 +121,8 @@ void QCS::setCornerDiv(
     // [1] Compute a zone-centered velocity
     fill(&z0uc[0], &z0uc[zlast-zfirst], double2(0., 0.));
     for (int c = cfirst; c < clast; ++c) {
-        int p = mesh->mapsp1[c];
-        int z = mesh->mapsz[c];
+        int p = mesh->map_side2pt1[c];
+        int z = mesh->map_side2zone[c];
         int z0 = z - zfirst;
         z0uc[z0] += pu[p];
     }
@@ -136,18 +136,18 @@ void QCS::setCornerDiv(
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s2 = c;
-        int s = mesh->mapss3[s2];
+        int s = mesh->maps_side_prev[s2];
         // Associated zone, corner, point
-        int z = mesh->mapsz[s];
+        int z = mesh->map_side2zone[s];
         int z0 = z - zfirst;
         int c0 = c - cfirst;
-        int p = mesh->mapsp2[s];
+        int p = mesh->map_side2pt2[s];
         // Points
-        int p1 = mesh->mapsp1[s];
-        int p2 = mesh->mapsp2[s2];
+        int p1 = mesh->map_side2pt1[s];
+        int p2 = mesh->map_side2pt2[s2];
         // Edges
-        int e1 = mesh->mapse[s];
-        int e2 = mesh->mapse[s2];
+        int e1 = mesh->map_side2edge[s];
+        int e2 = mesh->map_side2edge[s2];
 
         // Velocities and positions
         // 0 = point p
@@ -226,7 +226,7 @@ void QCS::setQCnForce(
     const double2* pu = hydro->pu;
     const double* zrp = hydro->zrp;
     const double* zss = hydro->zss;
-    const double* elen = mesh->elen;
+    const double* elen = mesh->edege_len;
 
     int cfirst = sfirst;
     int clast = slast;
@@ -239,7 +239,7 @@ void QCS::setQCnForce(
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int c0 = c - cfirst;
-        int z = mesh->mapsz[c];
+        int z = mesh->map_side2zone[c];
 
         // Kurapatenko form of the viscosity
         double ztmp2 = q2 * 0.25 * gammap1 * c0du[c0];
@@ -255,15 +255,15 @@ void QCS::setQCnForce(
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s4 = c;
-        int s = mesh->mapss3[s4];
+        int s = mesh->maps_side_prev[s4];
         int c0 = c - cfirst;
-        int p = mesh->mapsp2[s];
+        int p = mesh->map_side2pt2[s];
         // Associated point and edge 1
-        int p1 = mesh->mapsp1[s];
-        int e1 = mesh->mapse[s];
+        int p1 = mesh->map_side2pt1[s];
+        int e1 = mesh->map_side2edge[s];
         // Associated point and edge 2
-        int p2 = mesh->mapsp2[s4];
-        int e2 = mesh->mapse[s4];
+        int p2 = mesh->map_side2pt2[s4];
+        int e2 = mesh->map_side2edge[s4];
 
         // Compute: c0qe(1,2,3)=edge 1, y component (2nd), 3rd corner
         //          c0qe(2,1,3)=edge 2, x component (1st)
@@ -286,7 +286,7 @@ void QCS::setForce(
         const int slast) {
 
     const Mesh* mesh = hydro->mesh;
-    const double* elen = mesh->elen;
+    const double* elen = mesh->edege_len;
 
     int cfirst = sfirst;
     int clast = slast;
@@ -308,9 +308,9 @@ void QCS::setForce(
         // Associated corners 1 and 2, and edge
         int c1 = s;
         int c10 = c1 - cfirst;
-        int c2 = mesh->mapss4[s];
+        int c2 = mesh->maps_side_next[s];
         int c20 = c2 - cfirst;
-        int e = mesh->mapse[s];
+        int e = mesh->map_side2edge[s];
         // Edge length for c1, c2 contribution to s
         double el = elen[e];
 
@@ -330,24 +330,24 @@ void QCS::setVelDiff(
         const int slast) {
 
     const Mesh* mesh = hydro->mesh;
-    const int nums = mesh->nums;
-    const int numz = mesh->numz;
-    int zfirst = mesh->mapsz[sfirst];
-    int zlast = (slast < nums ? mesh->mapsz[slast] : numz);
-    const double2* px = mesh->pxp;
+    const int nums = mesh->num_sides;
+    const int numz = mesh->num_zones;
+    int zfirst = mesh->map_side2zone[sfirst];
+    int zlast = (slast < nums ? mesh->map_side2zone[slast] : numz);
+    const double2* px = mesh->pt_x_pred;
     const double2* pu = hydro->pu;
     const double* zss = hydro->zss;
     double* zdu = hydro->zdu;
-    const double* elen = mesh->elen;
+    const double* elen = mesh->edege_len;
 
     double* z0tmp = Memory::alloc<double>(zlast - zfirst);
 
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = mesh->mapsp1[s];
-        int p2 = mesh->mapsp2[s];
-        int z = mesh->mapsz[s];
-        int e = mesh->mapse[s];
+        int p1 = mesh->map_side2pt1[s];
+        int p2 = mesh->map_side2pt2[s];
+        int z = mesh->map_side2zone[s];
+        int e = mesh->map_side2edge[s];
         int z0 = z - zfirst;
 
         double2 dx = px[p2] - px[p1];

@@ -120,8 +120,8 @@ void ExportGold::writeGeoFile(
     } // if mype == 0
 
     // gather node info to PE 0
-    const int nump = mesh->nump;
-    const double2* px = mesh->px;
+    const int nump = mesh->num_pts;
+    const double2* px = mesh->pt_x;
 
     int gnump = nump;
     Parallel::globalSum(gnump);
@@ -149,7 +149,7 @@ void ExportGold::writeGeoFile(
     } // if mype
 
     const int* znump = mesh->znump;
-    const int* mapsp1 = mesh->mapsp1;
+    const int* mapsp1 = mesh->map_side2pt1;
 
     const int ntris = tris.size();
     const int nquads = quads.size();
@@ -353,7 +353,7 @@ void ExportGold::writeVarFile(
 
 void ExportGold::sortZones() {
 
-    const int numz = mesh->numz;
+    const int numz = mesh->num_zones;
     const int* znump = mesh->znump;
 
     mapzs.resize(numz);

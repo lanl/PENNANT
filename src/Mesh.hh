@@ -44,71 +44,71 @@ public:
     // mesh variables
     // (See documentation for more details on the mesh
     //  data structures...)
-    int nump, nume, numz, nums, numc;
+    int num_pts, num_edges, num_zones, num_sides, num_corners;
                        // number of points, edges, zones,
                        // sides, corners, resp.
-    int numsbad;       // number of bad sides (negative volume)
-    int* mapsp1;       // maps: side -> points 1 and 2
-    int* mapsp2;
-    int* mapsz;        // map: side -> zone
-    int* mapse;        // map: side -> edge
-    int* mapss3;       // map: side -> previous side
-    int* mapss4;       // map: side -> next side
+    int num_bad_sides;       // number of bad sides (negative volume)
+    int* map_side2pt1;       // maps: side -> points 1 and 2
+    int* map_side2pt2;
+    int* map_side2zone;        // map: side -> zone
+    int* map_side2edge;        // map: side -> edge
+    int* maps_side_prev;       // map: side -> previous side
+    int* maps_side_next;       // map: side -> next side
 
     // point-to-corner inverse map is stored as a linked list...
-    int* mappcfirst;   // map:  point -> first corner
-    int* mapccnext;    // map:  corner -> next corner
+    int* map_pt2crn_first;   // map:  point -> first corner
+    int* map_crn2crn_next;    // map:  corner -> next corner
 
     // mpi comm variables
-    int nummstrpe;     // number of messages mype sends to master pes
-    int numslvpe;      // number of messages mype receives from slave pes
-    int numprx;        // number of proxies on mype
-    int numslv;        // number of slaves on mype
-    int* mapslvpepe;   // map: slave pe -> (global) pe
-    int* mapslvpeprx1; // map: slave pe -> first proxy in proxy buffer
-    int* mapprxp;      // map: proxy -> corresponding (master) point
-    int* slvpenumprx;  // number of proxies for each slave pe
-    int* mapmstrpepe;  // map: master pe -> (global) pe
-    int* mstrpenumslv; // number of slaves for each master pe
-    int* mapmstrpeslv1;// map: master pe -> first slave in slave buffer
-    int* mapslvp;      // map: slave -> corresponding (slave) point
+    int num_mesg_send2master;     // number of messages mype sends to master pes
+    int num_slave_pes;      // number of messages mype receives from slave pes
+    int num_proxies;        // number of proxies on mype
+    int num_slaves;        // number of slaves on mype
+    int* map_slave_pe2global_pe;   // map: slave pe -> (global) pe
+    int* map_slave_pe2prox1; // map: slave pe -> first proxy in proxy buffer
+    int* map_prox2master_pt;      // map: proxy -> corresponding (master) point
+    int* slave_pe_num_prox;  // number of proxies for each slave pe
+    int* map_master_pe2globale_pe;  // map: master pe -> (global) pe
+    int* master_pe_num_slaves; // number of slaves for each master pe
+    int* map_master_pe2slave1;// map: master pe -> first slave in slave buffer
+    int* map_slave2pt;      // map: slave -> corresponding (slave) point
 
     int* znump;        // number of points in zone
 
-    double2* px;       // point coordinates
-    double2* ex;       // edge center coordinates
-    double2* zx;       // zone center coordinates
-    double2* pxp;      // point coords, middle of cycle
-    double2* exp;      // edge ctr coords, middle of cycle
-    double2* zxp;      // zone ctr coords, middle of cycle
-    double2* px0;      // point coords, start of cycle
+    double2* pt_x;       // point coordinates
+    double2* edge_x;       // edge center coordinates
+    double2* zone_x;       // zone center coordinates
+    double2* pt_x_pred;      // point coords, middle of cycle
+    double2* edge_x_pred;      // edge ctr coords, middle of cycle
+    double2* zone_x_pred;      // zone ctr coords, middle of cycle
+    double2* pt_x0;      // point coords, start of cycle
 
-    double* sarea;     // side area
-    double* svol;      // side volume
-    double* zarea;     // zone area
-    double* zvol;      // zone volume
-    double* sareap;    // side area, middle of cycle
-    double* svolp;     // side volume, middle of cycle
-    double* zareap;    // zone area, middle of cycle
-    double* zvolp;     // zone volume, middle of cycle
-    double* zvol0;     // zone volume, start of cycle
+    double* side_area;     // side area
+    double* side_vol;      // side volume
+    double* zone_area;     // zone area
+    double* zone_vol;      // zone volume
+    double* side_area_pred;    // side area, middle of cycle
+    double* side_vol_pred;     // side volume, middle of cycle
+    double* zone_area_pred;    // zone area, middle of cycle
+    double* zone_vol_pred;     // zone volume, middle of cycle
+    double* zone_vol0;     // zone volume, start of cycle
 
-    double2* ssurfp;   // side surface vector
-    double* elen;      // edge length
-    double* smf;       // side mass fraction
-    double* zdl;       // zone characteristic length
+    double2* side_surfp;   // side surface vector
+    double* edege_len;      // edge length
+    double* side_mass_frac;       // side mass fraction
+    double* zone_dl;       // zone characteristic length
 
-    int numsch;                    // number of side chunks
-    std::vector<int> schsfirst;    // start/stop index for side chunks
-    std::vector<int> schslast;
-    std::vector<int> schzfirst;    // start/stop index for zone chunks
-    std::vector<int> schzlast;
-    int numpch;                    // number of point chunks
-    std::vector<int> pchpfirst;    // start/stop index for point chunks
-    std::vector<int> pchplast;
-    int numzch;                    // number of zone chunks
-    std::vector<int> zchzfirst;    // start/stop index for zone chunks
-    std::vector<int> zchzlast;
+    int num_side_chunks;                    // number of side chunks
+    std::vector<int> side_chunks_first;    // start/stop index for side chunks
+    std::vector<int> side_chunks_last;
+    std::vector<int> zone_chunks_first;    // start/stop index for zone chunks
+    std::vector<int> zone_chunks_last;
+    int num_pt_chunks;                    // number of point chunks
+    std::vector<int> pt_chunks_first;    // start/stop index for point chunks
+    std::vector<int> pt_chunks_last;
+    int num_zone_chunks;                    // number of zone chunks
+    std::vector<int> zone_chunk_first;    // start/stop index for zone chunks
+    std::vector<int> zone_chunk_last;
 
     Mesh(const InputFile* inp);
     ~Mesh();

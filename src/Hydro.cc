@@ -71,14 +71,14 @@ Hydro::~Hydro() {
 
 void Hydro::init() {
 
-    const int numpch = mesh->numpch;
-    const int numzch = mesh->numzch;
-    const int nump = mesh->nump;
-    const int numz = mesh->numz;
-    const int nums = mesh->nums;
+    const int numpch = mesh->num_pt_chunks;
+    const int numzch = mesh->num_zone_chunks;
+    const int nump = mesh->num_pts;
+    const int numz = mesh->num_zones;
+    const int nums = mesh->num_sides;
 
-    const double2* zx = mesh->zx;
-    const double* zvol = mesh->zvol;
+    const double2* zx = mesh->zone_x;
+    const double* zvol = mesh->zone_vol;
 
     // allocate arrays
     pu = Memory::alloc<double2>(nump);
@@ -105,8 +105,8 @@ void Hydro::init() {
     // initialize hydro vars
     #pragma omp parallel for schedule(static)
     for (int zch = 0; zch < numzch; ++zch) {
-        int zfirst = mesh->zchzfirst[zch];
-        int zlast = mesh->zchzlast[zch];
+        int zfirst = mesh->zone_chunk_first[zch];
+        int zlast = mesh->zone_chunk_last[zch];
 
         fill(&zr[zfirst], &zr[zlast], rinit);
         fill(&ze[zfirst], &ze[zlast], einit);
@@ -136,8 +136,8 @@ void Hydro::init() {
 
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < numpch; ++pch) {
-        int pfirst = mesh->pchpfirst[pch];
-        int plast = mesh->pchplast[pch];
+        int pfirst = mesh->pt_chunks_first[pch];
+        int plast = mesh->pt_chunks_last[pch];
         if (uinitradial != 0.)
             initRadialVel(uinitradial, pfirst, plast);
         else
@@ -153,7 +153,7 @@ void Hydro::initRadialVel(
         const double vel,
         const int pfirst,
         const int plast) {
-    const double2* px = mesh->px;
+    const double2* px = mesh->pt_x;
     const double eps = 1.e-12;
 
     #pragma ivdep
@@ -170,34 +170,34 @@ void Hydro::initRadialVel(
 void Hydro::doCycle(
             const double dt) {
 
-    const int numpch = mesh->numpch;
-    const int numsch = mesh->numsch;
-    double2* px = mesh->px;
-    double2* ex = mesh->ex;
-    double2* zx = mesh->zx;
-    double* sarea = mesh->sarea;
-    double* svol = mesh->svol;
-    double* zarea = mesh->zarea;
-    double* zvol = mesh->zvol;
-    double* sareap = mesh->sareap;
-    double* svolp = mesh->svolp;
-    double* zareap = mesh->zareap;
-    double* zvolp = mesh->zvolp;
-    double* zvol0 = mesh->zvol0;
-    double2* ssurfp = mesh->ssurfp;
-    double* elen = mesh->elen;
-    double2* px0 = mesh->px0;
-    double2* pxp = mesh->pxp;
-    double2* exp = mesh->exp;
-    double2* zxp = mesh->zxp;
-    double* smf = mesh->smf;
-    double* zdl = mesh->zdl;
+    const int num_pt_chunks = mesh->num_pt_chunks;
+    const int num_side_chunks = mesh->num_side_chunks;
+    double2* px = mesh->pt_x;
+    double2* ex = mesh->edge_x;
+    double2* zx = mesh->zone_x;
+    double* sarea = mesh->side_area;
+    double* svol = mesh->side_vol;
+    double* zarea = mesh->zone_area;
+    double* zvol = mesh->zone_vol;
+    double* sareap = mesh->side_area_pred;
+    double* svolp = mesh->side_vol_pred;
+    double* zareap = mesh->zone_area_pred;
+    double* zvolp = mesh->zone_vol_pred;
+    double* zvol0 = mesh->zone_vol0;
+    double2* ssurfp = mesh->side_surfp;
+    double* elen = mesh->edege_len;
+    double2* px0 = mesh->pt_x0;
+    double2* pxp = mesh->pt_x_pred;
+    double2* exp = mesh->edge_x_pred;
+    double2* zxp = mesh->zone_x_pred;
+    double* smf = mesh->side_mass_frac;
+    double* zdl = mesh->zone_dl;
 
     // Begin hydro cycle
     #pragma omp parallel for schedule(static)
-    for (int pch = 0; pch < numpch; ++pch) {
-        int pfirst = mesh->pchpfirst[pch];
-        int plast = mesh->pchplast[pch];
+    for (int pch = 0; pch < num_pt_chunks; ++pch) {
+        int pfirst = mesh->pt_chunks_first[pch];
+        int plast = mesh->pt_chunks_last[pch];
 
         // save off point variable values from previous cycle
         copy(&px[pfirst], &px[plast], &px0[pfirst]);
@@ -209,11 +209,11 @@ void Hydro::doCycle(
     } // for pch
 
     #pragma omp parallel for schedule(static)
-    for (int sch = 0; sch < numsch; ++sch) {
-        int sfirst = mesh->schsfirst[sch];
-        int slast = mesh->schslast[sch];
-        int zfirst = mesh->schzfirst[sch];
-        int zlast = mesh->schzlast[sch];
+    for (int sch = 0; sch < num_side_chunks; ++sch) {
+        int sfirst = mesh->side_chunks_first[sch];
+        int slast = mesh->side_chunks_last[sch];
+        int zfirst = mesh->zone_chunks_first[sch];
+        int zlast = mesh->zone_chunks_last[sch];
 
         // save off zone variable values from previous cycle
         copy(&zvol[zfirst], &zvol[zlast], &zvol0[zfirst]);
@@ -248,9 +248,9 @@ void Hydro::doCycle(
     mesh->sumToPoints(cftot, pf);
 
     #pragma omp parallel for schedule(static)
-    for (int pch = 0; pch < numpch; ++pch) {
-        int pfirst = mesh->pchpfirst[pch];
-        int plast = mesh->pchplast[pch];
+    for (int pch = 0; pch < num_pt_chunks; ++pch) {
+        int pfirst = mesh->pt_chunks_first[pch];
+        int plast = mesh->pt_chunks_last[pch];
 
         // 4a. apply boundary conditions
         for (int i = 0; i < bcs.size(); ++i) {
@@ -270,11 +270,11 @@ void Hydro::doCycle(
     resetDtHydro();
 
     #pragma omp parallel for schedule(static)
-    for (int sch = 0; sch < numsch; ++sch) {
-        int sfirst = mesh->schsfirst[sch];
-        int slast = mesh->schslast[sch];
-        int zfirst = mesh->schzfirst[sch];
-        int zlast = mesh->schzlast[sch];
+    for (int sch = 0; sch < num_side_chunks; ++sch) {
+        int sfirst = mesh->side_chunks_first[sch];
+        int slast = mesh->side_chunks_last[sch];
+        int zfirst = mesh->zone_chunks_first[sch];
+        int zlast = mesh->zone_chunks_last[sch];
 
         // 6a. compute new mesh geometry
         mesh->calcCtrs(px, ex, zx, sfirst, slast);
@@ -289,9 +289,9 @@ void Hydro::doCycle(
     mesh->checkBadSides();
 
     #pragma omp parallel for schedule(static)
-    for (int zch = 0; zch < mesh->numzch; ++zch) {
-        int zfirst = mesh->zchzfirst[zch];
-        int zlast = mesh->zchzlast[zch];
+    for (int zch = 0; zch < mesh->num_zone_chunks; ++zch) {
+        int zfirst = mesh->zone_chunk_first[zch];
+        int zlast = mesh->zone_chunk_last[zch];
 
         // 7a. compute work rate
         calcWorkRate(zvol0, zvol, zw, zp, dt, zwrate, zfirst, zlast);
@@ -353,8 +353,8 @@ void Hydro::calcCrnrMass(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapss3[s];
-        int z = mesh->mapsz[s];
+        int s3 = mesh->maps_side_prev[s];
+        int z = mesh->map_side2zone[s];
 
         double m = zr[z] * zarea[z] * 0.5 * (smf[s] + smf[s3]);
         cmaswt[s] = m;
@@ -372,7 +372,7 @@ void Hydro::sumCrnrForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapss3[s];
+        int s3 = mesh->maps_side_prev[s];
 
         double2 f = (sf[s] + sf2[s] + sf3[s]) -
                     (sf[s3] + sf2[s3] + sf3[s3]);
@@ -433,9 +433,9 @@ void Hydro::calcWork(
     const double dth = 0.5 * dt;
 
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = mesh->mapsp1[s];
-        int p2 = mesh->mapsp2[s];
-        int z = mesh->mapsz[s];
+        int p1 = mesh->map_side2pt1[s];
+        int p2 = mesh->map_side2pt2[s];
+        int z = mesh->map_side2zone[s];
 
         double2 sftot = sf[s] + sf2[s];
         double sd1 = dot( sftot, (pu0[p1] + pu[p1]));
@@ -515,9 +515,9 @@ void Hydro::sumEnergy(
     //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]
     double sumk = 0.; 
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapss3[s];
-        int p1 = mesh->mapsp1[s];
-        int z = mesh->mapsz[s];
+        int s3 = mesh->maps_side_prev[s];
+        int p1 = mesh->map_side2pt1[s];
+        int z = mesh->map_side2zone[s];
 
         double cvol = zarea[z] * px[p1].x * 0.5 * (smf[s] + smf[s3]);
         double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);
@@ -634,16 +634,16 @@ void Hydro::writeEnergyCheck() {
     double ei = 0.;
     double ek = 0.;
     #pragma omp parallel for schedule(static)
-    for (int sch = 0; sch < mesh->numsch; ++sch) {
-        int sfirst = mesh->schsfirst[sch];
-        int slast = mesh->schslast[sch];
-        int zfirst = mesh->schzfirst[sch];
-        int zlast = mesh->schzlast[sch];
+    for (int sch = 0; sch < mesh->num_side_chunks; ++sch) {
+        int sfirst = mesh->side_chunks_first[sch];
+        int slast = mesh->side_chunks_last[sch];
+        int zfirst = mesh->zone_chunks_first[sch];
+        int zlast = mesh->zone_chunks_last[sch];
 
         double eichunk = 0.;
         double ekchunk = 0.;
-        sumEnergy(zetot, mesh->zarea, mesh->zvol, zm, mesh->smf,
-                mesh->px, pu, eichunk, ekchunk,
+        sumEnergy(zetot, mesh->zone_area, mesh->zone_vol, zm, mesh->side_mass_frac,
+                mesh->pt_x, pu, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         #pragma omp critical
         {
