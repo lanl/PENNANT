@@ -1,9 +1,0 @@
-#!/bin/bash
-#SBATCH -N1 --cores-per-socket=10 --sockets-per-node=2 --partition=general
-module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
-
-mkdir -p ${HOME}/local/regression/pennant/noh  #${SLURM_JOB_ID}
-cd ${HOME}/local/regression/pennant/noh  #${SLURM_JOB_ID}
-cp ${HOME}/github/PENNANT/build/pennant . 
-cp ${HOME}/github/PENNANT/test/noh/noh.pnt  . 
-mpirun -n 1 ./pennant noh.pnt

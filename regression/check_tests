@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+
+$fails = 0;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/leblanc/leblanc.xy.std /home/jgraham/local/regression/pennant/leblanc/leblanc.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/noh/noh.xy.std /home/jgraham/local/regression/pennant/noh/noh.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/nohsmall/nohsmall.xy.std /home/jgraham/local/regression/pennant/nohsmall/nohsmall.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedov/sedov.xy.std /home/jgraham/local/regression/pennant/sedov/sedov.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedovsmall/sedovsmall.xy.std /home/jgraham/local/regression/pennant/sedovsmall/sedovsmall.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/leblanc/leblanc.xy.std4 /home/jgraham/local/regression/pennant/leblanc4/leblanc.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/noh/noh.xy.std4 /home/jgraham/local/regression/pennant/noh4/noh.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/nohsmall/nohsmall.xy.std4 /home/jgraham/local/regression/pennant/nohsmall4/nohsmall.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedov/sedov.xy.std4 /home/jgraham/local/regression/pennant/sedov4/sedov.xy") == 0
+	or $fails = $fails + 1;
+
+system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedovsmall/sedovsmall.xy.std4 /home/jgraham/local/regression/pennant/sedovsmall4/sedovsmall.xy") == 0
+	or $fails = $fails + 1;
+
+$fails == 0 or die "\033[31mFAIL\033[0m";
+

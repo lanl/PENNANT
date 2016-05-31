@@ -1,8 +1,5 @@
 #!/usr/bin/perl
 
-$phase = 0;
-
-if ($phase == 0) {
 system("rm -rf /home/jgraham/local/regression/pennant/leblanc") == 0
 	or die "Unable to clean cache";
 system("rm -rf /home/jgraham/local/regression/pennant/noh") == 0
@@ -13,34 +10,35 @@ system("rm -rf /home/jgraham/local/regression/pennant/sedov") == 0
 	or die "Unable to clean cache";
 system("rm -rf /home/jgraham/local/regression/pennant/sedovsmall") == 0
 	or die "Unable to clean cache";
-
-system("sbatch leblanc_serial") == 0
+system("rm -rf /home/jgraham/local/regression/pennant/leblanc4") == 0
 	or die "Unable to clean cache";
-system("sbatch noh_serial") == 0
+system("rm -rf /home/jgraham/local/regression/pennant/noh4") == 0
 	or die "Unable to clean cache";
-system("sbatch nohsmall_serial") == 0
+system("rm -rf /home/jgraham/local/regression/pennant/nohsmall4") == 0
 	or die "Unable to clean cache";
-system("sbatch sedov_serial") == 0
+system("rm -rf /home/jgraham/local/regression/pennant/sedov4") == 0
 	or die "Unable to clean cache";
-system("sbatch sedovsmall_serial") == 0
+system("rm -rf /home/jgraham/local/regression/pennant/sedovsmall4") == 0
 	or die "Unable to clean cache";
-}
 
-
-if ($phase == 1) {
-system("./pennant_regression.py /home/jgraham/github/PENNANT/test/leblanc/leblanc.xy.std /home/jgraham/local/regression/pennant/leblanc/leblanc.xy") == 0
-	or die "\033[31mFAIL\033[0m";
-
-system("./pennant_regression.py /home/jgraham/github/PENNANT/test/noh/noh.xy.std /home/jgraham/local/regression/pennant/noh/noh.xy") == 0
-	or die "\033[31mFAIL\033[0m";
-
-system("./pennant_regression.py /home/jgraham/github/PENNANT/test/nohsmall/nohsmall.xy.std /home/jgraham/local/regression/pennant/nohsmall/nohsmall.xy") == 0
-	or die "\033[31mFAIL\033[0m";
-
-system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedov/sedov.xy.std /home/jgraham/local/regression/pennant/sedov/sedov.xy") == 0
-	or die "\033[31mFAIL\033[0m";
-
-system("./pennant_regression.py /home/jgraham/github/PENNANT/test/sedovsmall/sedovsmall.xy.std /home/jgraham/local/regression/pennant/sedovsmall/sedovsmall.xy") == 0
-	or die "\033[31mFAIL\033[0m";
-}
+system("sbatch leblanc") == 0
+	or die "Unable to submit job";
+system("sbatch noh") == 0
+	or die "Unable to submit job";
+system("sbatch nohsmall") == 0
+	or die "Unable to submit job";
+system("sbatch sedov") == 0
+	or die "Unable to submit job";
+system("sbatch sedovsmall") == 0
+	or die "Unable to submit job";
+system("sbatch leblanc4") == 0
+	or die "Unable to submit job";
+system("sbatch noh4") == 0
+	or die "Unable to submit job";
+system("sbatch nohsmall4") == 0
+	or die "Unable to submit job";
+system("sbatch sedov4") == 0
+	or die "Unable to submit job";
+system("sbatch sedovsmall4") == 0
+	or die "Unable to submit job";
 

@@ -73,6 +73,9 @@ define maketargetdir
 	-@mkdir -p $(dir $@) >/dev/null 2>&1
 endef
 
+# Dependencies
+src/Driver.o src/ExportGold.o src/GenMesh.o src/HydroBC.o src/Mesh.o src/PolyGas.o src/QCS.o src/TTS.o src/WriteXY.o: src/Mesh.hh
+
 .PHONY : clean
 clean :
 	rm -f $(BINARY) $(OBJS) $(DEPS)

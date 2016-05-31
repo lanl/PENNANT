@@ -14,8 +14,11 @@ EPSILON = 1.0e-11
 TOLERANCE = 1.0e-7
 
 def read_xy_file(filename):
-    with open(filename, 'r') as f:
+    try:
+      with open(filename, 'r') as f:
         file_data = f.readlines()
+    except IOError:
+      file_data = []
 
     field = []
     values = []
@@ -56,17 +59,21 @@ base_fields, base_data = read_xy_file(args.base_file)
 regress_fields, regress_data = read_xy_file(args.regress_file)
 
 max_error = 0.0
-for i in range(len(base_fields)):
-    if args.plot:
-        plt.figure()
-        plt.ylabel(base_fields[i])
-        plt.plot(base_data[i],'--',label='base')
-        plt.plot(regress_data[i],':',label='regress')
-        plt.legend(loc='best')
-    error = compare_values(base_data[i], regress_data[i])
-    print base_fields[i], error
-    if error > max_error:
-        max_error = error
+if len(base_fields) != len(regress_fields):
+    print 'Number of fields do not match!'
+    max_error = TOLERANCE + 1.0
+else:
+    for i in range(len(base_fields)):
+        if args.plot:
+            plt.figure()
+            plt.ylabel(base_fields[i])
+            plt.plot(base_data[i],'--',label='base')
+            plt.plot(regress_data[i],':',label='regress')
+            plt.legend(loc='best')
+        error = compare_values(base_data[i], regress_data[i])
+        print base_fields[i], error
+        if error > max_error:
+            max_error = error
 
 if args.plot:
     plt.show()
