@@ -103,7 +103,6 @@ void Hydro::init() {
     crnr_force_tot = Memory::alloc<double2>(nums);
 
     // initialize hydro vars
-    #pragma omp parallel for schedule(static)
     for (int zch = 0; zch < numzch; ++zch) {
         int zfirst = mesh->zone_chunk_first[zch];
         int zlast = mesh->zone_chunk_last[zch];
@@ -134,7 +133,6 @@ void Hydro::init() {
         }
     }  // for sch
 
-    #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < numpch; ++pch) {
         int pfirst = mesh->pt_chunks_first[pch];
         int plast = mesh->pt_chunks_last[pch];
@@ -194,7 +192,6 @@ void Hydro::doCycle(
     double* zone_dl = mesh->zone_dl;
 
     // Begin hydro cycle
-    #pragma omp parallel for schedule(static)
     for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
         int pt_first = mesh->pt_chunks_first[pt_chunk];
         int pt_last = mesh->pt_chunks_last[pt_chunk];
@@ -208,7 +205,6 @@ void Hydro::doCycle(
         advPosHalf(pt_x0, pt_vel0, dt, pt_x_pred, pt_first, pt_last);
     } // for pch
 
-    #pragma omp parallel for schedule(static)
     for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst = mesh->side_chunks_first[sch];
         int slast = mesh->side_chunks_last[sch];
@@ -247,7 +243,6 @@ void Hydro::doCycle(
     mesh->sumToPoints(crnr_weighted_mass, pt_weighted_mass);
     mesh->sumToPoints(crnr_force_tot, pt_force);
 
-    #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = mesh->pt_chunks_first[pch];
         int plast = mesh->pt_chunks_last[pch];
@@ -269,7 +264,6 @@ void Hydro::doCycle(
 
     resetDtHydro();
 
-    #pragma omp parallel for schedule(static)
     for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst = mesh->side_chunks_first[sch];
         int slast = mesh->side_chunks_last[sch];
@@ -288,7 +282,6 @@ void Hydro::doCycle(
     }  // for sch
     mesh->checkBadSides();
 
-    #pragma omp parallel for schedule(static)
     for (int zch = 0; zch < mesh->num_zone_chunks; ++zch) {
         int zfirst = mesh->zone_chunk_first[zch];
         int zlast = mesh->zone_chunk_last[zch];
@@ -594,7 +587,6 @@ void Hydro::calcDtHydro(
     calcDtVolume(zvol, zvol0, dtlast, dtchunk, msgdtchunk,
             zfirst, zlast);
     if (dtchunk < dt_recommend) {
-        #pragma omp critical
         {
             // redundant test needed to avoid race condition
             if (dtchunk < dt_recommend) {
@@ -633,7 +625,6 @@ void Hydro::writeEnergyCheck() {
     
     double ei = 0.;
     double ek = 0.;
-    #pragma omp parallel for schedule(static)
     for (int sch = 0; sch < mesh->num_side_chunks; ++sch) {
         int sfirst = mesh->side_chunks_first[sch];
         int slast = mesh->side_chunks_last[sch];
@@ -645,7 +636,6 @@ void Hydro::writeEnergyCheck() {
         sumEnergy(zone_energy_tot, mesh->zone_area, mesh->zone_vol, zone_mass, mesh->side_mass_frac,
                 mesh->pt_x, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
-        #pragma omp critical
         {
             ei += eichunk;
             ek += ekchunk;

@@ -138,7 +138,6 @@ void Mesh::init() {
     side_mass_frac = Memory::alloc<double>(num_sides);
 
     // do a few initial calculations
-    #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];
@@ -149,7 +148,6 @@ void Mesh::init() {
     }
 
     num_bad_sides = 0;
-    #pragma omp parallel for schedule(static)
     for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst = side_chunks_first[sch];
         int slast = side_chunks_last[sch];
@@ -505,7 +503,6 @@ void Mesh::calcVols(
     } // for s
 
     if (count > 0) {
-        #pragma omp atomic
         num_bad_sides += count;
     }
 
@@ -749,7 +746,6 @@ void Mesh::sumOnProc(
         const T* cvar,
         T* pvar) {
 
-    #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];

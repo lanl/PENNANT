@@ -19,9 +19,6 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#ifdef _OPENMP
-#include "omp.h"
-#endif
 
 #include "Parallel.hh"
 #include "InputFile.hh"
@@ -44,10 +41,6 @@ Driver::Driver(const InputFile* inp, const string& pname)
 
 #ifdef USE_MPI
         cout << "Running on " << numpe << " MPI PE(s)" << endl;
-#endif
-#ifdef _OPENMP
-        cout << "Running on " << omp_get_max_threads() << " thread(s)"
-             << endl;
 #endif
     }  // if mype == 0
 
