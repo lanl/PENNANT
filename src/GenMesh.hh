@@ -24,17 +24,17 @@ class InputFile;
 class GenMesh {
 public:
 
-    std::string meshtype;       // generated mesh type
-    int gnzx, gnzy;             // global number of zones, in x and y
+    std::string meshtype_;       // generated mesh type
+    int global_nzones_x_, global_nzones_y_;             // global number of zones, in x and y
                                 // directions
-    double lenx, leny;          // length of mesh sides, in x and y
+    double len_x_, len_y_;          // length of mesh sides, in x and y
                                 // directions
-    int numpex, numpey;         // number of PEs to use, in x and y
+    int num_proc_x_, num_proc_y_;         // number of PEs to use, in x and y
                                 // directions
-    int mypex, mypey;           // my PE index, in x and y directions
-    int nzx, nzy;               // (local) number of zones, in x and y
+    int proc_index_x_, proc_index_y_;           // my PE index, in x and y directions
+    int nzones_x_, nzones_y_;               // (local) number of zones, in x and y
                                 // directions
-    int zxoffset, zyoffset;     // offsets of local zone array into
+    int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
                                 // global, in x and y directions
 
     GenMesh(const InputFile* inp);
@@ -88,7 +88,7 @@ public:
             std::vector<int>& masterslvcounts,
             std::vector<int>& masterpoints);
 
-    void calcNumPE();
+    void calcPartitions();
 
 }; // class GenMesh
 
