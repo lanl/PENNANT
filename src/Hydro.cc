@@ -73,9 +73,9 @@ void Hydro::init() {
 
     const int numpch = mesh->num_pt_chunks;
     const int numzch = mesh->num_zone_chunks;
-    const int nump = mesh->num_pts;
-    const int numz = mesh->num_zones;
-    const int nums = mesh->num_sides;
+    const int nump = mesh->num_pts_;
+    const int numz = mesh->num_zones_;
+    const int nums = mesh->num_sides_;
 
     const double2* zx = mesh->zone_x;
     const double* zvol = mesh->zone_vol;
@@ -111,7 +111,7 @@ void Hydro::init() {
         fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
         fill(&zone_work_rate[zfirst], &zone_work_rate[zlast], 0.);
 
-        const vector<double>& subrgn = mesh->subregion;
+        const vector<double>& subrgn = mesh->subregion_;
         if (!subrgn.empty()) {
             const double eps = 1.e-12;
             #pragma ivdep
@@ -346,8 +346,8 @@ void Hydro::calcCrnrMass(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev[s];
-        int z = mesh->map_side2zone[s];
+        int s3 = mesh->maps_side_prev_[s];
+        int z = mesh->map_side2zone_[s];
 
         double m = zr[z] * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         cmaswt[s] = m;
@@ -365,7 +365,7 @@ void Hydro::sumCrnrForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev[s];
+        int s3 = mesh->maps_side_prev_[s];
 
         double2 f = (sf[s] + sf2[s] + sf3[s]) -
                     (sf[s3] + sf2[s3] + sf3[s3]);
@@ -426,9 +426,9 @@ void Hydro::calcWork(
     const double dth = 0.5 * dt;
 
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = mesh->map_side2pt1[s];
-        int p2 = mesh->map_side2pt2[s];
-        int z = mesh->map_side2zone[s];
+        int p1 = mesh->map_side2pt1_[s];
+        int p2 = mesh->map_side2pt2_[s];
+        int z = mesh->map_side2zone_[s];
 
         double2 sftot = sf[s] + sf2[s];
         double sd1 = dot( sftot, (pu0[p1] + pu[p1]));
@@ -508,9 +508,9 @@ void Hydro::sumEnergy(
     //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]
     double sumk = 0.; 
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev[s];
-        int p1 = mesh->map_side2pt1[s];
-        int z = mesh->map_side2zone[s];
+        int s3 = mesh->maps_side_prev_[s];
+        int p1 = mesh->map_side2pt1_[s];
+        int z = mesh->map_side2zone_[s];
 
         double cvol = zarea[z] * px[p1].x * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);

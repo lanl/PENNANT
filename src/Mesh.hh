@@ -29,31 +29,32 @@ class Mesh {
 public:
 
     // children
-    GenMesh* gmesh;
-    WriteXY* wxy;
-    ExportGold* egold;
+    GenerateMesh* gmesh_;
+    ExportGold* egold_;
+    WriteXY* wxy_;
 
     // parameters
-    int chunksize;                 // max size for processing chunks
-    std::vector<double> subregion; // bounding box for a subregion
+    int chunk_size_;                 // max size for processing chunks
+    std::vector<double> subregion_; // bounding box for a subregion
                                    // if nonempty, should have 4 entries:
                                    // xmin, xmax, ymin, ymax
-    bool writexy;                  // flag:  write .xy file?
-    bool writegold;                // flag:  write Ensight file?
+    bool write_xy_file_;                  // flag:  write .xy file?
+    bool write_gold_file_;                // flag:  write Ensight file?
 
     // mesh variables
     // (See documentation for more details on the mesh
     //  data structures...)
-    int num_pts, num_edges, num_zones, num_sides, num_corners;
+    int num_pts_, num_edges_, num_zones_, num_sides_, num_corners_;
                        // number of points, edges, zones,
                        // sides, corners, resp.
     int num_bad_sides;       // number of bad sides (negative volume)
-    int* map_side2pt1;       // maps: side -> points 1 and 2
-    int* map_side2pt2;
-    int* map_side2zone;        // map: side -> zone
-    int* map_side2edge;        // map: side -> edge
-    int* maps_side_prev;       // map: side -> previous side
-    int* maps_side_next;       // map: side -> next side
+
+    int* map_side2pt1_;       // maps: side -> points 1 and 2
+    int* map_side2pt2_;
+    int* map_side2zone_;        // map: side -> zone
+    int* map_side2edge_;        // map: side -> edge
+    int* maps_side_prev_;       // map: side -> previous side
+    int* maps_side_next_;       // map: side -> next side
 
     // point-to-corner inverse map is stored as a linked list...
     int* map_pt2crn_first;   // map:  point -> first corner
@@ -73,7 +74,7 @@ public:
     int* map_master_pe2slave1;// map: master pe -> first slave in slave buffer
     int* map_slave2pt;      // map: slave -> corresponding (slave) point
 
-    int* znump;        // number of points in zone
+    int* zone_npts_;        // number of points in zone
 
     double2* pt_x;       // point coordinates
     double2* edge_x;       // edge center coordinates

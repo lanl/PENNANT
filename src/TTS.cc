@@ -57,7 +57,7 @@ void TTS::calcForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = mesh->map_side2zone[s];
+        int z = mesh->map_side2zone_[s];
 
         double svfacinv = zarea[z] / sarea[s];
         double srho = zr[z] * smf[s] * svfacinv;
