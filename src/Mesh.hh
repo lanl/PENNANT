@@ -28,11 +28,6 @@ class ExportGold;
 class Mesh {
 public:
 
-    // children
-    GenerateMesh* gmesh_;
-    ExportGold* egold_;
-    WriteXY* wxy_;
-
     // parameters
     int chunk_size_;                 // max size for processing chunks
     std::vector<double> subregion_; // bounding box for a subregion
@@ -56,46 +51,24 @@ public:
     int* maps_side_prev_;       // map: side -> previous side
     int* maps_side_next_;       // map: side -> next side
 
-    // point-to-corner inverse map is stored as a linked list...
-    int* map_pt2crn_first;   // map:  point -> first corner
-    int* map_crn2crn_next;    // map:  corner -> next corner
-
-    // mpi comm variables
-    int num_mesg_send2master;     // number of messages mype sends to master pes
-    int num_slave_pes;      // number of messages mype receives from slave pes
-    int num_proxies;        // number of proxies on mype
-    int num_slaves;        // number of slaves on mype
-    int* map_slave_pe2global_pe;   // map: slave pe -> (global) pe
-    int* map_slave_pe2prox1; // map: slave pe -> first proxy in proxy buffer
-    int* map_prox2master_pt;      // map: proxy -> corresponding (master) point
-    int* slave_pe_num_prox;  // number of proxies for each slave pe
-    int* map_master_pe2globale_pe;  // map: master pe -> (global) pe
-    int* master_pe_num_slaves; // number of slaves for each master pe
-    int* map_master_pe2slave1;// map: master pe -> first slave in slave buffer
-    int* map_slave2pt;      // map: slave -> corresponding (slave) point
-
     int* zone_npts_;        // number of points in zone
 
-    double2* pt_x;       // point coordinates
-    double2* edge_x;       // edge center coordinates
-    double2* zone_x;       // zone center coordinates
+    double2* pt_x_;       // point coordinates
+    double2* zone_x_;       // zone center coordinates
     double2* pt_x_pred;      // point coords, middle of cycle
     double2* edge_x_pred;      // edge ctr coords, middle of cycle
     double2* zone_x_pred;      // zone ctr coords, middle of cycle
     double2* pt_x0;      // point coords, start of cycle
 
-    double* side_area;     // side area
-    double* side_vol;      // side volume
-    double* zone_area;     // zone area
-    double* zone_vol;      // zone volume
+    double* zone_area_;
+    double* zone_vol_;
     double* side_area_pred;    // side area, middle of cycle
-    double* side_vol_pred;     // side volume, middle of cycle
     double* zone_area_pred;    // zone area, middle of cycle
     double* zone_vol_pred;     // zone volume, middle of cycle
     double* zone_vol0;     // zone volume, start of cycle
 
     double2* side_surfp;   // side surface vector
-    double* edege_len;      // edge length
+    double* edge_len;      // edge length
     double* side_mass_frac;       // side mass fraction
     double* zone_dl;       // zone characteristic length
 
@@ -113,32 +86,6 @@ public:
 
     Mesh(const InputFile* inp);
     ~Mesh();
-
-    void init();
-
-    // populate mapping arrays
-    void initSides(
-            const std::vector<int>& cellstart,
-            const std::vector<int>& cellsize,
-            const std::vector<int>& cellnodes);
-    void initEdges();
-
-    // populate chunk information
-    void initChunks();
-
-    // populate inverse map
-    void initInvMap();
-
-    void initParallel(
-            const std::vector<int>& slavemstrpes,
-            const std::vector<int>& slavemstrcounts,
-            const std::vector<int>& slavepoints,
-            const std::vector<int>& masterslvpes,
-            const std::vector<int>& masterslvcounts,
-            const std::vector<int>& masterpoints);
-
-    // write mesh statistics
-    void writeStats();
 
     // write mesh
     void write(
@@ -161,53 +108,20 @@ public:
             std::vector<int>& pchblast);
 
     // compute edge, zone centers
-    void calcCtrs(
-            const double2* px,
-            double2* ex,
-            double2* zx,
-            const int sfirst,
-            const int slast);
+    void calcCtrs(const int side_chunk, const bool pred=true);
 
     // compute side, corner, zone volumes
-    void calcVols(
-            const double2* px,
-            const double2* zx,
-            double* sarea,
-            double* svol,
-            double* zarea,
-            double* zvol,
-            const int sfirst,
-            const int slast);
+    void calcVols(const int side_chunk, const bool pred=true);
 
     // check to see if previous volume computation had any
     // sides with negative volumes
     void checkBadSides();
 
-    // compute side mass fractions
-    void calcSideFracs(
-            const double* sarea,
-            const double* zarea,
-            double* smf,
-            const int sfirst,
-            const int slast);
+    void calcMedianMeshSurfVecs(const int side_chunk);
 
-    // compute surface vectors for median mesh
-    void calcSurfVecs(
-            const double2* zx,
-            const double2* ex,
-            double2* ssurf,
-            const int sfirst,
-            const int slast);
+    void calcEdgeLen(const int side_chunk);
 
-    // compute edge lengths
-    void calcEdgeLen(
-            const double2* px,
-            double* elen,
-            const int sfirst,
-            const int slast);
-
-    // compute characteristic lengths
-    void calcCharLen(const int side_chunk);
+    void calcCharacteristicLen(const int side_chunk);
 
     // sum corner variables to points (double or double2)
     template <typename T>
@@ -215,26 +129,84 @@ public:
             const T* cvar,
             T* pvar);
 
+private:
+
+    // children
+    GenerateMesh* gmesh_;
+    ExportGold* egold_;
+    WriteXY* wxy_;
+
+    // point-to-corner inverse map is stored as a linked list...
+    int* map_pt2crn_first;   // map:  point -> first corner
+    int* map_crn2crn_next;    // map:  corner -> next corner
+
+    // mpi comm variables
+    int num_mesg_send2master;     // number of messages mype sends to master pes
+    int num_slave_pes;      // number of messages mype receives from slave pes
+    int num_proxies;        // number of proxies on mype
+    int num_slaves;        // number of slaves on mype
+    int* map_slave_pe2global_pe;   // map: slave pe -> (global) pe
+    int* map_slave_pe2prox1; // map: slave pe -> first proxy in proxy buffer
+    int* map_prox2master_pt;      // map: proxy -> corresponding (master) point
+    int* slave_pe_num_prox;  // number of proxies for each slave pe
+    int* map_master_pe2globale_pe;  // map: master pe -> (global) pe
+    int* master_pe_num_slaves; // number of slaves for each master pe
+    int* map_master_pe2slave1;// map: master pe -> first slave in slave buffer
+    int* map_slave2pt;      // map: slave -> corresponding (slave) point
+
+    double2* edge_x;       // edge center coordinates
+    double* side_area_;
+    double* side_vol_;
+    double* side_vol_pred;     // side volume, middle of cycle
+
+    void init();
+
+    void initSideMappingArrays(
+            const std::vector<int>& cellstart,
+            const std::vector<int>& cellsize,
+            const std::vector<int>& cellnodes);
+
+    void initEdgeMappingArrays();
+
+    void populateChunks();
+
+    void populateInverseMap();
+
+    void initParallel(
+            const std::vector<int>& slavemstrpes,
+            const std::vector<int>& slavemstrcounts,
+            const std::vector<int>& slavepoints,
+            const std::vector<int>& masterslvpes,
+            const std::vector<int>& masterslvcounts,
+            const std::vector<int>& masterpoints);
+
+    void writeMeshStats();
+
+    void calcSideMassFracs(const int side_chunk);
+
     // helper routines for sumToPoints
     template <typename T>
     void sumOnProc(
             const T* cvar,
             T* pvar);
+
     template <typename T>
     void sumAcrossProcs(T* pvar);
+
     template <typename T>
     void parallelGather(
             const T* pvar,
             T* prxvar);
+
     template <typename T>
     void parallelSum(
             T* pvar,
             T* prxvar);
+
     template <typename T>
     void parallelScatter(
             T* pvar,
             const T* prxvar);
-
 }; // class Mesh
 
 

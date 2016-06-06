@@ -89,19 +89,19 @@ void Mesh::init() {
 
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSides(cellstart, cellsize, cellnodes);
+    initSideMappingArrays(cellstart, cellsize, cellnodes);
     // release memory from cell* arrays
     cellstart.resize(0);
     cellsize.resize(0);
     cellnodes.resize(0);
     // now populate edge maps using side maps
-    initEdges();
+    initEdgeMappingArrays();
 
     // populate chunk information
-    initChunks();
+    populateChunks();
 
     // create inverse map for corner-to-point gathers
-    initInvMap();
+    populateInverseMap();
 
     // calculate parallel data structures
     initParallel(slavemstrpes, slavemstrcounts, slavepoints,
@@ -115,27 +115,27 @@ void Mesh::init() {
     masterpoints.resize(0);
 
     // write mesh statistics
-    writeStats();
+    writeMeshStats();
 
     // allocate remaining arrays
-    pt_x = Memory::alloc<double2>(num_pts_);
+    pt_x_ = Memory::alloc<double2>(num_pts_);
     edge_x = Memory::alloc<double2>(num_edges_);
-    zone_x = Memory::alloc<double2>(num_zones_);
+    zone_x_ = Memory::alloc<double2>(num_zones_);
     pt_x0 = Memory::alloc<double2>(num_pts_);
     pt_x_pred = Memory::alloc<double2>(num_pts_);
     edge_x_pred = Memory::alloc<double2>(num_edges_);
     zone_x_pred = Memory::alloc<double2>(num_zones_);
-    side_area = Memory::alloc<double>(num_sides_);
-    side_vol = Memory::alloc<double>(num_sides_);
-    zone_area = Memory::alloc<double>(num_zones_);
-    zone_vol = Memory::alloc<double>(num_zones_);
+    side_area_ = Memory::alloc<double>(num_sides_);
+    side_vol_ = Memory::alloc<double>(num_sides_);
+    zone_area_ = Memory::alloc<double>(num_zones_);
+    zone_vol_ = Memory::alloc<double>(num_zones_);
     side_area_pred = Memory::alloc<double>(num_sides_);
     side_vol_pred = Memory::alloc<double>(num_sides_);
     zone_area_pred = Memory::alloc<double>(num_zones_);
     zone_vol_pred = Memory::alloc<double>(num_zones_);
     zone_vol0 = Memory::alloc<double>(num_zones_);
     side_surfp = Memory::alloc<double2>(num_sides_);
-    edege_len = Memory::alloc<double>(num_edges_);
+    edge_len = Memory::alloc<double>(num_edges_);
     zone_dl = Memory::alloc<double>(num_zones_);
     side_mass_frac = Memory::alloc<double>(num_sides_);
 
@@ -145,7 +145,7 @@ void Mesh::init() {
         int plast = pt_chunks_last[pch];
         // copy nodepos into px, distributed across threads
         for (int p = pfirst; p < plast; ++p)
-            pt_x[p] = nodepos[p];
+            pt_x_[p] = nodepos[p];
 
     }
 
@@ -153,16 +153,16 @@ void Mesh::init() {
     for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst = side_chunks_first[sch];
         int slast = side_chunks_last[sch];
-        calcCtrs(pt_x, edge_x, zone_x, sfirst, slast);
-        calcVols(pt_x, zone_x, side_area, side_vol, zone_area, zone_vol, sfirst, slast);
-        calcSideFracs(side_area, zone_area, side_mass_frac, sfirst, slast);
+        calcCtrs(sch, false);
+        calcVols(sch, false);
+        calcSideMassFracs(sch);
     }
     checkBadSides();
 
 }
 
 
-void Mesh::initSides(
+void Mesh::initSideMappingArrays(
         const vector<int>& cellstart,
         const vector<int>& cellsize,
         const vector<int>& cellnodes) {
@@ -191,7 +191,7 @@ void Mesh::initSides(
 }
 
 
-void Mesh::initEdges() {
+void Mesh::initEdgeMappingArrays() {
 
     vector<vector<int> > edgepp(num_pts_), edgepe(num_pts_);
 
@@ -219,7 +219,7 @@ void Mesh::initEdges() {
 }
 
 
-void Mesh::initChunks() {
+void Mesh::populateChunks() {
 
     if (chunk_size_ == 0) chunk_size_ = max(num_pts_, num_sides_);
 
@@ -263,7 +263,7 @@ void Mesh::initChunks() {
 }
 
 
-void Mesh::initInvMap() {
+void Mesh::populateInverseMap() {
     map_pt2crn_first = Memory::alloc<int>(num_pts_);
     map_crn2crn_next = Memory::alloc<int>(num_sides_);
 
@@ -330,7 +330,7 @@ void Mesh::initParallel(
 }
 
 
-void Mesh::writeStats() {
+void Mesh::writeMeshStats() {
 
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
@@ -395,7 +395,7 @@ vector<int> Mesh::getXPlane(const double c) {
     const double eps = 1.e-12;
 
     for (int p = 0; p < num_pts_; ++p) {
-        if (fabs(pt_x[p].x - c) < eps) {
+        if (fabs(pt_x_[p].x - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -410,7 +410,7 @@ vector<int> Mesh::getYPlane(const double c) {
     const double eps = 1.e-12;
 
     for (int p = 0; p < num_pts_; ++p) {
-        if (fabs(pt_x[p].y - c) < eps) {
+        if (fabs(pt_x_[p].y - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -442,12 +442,22 @@ void Mesh::getPlaneChunks(
 }
 
 
-void Mesh::calcCtrs(
-        const double2* px,
-        double2* ex,
-        double2* zx,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcCtrs(const int side_chunk, const bool pred) {
+    double2* px;
+    double2* ex;
+    double2* zx;
+
+    if (pred) {
+        px = pt_x_pred;
+        ex = edge_x_pred;
+        zx = zone_x_pred;
+    } else {
+        px = pt_x_;
+        ex = edge_x;
+        zx = zone_x_;
+    }
+	int sfirst = side_chunks_first[side_chunk];
+	int slast = side_chunks_last[side_chunk];
 
     int zfirst = map_side2zone_[sfirst];
     int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
@@ -469,15 +479,31 @@ void Mesh::calcCtrs(
 }
 
 
-void Mesh::calcVols(
-        const double2* px,
-        const double2* zx,
-        double* sarea,
-        double* svol,
-        double* zarea,
-        double* zvol,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcVols(const int side_chunk, const bool pred) {
+    const double2* px;
+    const double2* zx;
+    double* sarea;
+    double* svol;
+    double* zarea;
+    double* zvol;
+
+    if (pred) {
+        px = pt_x_pred;
+        zx = zone_x_pred;
+        sarea = side_area_pred;
+        svol = side_vol_pred;
+        zarea = zone_area_pred;
+        zvol = zone_vol_pred;
+    } else {
+        px = pt_x_;
+        zx = zone_x_;
+        sarea = side_area_;
+        svol = side_vol_;
+        zarea = zone_area_;
+        zvol = zone_vol_;
+    }
+	int sfirst = side_chunks_first[side_chunk];
+	int slast = side_chunks_last[side_chunk];
 
     int zfirst = map_side2zone_[sfirst];
     int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
@@ -522,59 +548,50 @@ void Mesh::checkBadSides() {
 
 }
 
-
-void Mesh::calcSideFracs(
-        const double* sarea,
-        const double* zarea,
-        double* smf,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcSideMassFracs(const int side_chunk) {
+	int sfirst = side_chunks_first[side_chunk];
+	int slast = side_chunks_last[side_chunk];
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = map_side2zone_[s];
-        smf[s] = sarea[s] / zarea[z];
+        side_mass_frac[s] = side_area_[s] / zone_area_[z];
     }
 }
 
 
-void Mesh::calcSurfVecs(
-        const double2* zx,
-        const double2* ex,
-        double2* ssurf,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcMedianMeshSurfVecs(const int side_chunk) {
+	int sfirst = side_chunks_first[side_chunk];
+	int slast = side_chunks_last[side_chunk];
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = map_side2zone_[s];
         int e = map_side2edge_[s];
 
-        ssurf[s] = rotateCCW(ex[e] - zx[z]);
+        side_surfp[s] = rotateCCW(edge_x_pred[e] - zone_x_pred[z]);
 
     }
 
 }
 
 
-void Mesh::calcEdgeLen(
-        const double2* px,
-        double* elen,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcEdgeLen(const int side_chunk) {
+	int sfirst = side_chunks_first[side_chunk];
+	int slast = side_chunks_last[side_chunk];
 
-    for (int s = sfirst; s < slast; ++s) {
+	for (int s = sfirst; s < slast; ++s) {
         const int p1 = map_side2pt1_[s];
         const int p2 = map_side2pt2_[s];
         const int e = map_side2edge_[s];
 
-        elen[e] = length(px[p2] - px[p1]);
+        edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
 
     }
 }
 
 
-void Mesh::calcCharLen(const int side_chunk) {
+void Mesh::calcCharacteristicLen(const int side_chunk) {
     int sfirst = side_chunks_first[side_chunk];
     int slast = side_chunks_last[side_chunk];
 
@@ -587,7 +604,7 @@ void Mesh::calcCharLen(const int side_chunk) {
         int e = map_side2edge_[s];
 
         double area = side_area_pred[s];
-        double base = edege_len[e];
+        double base = edge_len[e];
         double fac = (zone_npts_[z] == 3 ? 3. : 4.);
         double sdl = fac * area / base;
         zone_dl[z] = min(zone_dl[z], sdl);

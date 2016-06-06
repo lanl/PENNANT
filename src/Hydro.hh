@@ -197,7 +197,6 @@ public:
             const int zlast);
 
     void calcDtHydro(
-            const double* zdl,
             const double* zvol,
             const double* zvol0,
             const double dtlast,

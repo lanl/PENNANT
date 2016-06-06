@@ -121,7 +121,7 @@ void ExportGold::writeGeoFile(
 
     // gather node info to PE 0
     const int nump = mesh->num_pts_;
-    const double2* px = mesh->pt_x;
+    const double2* px = mesh->pt_x_;
 
     int gnump = nump;
     Parallel::globalSum(gnump);
