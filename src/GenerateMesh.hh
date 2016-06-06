@@ -21,7 +21,7 @@
 class InputFile;
 
 
-class GenMesh {
+class GenerateMesh {
 public:
 
     std::string meshtype_;       // generated mesh type
@@ -37,8 +37,8 @@ public:
     int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
                                 // global, in x and y directions
 
-    GenMesh(const InputFile* inp);
-    ~GenMesh();
+    GenerateMesh(const InputFile* inp);
+    ~GenerateMesh();
 
     void generate(
             std::vector<double2>& pointpos,

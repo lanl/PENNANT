@@ -20,7 +20,7 @@
 
 // forward declarations
 class InputFile;
-class GenMesh;
+class GenerateMesh;
 class WriteXY;
 class ExportGold;
 

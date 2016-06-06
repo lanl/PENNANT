@@ -10,7 +10,7 @@
  * license; see top-level LICENSE file for full license text.
  */
 
-#include "GenMesh.hh"
+#include "GenerateMesh.hh"
 
 #include <cstdlib>
 #include <cmath>
@@ -24,7 +24,7 @@
 using namespace std;
 
 
-GenMesh::GenMesh(const InputFile* inp) {
+GenerateMesh::GenerateMesh(const InputFile* inp) {
 
     using Parallel::mype;
 
@@ -78,10 +78,10 @@ GenMesh::GenMesh(const InputFile* inp) {
 }
 
 
-GenMesh::~GenMesh() {}
+GenerateMesh::~GenerateMesh() {}
 
 
-void GenMesh::generate(
+void GenerateMesh::generate(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -119,7 +119,7 @@ void GenMesh::generate(
 }
 
 
-void GenMesh::generateRect(
+void GenerateMesh::generateRect(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -248,7 +248,7 @@ void GenMesh::generateRect(
 }
 
 
-void GenMesh::generatePie(
+void GenerateMesh::generatePie(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -412,7 +412,7 @@ void GenMesh::generatePie(
 }
 
 
-void GenMesh::generateHex(
+void GenerateMesh::generateHex(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -612,7 +612,7 @@ void GenMesh::generateHex(
 }
 
 
-void GenMesh::calcPartitions() {
+void GenerateMesh::calcPartitions() {
 
     using Parallel::numpe;
     using Parallel::mype;

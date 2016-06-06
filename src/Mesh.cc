@@ -21,9 +21,9 @@
 #include "Memory.hh"
 #include "Parallel.hh"
 #include "InputFile.hh"
-#include "GenMesh.hh"
 #include "WriteXY.hh"
 #include "ExportGold.hh"
+#include "GenerateMesh.hh"
 
 using namespace std;
 
