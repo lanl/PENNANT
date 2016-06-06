@@ -207,11 +207,7 @@ public:
             const int slast);
 
     // compute characteristic lengths
-    void calcCharLen(
-            const double* sarea,
-            double* zdl,
-            const int sfirst,
-            const int slast);
+    void calcCharLen(const int side_chunk);
 
     // sum corner variables to points (double or double2)
     template <typename T>

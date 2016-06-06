@@ -574,25 +574,23 @@ void Mesh::calcEdgeLen(
 }
 
 
-void Mesh::calcCharLen(
-        const double* sarea,
-        double* zdl,
-        const int sfirst,
-        const int slast) {
+void Mesh::calcCharLen(const int side_chunk) {
+    int sfirst = side_chunks_first[side_chunk];
+    int slast = side_chunks_last[side_chunk];
 
     int zfirst = map_side2zone_[sfirst];
     int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
-    fill(&zdl[zfirst], &zdl[zlast], 1.e99);
+    fill(&zone_dl[zfirst], &zone_dl[zlast], 1.e99);
 
     for (int s = sfirst; s < slast; ++s) {
         int z = map_side2zone_[s];
         int e = map_side2edge_[s];
 
-        double area = sarea[s];
+        double area = side_area_pred[s];
         double base = edege_len[e];
         double fac = (zone_npts_[z] == 3 ? 3. : 4.);
         double sdl = fac * area / base;
-        zdl[z] = min(zdl[z], sdl);
+        zone_dl[z] = min(zone_dl[z], sdl);
     }
 }
 

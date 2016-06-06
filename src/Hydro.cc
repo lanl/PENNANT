@@ -189,7 +189,6 @@ void Hydro::doCycle(
     double2* edge_x_pred = mesh->edge_x_pred;
     double2* zone_x_pred = mesh->zone_x_pred;
     double* side_mass_frac = mesh->side_mass_frac;
-    double* zone_dl = mesh->zone_dl;
 
     // Begin hydro cycle
     for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
@@ -220,7 +219,7 @@ void Hydro::doCycle(
                 sfirst, slast);
         mesh->calcSurfVecs(zone_x_pred, edge_x_pred, side_surf_vectp, sfirst, slast);
         mesh->calcEdgeLen(pt_x_pred, edge_len, sfirst, slast);
-        mesh->calcCharLen(side_area_pred, zone_dl, sfirst, slast);
+        mesh->calcCharLen(sch);
 
         // 2. compute point masses
         calcRho(zone_mass, zone_vol_pred, zone_rho_pred, zfirst, zlast);
@@ -294,7 +293,7 @@ void Hydro::doCycle(
         calcRho(zone_mass, zone_vol, zone_rho, zfirst, zlast);
 
         // 9.  compute timestep for next cycle
-        calcDtHydro(zone_dl, zone_vol, zone_vol0, dt, zfirst, zlast);
+        calcDtHydro(mesh->zone_dl, zone_vol, zone_vol0, dt, zfirst, zlast);
     }  // for zch
 
 }
