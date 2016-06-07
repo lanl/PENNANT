@@ -170,15 +170,6 @@ void Hydro::doCycle(
 
     const int num_pt_chunks = mesh->num_pt_chunks;
     const int num_side_chunks = mesh->num_side_chunks;
-    double* zone_vol = mesh->zone_vol_;
-    double* side_area_pred = mesh->side_area_pred;
-    double* zone_area_pred = mesh->zone_area_pred;
-    double* zone_vol_pred = mesh->zone_vol_pred;
-    double* zone_vol0 = mesh->zone_vol0;
-    double2* side_surf_vectp = mesh->side_surfp;
-    double2* pt_x0 = mesh->pt_x0;
-    double2* pt_x_pred = mesh->pt_x_pred;
-    double* side_mass_frac = mesh->side_mass_frac;
 
     // Begin hydro cycle
     for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
@@ -186,12 +177,12 @@ void Hydro::doCycle(
         int pt_last = mesh->pt_chunks_last[pt_chunk];
 
         // save off point variable values from previous cycle
-        copy(&mesh->pt_x_[pt_first], &mesh->pt_x_[pt_last], &pt_x0[pt_first]);
+        copy(&mesh->pt_x_[pt_first], &mesh->pt_x_[pt_last], &mesh->pt_x0[pt_first]);
         copy(&pt_vel[pt_first], &pt_vel[pt_last], &pt_vel0[pt_first]);
 
         // ===== Predictor step =====
         // 1. advance mesh to center of time step
-        advPosHalf(pt_x0, pt_vel0, dt, pt_x_pred, pt_first, pt_last);
+        advPosHalf(mesh->pt_x0, pt_vel0, dt, mesh->pt_x_pred, pt_first, pt_last);
     } // for pch
 
     for (int sch = 0; sch < num_side_chunks; ++sch) {
@@ -201,7 +192,7 @@ void Hydro::doCycle(
         int zlast = mesh->zone_chunks_last[sch];
 
         // save off zone variable values from previous cycle
-        copy(&zone_vol[zfirst], &zone_vol[zlast], &zone_vol0[zfirst]);
+        copy(&mesh->zone_vol_[zfirst], &mesh->zone_vol_[zlast], &mesh->zone_vol0[zfirst]);
 
         // 1a. compute new mesh geometry
         mesh->calcCtrs(sch);
@@ -211,16 +202,16 @@ void Hydro::doCycle(
         mesh->calcCharacteristicLen(sch);
 
         // 2. compute point masses
-        calcRho(zone_mass, zone_vol_pred, zone_rho_pred, zfirst, zlast);
-        calcCrnrMass(zone_rho_pred, zone_area_pred, side_mass_frac, crnr_weighted_mass, sfirst, slast);
+        calcRho(zone_mass, mesh->zone_vol_pred, zone_rho_pred, zfirst, zlast);
+        calcCrnrMass(zone_rho_pred, mesh->zone_area_pred, mesh->side_mass_frac, crnr_weighted_mass, sfirst, slast);
 
         // 3. compute material state (half-advanced)
-        pgas->calcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, dt,
+        pgas->calcStateAtHalf(zone_rho, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density, zone_work_rate, zone_mass, dt,
                 zone_pres, zone_sound_speed, zfirst, zlast);
 
         // 4. compute forces
-        pgas->calcForce(zone_pres, side_surf_vectp, side_force_pres, sfirst, slast);
-        tts->calcForce(zone_area_pred, zone_rho_pred, zone_sound_speed, side_area_pred, side_mass_frac, side_surf_vectp, side_force_tts,
+        pgas->calcForce(zone_pres, mesh->side_surfp, side_force_pres, sfirst, slast);
+        tts->calcForce(mesh->zone_area_pred, zone_rho_pred, zone_sound_speed, mesh->side_area_pred, mesh->side_mass_frac, mesh->side_surfp, side_force_tts,
                 sfirst, slast);
         qcs->calcForce(side_force_visc, sfirst, slast);
         sumCrnrForce(side_force_pres, side_force_visc, side_force_tts, crnr_force_tot, sfirst, slast);
@@ -247,7 +238,7 @@ void Hydro::doCycle(
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        advPosFull(pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_, pt_vel, pfirst, plast);
+        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_, pt_vel, pfirst, plast);
     }  // for pch
 
     resetDtHydro();
@@ -264,7 +255,7 @@ void Hydro::doCycle(
 
         // 7. compute work
         fill(&zone_work[zfirst], &zone_work[zlast], 0.);
-        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, pt_x_pred, dt, zone_work, zone_energy_tot,
+        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, mesh->pt_x_pred, dt, zone_work, zone_energy_tot,
                 sfirst, slast);
     }  // for sch
     mesh->checkBadSides();
@@ -274,14 +265,14 @@ void Hydro::doCycle(
         int zlast = mesh->zone_chunk_last[zch];
 
         // 7a. compute work rate
-        calcWorkRate(zone_vol0, zone_vol, zone_work, zone_pres, dt, zone_work_rate, zfirst, zlast);
+        calcWorkRate(mesh->zone_vol0, mesh->zone_vol_, zone_work, zone_pres, dt, zone_work_rate, zfirst, zlast);
 
         // 8. update state variables
         calcEnergy(zone_energy_tot, zone_mass, zone_energy_density, zfirst, zlast);
-        calcRho(zone_mass, zone_vol, zone_rho, zfirst, zlast);
+        calcRho(zone_mass, mesh->zone_vol_, zone_rho, zfirst, zlast);
 
         // 9.  compute timestep for next cycle
-        calcDtHydro(zone_vol, zone_vol0, dt, zfirst, zlast);
+        calcDtHydro(mesh->zone_vol_, mesh->zone_vol0, dt, zfirst, zlast);
     }  // for zch
 
 }
