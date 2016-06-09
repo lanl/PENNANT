@@ -173,7 +173,7 @@ void Mesh::initSideMappingArrays(
 
     map_side2pt1_ = Memory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
-    map_side2pt2_ = Memory::alloc<int>(num_sides_);
+//    map_side2pt2_ = Memory::alloc<int>(num_sides_);
     map_side2zone_  = Memory::alloc<int>(num_sides_);
     maps_side_prev_ = Memory::alloc<int>(num_sides_);
 //    maps_side_next_ = Memory::alloc<int>(num_sides_);
@@ -187,7 +187,10 @@ void Mesh::initSideMappingArrays(
             int slast = sbase + (n == 0 ? size : n) - 1;
             map_side2zone_[s] = z;
             map_side2pt1_[s] = cellnodes[s];
-            map_side2pt2_[s] = cellnodes[snext];
+//            map_side2pt2_[s] = cellnodes[snext];
+            //cout << "iSMA: z: " << z << " sbase: " << sbase << " size " << size;
+            //cout << " n: " << n << " s: " << s << " snext: " << snext;
+            //cout << " value: " << cellnodes[snext] << endl;
             maps_side_prev_[s] = slast;
 //            maps_side_next_[s] = snext;
 //            assert(maps_side_next_[s] == mapSideToSideNext(s));
@@ -205,8 +208,8 @@ void Mesh::initEdgeMappingArrays() {
 
     int e = 0;
     for (int s = 0; s < num_sides_; ++s) {
-        int p1 = min(map_side2pt1_[s], map_side2pt2_[s]);
-        int p2 = max(map_side2pt1_[s], map_side2pt2_[s]);
+        int p1 = min(map_side2pt1_[s], mapSideToPt2(s));
+        int p2 = max(map_side2pt1_[s], mapSideToPt2(s));
 
         vector<int>& vpp = edgepp[p1];
         vector<int>& vpe = edgepe[p1];
@@ -471,7 +474,7 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
-        int p2 = map_side2pt2_[s];
+        int p2 = mapSideToPt2(s);
         int e = map_side2edge_[s];
         int z = map_side2zone_[s];
         ex[e] = 0.5 * (px[p1] + px[p2]);
@@ -520,7 +523,7 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
     int count = 0;
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
-        int p2 = map_side2pt2_[s];
+        int p2 = mapSideToPt2(s);
         int z = map_side2zone_[s];
 
         // compute side volumes, sum to zone
@@ -588,7 +591,7 @@ void Mesh::calcEdgeLen(const int side_chunk) {
 
 	for (int s = sfirst; s < slast; ++s) {
         const int p1 = map_side2pt1_[s];
-        const int p2 = map_side2pt2_[s];
+        const int p2 = mapSideToPt2(s);
         const int e = map_side2edge_[s];
 
         edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);

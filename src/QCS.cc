@@ -12,6 +12,7 @@
 
 #include "QCS.hh"
 
+#include <cassert>
 #include <cmath>
 #include "Memory.hh"
 #include "InputFile.hh"
@@ -140,10 +141,10 @@ void QCS::setCornerDiv(
         int z = mesh->map_side2zone_[s];
         int z0 = z - zfirst;
         int c0 = c - cfirst;
-        int p = mesh->map_side2pt2_[s];
+        int p = mesh->mapSideToPt2(s);
         // Points
         int p1 = mesh->map_side2pt1_[s];
-        int p2 = mesh->map_side2pt2_[s2];
+        int p2 = mesh->mapSideToPt2(s2);
         // Edges
         int e1 = mesh->map_side2edge_[s];
         int e2 = mesh->map_side2edge_[s2];
@@ -256,12 +257,12 @@ void QCS::setQCnForce(
         int s4 = c;
         int s = mesh->maps_side_prev_[s4];
         int c0 = c - cfirst;
-        int p = mesh->map_side2pt2_[s];
+        int p = mesh->mapSideToPt2(s);
         // Associated point and edge 1
         int p1 = mesh->map_side2pt1_[s];
         int e1 = mesh->map_side2edge_[s];
         // Associated point and edge 2
-        int p2 = mesh->map_side2pt2_[s4];
+        int p2 = mesh->mapSideToPt2(s4);
         int e2 = mesh->map_side2edge_[s4];
 
         // Compute: c0qe(1,2,3)=edge 1, y component (2nd), 3rd corner
@@ -344,7 +345,7 @@ void QCS::setVelDiff(
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
-        int p2 = mesh->map_side2pt2_[s];
+        int p2 = mesh->mapSideToPt2(s);
         int z = mesh->map_side2zone_[s];
         int e = mesh->map_side2edge_[s];
         int z0 = z - zfirst;

@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -405,7 +406,7 @@ void Hydro::calcWork(
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
-        int p2 = mesh->map_side2pt2_[s];
+        int p2 = mesh->mapSideToPt2(s);
         int z = mesh->map_side2zone_[s];
 
         double2 sftot = sf[s] + sf2[s];
