@@ -136,7 +136,7 @@ void QCS::setCornerDiv(
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s2 = c;
-        int s = mesh->maps_side_prev_[s2];
+        int s = mesh->mapSideToSidePrev(s2);
         // Associated zone, corner, point
         int z = mesh->map_side2zone_[s];
         int z0 = z - zfirst;
@@ -255,7 +255,7 @@ void QCS::setQCnForce(
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s4 = c;
-        int s = mesh->maps_side_prev_[s4];
+        int s = mesh->mapSideToSidePrev(s4);
         int c0 = c - cfirst;
         int p = mesh->mapSideToPt2(s);
         // Associated point and edge 1

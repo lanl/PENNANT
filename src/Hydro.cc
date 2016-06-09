@@ -325,7 +325,7 @@ void Hydro::calcCrnrMass(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev_[s];
+        int s3 = mesh->mapSideToSidePrev(s);
         int z = mesh->map_side2zone_[s];
 
         double m = zr[z] * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
@@ -344,7 +344,7 @@ void Hydro::sumCrnrForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev_[s];
+        int s3 = mesh->mapSideToSidePrev(s);
 
         double2 f = (sf[s] + sf2[s] + sf3[s]) -
                     (sf[s3] + sf2[s3] + sf3[s3]);
@@ -487,7 +487,7 @@ void Hydro::sumEnergy(
     //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]
     double sumk = 0.; 
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->maps_side_prev_[s];
+        int s3 = mesh->mapSideToSidePrev(s);
         int p1 = mesh->map_side2pt1_[s];
         int z = mesh->map_side2zone_[s];
 

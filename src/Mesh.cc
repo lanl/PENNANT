@@ -173,27 +173,15 @@ void Mesh::initSideMappingArrays(
 
     map_side2pt1_ = Memory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
-//    map_side2pt2_ = Memory::alloc<int>(num_sides_);
     map_side2zone_  = Memory::alloc<int>(num_sides_);
-    maps_side_prev_ = Memory::alloc<int>(num_sides_);
-//    maps_side_next_ = Memory::alloc<int>(num_sides_);
 
     for (int z = 0; z < num_zones_; ++z) {
         int sbase = cellstart[z];
         int size = cellsize[z];
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
-            int snext = sbase + (n + 1 == size ? 0 : n + 1);
-            int slast = sbase + (n == 0 ? size : n) - 1;
             map_side2zone_[s] = z;
             map_side2pt1_[s] = cellnodes[s];
-//            map_side2pt2_[s] = cellnodes[snext];
-            //cout << "iSMA: z: " << z << " sbase: " << sbase << " size " << size;
-            //cout << " n: " << n << " s: " << s << " snext: " << snext;
-            //cout << " value: " << cellnodes[snext] << endl;
-            maps_side_prev_[s] = slast;
-//            maps_side_next_[s] = snext;
-//            assert(maps_side_next_[s] == mapSideToSideNext(s));
         } // for n
     } // for z
 

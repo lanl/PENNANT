@@ -43,7 +43,6 @@ public:
                        // sides, corners, resp.
     int num_bad_sides;       // number of bad sides (negative volume)
 
-    int* map_side2pt1_;       // maps: side -> points 1 and 2
     inline int mapSideToSideNext(const int &s) const
     {
     	const int z = map_side2zone_[s];
@@ -52,19 +51,26 @@ public:
     	const int snext = (s + 1 == slast ? sbase : s + 1);
     	return snext;
     }
+    inline int mapSideToSidePrev(const int &s) const
+    {
+    	const int z = map_side2zone_[s];
+    	const int sbase = zone_pts_ptr_[z];
+    	const int slast = zone_pts_ptr_[z+1];
+    	const int sprev = (s == sbase ? slast : s) - 1;
+    	return sprev;
+    }
     inline int mapSideToPt2(const int &s) const
     {
     	return map_side2pt1_[mapSideToSideNext(s)];
     }
     int* map_side2zone_;        // map: side -> zone
     int* map_side2edge_;        // map: side -> edge
-    int* maps_side_prev_;       // map: side -> previous side
-    int* maps_side_next_;       // map: side -> next side
 
     inline int zoneNPts(const int &i) const
     {return zone_pts_ptr_[i+1] - zone_pts_ptr_[i];}        // number of points in zone
-    // Compressed Row Storage (CRS) of zone to points mapping
-    int* zone_pts_val_;
+    int* map_side2pt1_;  	// maps: side -> points 1 and 2
+    // Compressed Row Storage (CRS) of zone to points/sides mapping
+    int* zone_pts_val_;		// := map_side2pt1_
     int* zone_pts_ptr_;
 
     double2* pt_x_;       // point coordinates
