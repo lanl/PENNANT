@@ -307,7 +307,7 @@ void QCS::setForce(
         // Associated corners 1 and 2, and edge
         int c1 = s;
         int c10 = c1 - cfirst;
-        int c2 = mesh->maps_side_next_[s];
+        int c2 = mesh->mapSideToSideNext(s);
         int c20 = c2 - cfirst;
         int e = mesh->map_side2edge_[s];
         // Edge length for c1, c2 contribution to s
