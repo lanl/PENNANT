@@ -116,6 +116,7 @@ void GenerateMesh::generate(
                 slavemstrpes, slavemstrcounts, slavepoints,
                 masterslvpes, masterslvcounts, masterpoints);
 
+    zonestart.push_back(zonestart.back()+zonesize.back());  // compressed row storage
 }
 
 

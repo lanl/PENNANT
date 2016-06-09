@@ -77,15 +77,18 @@ void Mesh::init() {
             masterslvpes, masterslvcounts, masterpoints);
 
     num_pts_ = nodepos.size();
-    num_zones_ = cellstart.size();
+    num_zones_ = cellstart.size() - 1;
     num_sides_ = cellnodes.size();
     num_corners_ = num_sides_;
 
 
     // copy cell sizes to mesh
 
-    zone_npts_ = Memory::alloc<int>(num_zones_);
-    copy(cellsize.begin(), cellsize.end(), zone_npts_);
+//    zone_npts_ = Memory::alloc<int>(num_zones_);
+//    copy(cellsize.begin(), cellsize.end(), zone_npts_);
+
+    zone_pts_ptr_ = Memory::alloc<int>(num_zones_+1);
+    copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
 
     // populate maps:
     // use the cell* arrays to populate the side maps
@@ -168,6 +171,7 @@ void Mesh::initSideMappingArrays(
         const vector<int>& cellnodes) {
 
     map_side2pt1_ = Memory::alloc<int>(num_sides_);
+    zone_pts_val_ = map_side2pt1_;
     map_side2pt2_ = Memory::alloc<int>(num_sides_);
     map_side2zone_  = Memory::alloc<int>(num_sides_);
     maps_side_prev_ = Memory::alloc<int>(num_sides_);
@@ -473,7 +477,7 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
     }
 
     for (int z = zfirst; z < zlast; ++z) {
-        zx[z] /= (double) zone_npts_[z];
+        zx[z] /= (double) zone_npts_(z);
     }
 
 }
@@ -605,7 +609,7 @@ void Mesh::calcCharacteristicLen(const int side_chunk) {
 
         double area = side_area_pred[s];
         double base = edge_len[e];
-        double fac = (zone_npts_[z] == 3 ? 3. : 4.);
+        double fac = (zone_npts_(z) == 3 ? 3. : 4.);
         double sdl = fac * area / base;
         zone_dl[z] = min(zone_dl[z], sdl);
     }

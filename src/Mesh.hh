@@ -51,7 +51,11 @@ public:
     int* maps_side_prev_;       // map: side -> previous side
     int* maps_side_next_;       // map: side -> next side
 
-    int* zone_npts_;        // number of points in zone
+    inline int zone_npts_(const int &i) const
+    {return zone_pts_ptr_[i+1] - zone_pts_ptr_[i];}        // number of points in zone
+    // Compressed Row Storage (CRS) of zone to points mapping
+    int* zone_pts_val_;
+    int* zone_pts_ptr_;
 
     double2* pt_x_;       // point coordinates
     double2* zone_x_;       // zone center coordinates

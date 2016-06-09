@@ -107,7 +107,6 @@ void QCS::setCornerDiv(
     const double2* ex = mesh->edge_x_pred;
     const double2* zx = mesh->zone_x_pred;
     const double* elen = mesh->edge_len;
-    const int* znump = mesh->zone_npts_;
 
     int cfirst = sfirst;
     int clast = slast;
@@ -129,7 +128,7 @@ void QCS::setCornerDiv(
 
     for (int z = zfirst; z < zlast; ++z) {
         int z0 = z - zfirst;
-        z0uc[z0] /= (double) znump[z];
+        z0uc[z0] /= (double) mesh->zone_npts_(z);
     }
 
     // [2] Divergence at the corner

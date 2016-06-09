@@ -148,7 +148,6 @@ void ExportGold::writeGeoFile(
             ofs << setw(12) << 0. << endl;
     } // if mype
 
-    const int* znump = mesh->zone_npts_;
     const int* mapsp1 = mesh->map_side2pt1_;
 
     const int ntris = tris.size();
@@ -237,8 +236,8 @@ void ExportGold::writeGeoFile(
     for (int n = 0; n < nothers; ++n) {
         int z = others[n];
         int sbase = mapzs[z];
-        othernump[n] = znump[z];
-        for (int i = 0; i < znump[z]; ++i) {
+        othernump[n] = mesh->zone_npts_(z);
+        for (int i = 0; i < mesh->zone_npts_(z); ++i) {
             otherp.push_back(mapsp1[sbase + i] + offset);
         }
     }
@@ -354,14 +353,13 @@ void ExportGold::writeVarFile(
 void ExportGold::sortZones() {
 
     const int numz = mesh->num_zones_;
-    const int* znump = mesh->zone_npts_;
 
     mapzs.resize(numz);
 
     // sort zones by size, create an inverse map
     int scount = 0;
     for (int z = 0; z < numz; ++z) {
-        int zsize = znump[z];
+        int zsize = mesh->zone_npts_(z);
         if (zsize == 3)
             tris.push_back(z);
         else if (zsize == 4)
