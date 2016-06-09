@@ -84,7 +84,6 @@ GenerateMesh::~GenerateMesh() {}
 void GenerateMesh::generate(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
-        std::vector<int>& zonesize,
         std::vector<int>& zonepoints,
         std::vector<int>& slavemstrpes,
         std::vector<int>& slavemstrcounts,
@@ -103,6 +102,7 @@ void GenerateMesh::generate(
     nzones_y_ = zystop - zone_y_offset_;
 
     // mesh type-specific calculations
+    std::vector<int> zonesize;
     if (meshtype_ == "pie")
         generatePie(pointpos, zonestart, zonesize, zonepoints,
                 slavemstrpes, slavemstrcounts, slavepoints,

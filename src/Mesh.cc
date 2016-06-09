@@ -70,10 +70,10 @@ void Mesh::init() {
 
     // generate mesh
     vector<double2> nodepos;
-    vector<int> cellstart, cellsize, cellnodes;
+    vector<int> cellstart, cellnodes;
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
-    gmesh_->generate(nodepos, cellstart, cellsize, cellnodes,
+    gmesh_->generate(nodepos, cellstart, cellnodes,
             slavemstrpes, slavemstrcounts, slavepoints,
             masterslvpes, masterslvcounts, masterpoints);
 
@@ -93,10 +93,9 @@ void Mesh::init() {
 
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSideMappingArrays(cellstart, cellsize, cellnodes);
+    initSideMappingArrays(cellstart, cellnodes);
     // release memory from cell* arrays
     cellstart.resize(0);
-    cellsize.resize(0);
     cellnodes.resize(0);
     // now populate edge maps using side maps
     initEdgeMappingArrays();
@@ -168,7 +167,6 @@ void Mesh::init() {
 
 void Mesh::initSideMappingArrays(
         const vector<int>& cellstart,
-        const vector<int>& cellsize,
         const vector<int>& cellnodes) {
 
     map_side2pt1_ = Memory::alloc<int>(num_sides_);
@@ -177,7 +175,7 @@ void Mesh::initSideMappingArrays(
 
     for (int z = 0; z < num_zones_; ++z) {
         int sbase = cellstart[z];
-        int size = cellsize[z];
+        int size = cellstart[z+1] - cellstart[z];
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
             map_side2zone_[s] = z;

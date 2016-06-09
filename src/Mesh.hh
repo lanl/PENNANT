@@ -183,7 +183,6 @@ private:
 
     void initSideMappingArrays(
             const std::vector<int>& cellstart,
-            const std::vector<int>& cellsize,
             const std::vector<int>& cellnodes);
 
     void initEdgeMappingArrays();

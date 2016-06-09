@@ -43,7 +43,6 @@ public:
     void generate(
             std::vector<double2>& pointpos,
             std::vector<int>& zonestart,
-            std::vector<int>& zonesize,
             std::vector<int>& zonepoints,
             std::vector<int>& slavemstrpes,
             std::vector<int>& slavemstrcounts,
