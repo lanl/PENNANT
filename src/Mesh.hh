@@ -24,7 +24,6 @@ class GenerateMesh;
 class WriteXY;
 class ExportGold;
 
-
 class Mesh {
 public:
 
@@ -45,13 +44,30 @@ public:
     int num_bad_sides;       // number of bad sides (negative volume)
 
     int* map_side2pt1_;       // maps: side -> points 1 and 2
-    int* map_side2pt2_;
+    int* map_side2pt2_;       // maps: side -> points 1 and 2
+    inline int mapSideToSideNext(const int &s) const
+    {
+    	const int z = map_side2zone_[s];
+    	const int sbase = zone_pts_ptr_[z];
+    	const int slast = zone_pts_ptr_[z+1];
+    	const int snext = (s + 1 == slast ? sbase : s + 1);
+    	return snext;
+    }
+    inline int mapSideToPt2(const int &s) const
+    {
+    	const int z = map_side2zone_[s];
+    	const int sbase = zone_pts_ptr_[s];
+    	const int size = zone_pts_ptr_[s+1] - sbase;
+    	const int n = s - sbase;
+    	const int snext = sbase + (n + 1 == size ? 0 : n + 1);
+    	return zone_pts_val_[snext];
+    }
     int* map_side2zone_;        // map: side -> zone
     int* map_side2edge_;        // map: side -> edge
     int* maps_side_prev_;       // map: side -> previous side
     int* maps_side_next_;       // map: side -> next side
 
-    inline int zone_npts_(const int &i) const
+    inline int zoneNPts(const int &i) const
     {return zone_pts_ptr_[i+1] - zone_pts_ptr_[i];}        // number of points in zone
     // Compressed Row Storage (CRS) of zone to points mapping
     int* zone_pts_val_;

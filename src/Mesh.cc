@@ -13,6 +13,7 @@
 #include "Mesh.hh"
 
 #include <stdint.h>
+#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <algorithm>
@@ -189,6 +190,7 @@ void Mesh::initSideMappingArrays(
             map_side2pt2_[s] = cellnodes[snext];
             maps_side_prev_[s] = slast;
             maps_side_next_[s] = snext;
+            assert(maps_side_next_[s] == mapSideToSideNext(s));
         } // for n
     } // for z
 
@@ -477,7 +479,7 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
     }
 
     for (int z = zfirst; z < zlast; ++z) {
-        zx[z] /= (double) zone_npts_(z);
+        zx[z] /= (double) zoneNPts(z);
     }
 
 }
@@ -609,7 +611,7 @@ void Mesh::calcCharacteristicLen(const int side_chunk) {
 
         double area = side_area_pred[s];
         double base = edge_len[e];
-        double fac = (zone_npts_(z) == 3 ? 3. : 4.);
+        double fac = (zoneNPts(z) == 3 ? 3. : 4.);
         double sdl = fac * area / base;
         zone_dl[z] = min(zone_dl[z], sdl);
     }
