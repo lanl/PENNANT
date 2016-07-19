@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mkdir -p ${HOME}/local/regression/pennant/nohsmall  #${SLURM_JOB_ID}
+cd ${HOME}/local/regression/pennant/nohsmall  #${SLURM_JOB_ID}
+cp ${HOME}/github/PENNANT//pennant . 
+cp ${HOME}/github/PENNANT/test/nohsmall/nohsmall.pnt  . 
+./pennant nohsmall.pnt
