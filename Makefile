@@ -1,81 +1,73 @@
-BUILDDIR := build
-PRODUCT := pennant
-
-SRCDIR := src
-
-HDRS := $(wildcard $(SRCDIR)/*.hh)
-SRCS := $(wildcard $(SRCDIR)/*.cc)
-OBJS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.o)
-DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
-
-BINARY := $(BUILDDIR)/$(PRODUCT)
-
-# begin compiler-dependent flags
+# Copyright 2016 Stanford University
 #
-# gcc flags:
-CXX := g++
-CXXFLAGS_DEBUG := -g
-CXXFLAGS_OPT := -O3
-#CXXFLAGS_OPENMP := -fopenmp
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 
-# intel flags:
-#CXX := icpc
-#CXXFLAGS_DEBUG := -g
-#CXXFLAGS_OPT := -O3 -fast -fno-alias
-#CXXFLAGS_OPENMP := -openmp
+LG_RT_DIR := ${HOME}/github/legion/runtime
+GASNET_ROOT= ${HOME}/opt/gasnet/1.26.3
+GASNET=$(GASNET_ROOT)
+CONDUIT=udp
+USE_GASNET=1
 
-# pgi flags:
-#CXX := pgCC
-#CXXFLAGS_DEBUG := -g
-#CXXFLAGS_OPT := -O3 -fastsse
-#CXXFLAGS_OPENMP := -mp
+ifndef LG_RT_DIR
+$(error LG_RT_DIR variable is not defined, aborting build)
+endif
 
-# end compiler-dependent flags
+# Flags for directing the runtime makefile what to include
+DEBUG           ?= 1		# Include debugging symbols
+OUTPUT_LEVEL    ?= LEVEL_DEBUG	# Compile time logging level
+SHARED_LOWLEVEL ?= 0		# Use shared-memory runtime (not recommended)
+USE_CUDA        ?= 0		# Include CUDA support (requires CUDA)
+USE_GASNET      ?= 0		# Include GASNet support (requires GASNet)
+USE_HDF         ?= 0		# Include HDF5 support (requires HDF5)
+ALT_MAPPERS     ?= 0		# Include alternative mappers (not recommended)
 
-# select optimized or debug
-CXXFLAGS := $(CXXFLAGS_OPT)
-#CXXFLAGS := $(CXXFLAGS_DEBUG)
+# Put the binary file name here
+OUTFILE		?= pennant
+# List all the application source files here
+GEN_SRC		?= $(wildcard src/*.cc)		# .cu files
+GEN_GPU_SRC	?= 				# .cu files
 
-# add mpi to compile (comment out for serial build)
-# the following assumes the existence of an mpi compiler
-# wrapper called mpicxx
-#CXX := mpicxx
-#CXXFLAGS += -DUSE_MPI
+# You can modify these variables, some will be appended to by the runtime makefile
+INC_FLAGS	?=
+CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-const-variable -Wno-unused-variable -Wno-deprecated-register -DPRIVILEGE_CHECKS -DBOUNDS_CHECKS
+NVCC_FLAGS	?=
+GASNET_FLAGS	?=
+LD_FLAGS	?=
 
-# add openmp flags (comment out for serial build)
-#CXXFLAGS += $(CXXFLAGS_OPENMP)
-#LDFLAGS += $(CXXFLAGS_OPENMP)
+###########################################################################
+#
+#   Don't change anything below here
+#   
+###########################################################################
 
-LD := $(CXX)
+include $(LG_RT_DIR)/runtime.mk
 
+src/Driver.o: src/Driver.hh src/Parallel.hh src/InputFile.hh src/Mesh.hh src/Hydro.hh
+src/ExportGold.o: src/ExportGold.hh src/Parallel.hh src/Vec2.hh src/Mesh.hh
+src/GenerateMesh.o: src/GenerateMesh.hh src/Parallel.hh src/Vec2.hh src/InputFile.hh
+src/Hydro.o: src/Hydro.hh src/Parallel.hh src/Memory.hh src/InputFile.hh src/Mesh.hh src/PolyGas.hh \
+	src/TTS.hh src/QCS.hh src/HydroBC.hh
+src/HydroBC.o: src/HydroBC.hh src/Memory.hh src/Mesh.hh src/Vec2.hh
+src/InputFile.o: src/InputFile.hh src/Parallel.o
+src/Memory.o: src/Memory.hh
+src/Mesh.o: src/Mesh.hh src/Vec2.hh src/Memory.hh src/Parallel.hh src/InputFile.hh \
+	src/WriteXY.hh src/ExportGold.hh src/GenerateMesh.hh src/Vec2.hh
+src/Parallel.o: src/Parallel.hh src/Vec2.hh
+src/PolyGas.o: src/PolyGas.hh src/Memory.hh src/InputFile.hh src/Hydro.hh src/Mesh.hh \
+	src/Vec2.hh
+src/QCS.o: src/QCS.hh src/Memory.hh src/InputFile.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh
+src/TTS.o: src/TTS.hh src/Vec2.hh src/InputFile.hh src/Mesh.hh src/Hydro.hh
+src/WriteXY.o: src/WriteXY.hh src/Parallel.hh src/Mesh.hh
+src/main.o: src/main.hh src/Parallel.hh src/InputFile.hh src/Driver.hh
 
-# begin rules
-all : $(BINARY)
-
--include $(DEPS)
-
-$(BINARY) : $(OBJS)
-	@echo linking $@
-	$(maketargetdir)
-	$(LD) -o $@ $^ $(LDFLAGS)
-
-$(BUILDDIR)/%.o : $(SRCDIR)/%.cc
-	@echo compiling $<
-	$(maketargetdir)
-	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
-
-$(BUILDDIR)/%.d : $(SRCDIR)/%.cc
-	@echo making depends for $<
-	$(maketargetdir)
-	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -MM $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
-
-define maketargetdir
-	-@mkdir -p $(dir $@) >/dev/null 2>&1
-endef
-
-# Dependencies
-src/Driver.o src/ExportGold.o src/GenMesh.o src/HydroBC.o src/Mesh.o src/PolyGas.o src/QCS.o src/TTS.o src/WriteXY.o: src/Mesh.hh
-
-.PHONY : clean
-clean :
-	rm -f $(BINARY) $(OBJS) $(DEPS)

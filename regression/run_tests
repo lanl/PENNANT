@@ -1,44 +1,14 @@
-#!/usr/bin/perl
+#!/bin/bash
 
-system("rm -rf /home/jgraham/local/regression/pennant/leblanc") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/noh") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/nohsmall") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/sedov") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/sedovsmall") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/leblanc4") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/noh4") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/nohsmall4") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/sedov4") == 0
-	or die "Unable to clean cache";
-system("rm -rf /home/jgraham/local/regression/pennant/sedovsmall4") == 0
-	or die "Unable to clean cache";
+rm -rf /home/jgraham/local/regression/pennant/leblanc
+rm -rf /home/jgraham/local/regression/pennant/noh
+rm -rf /home/jgraham/local/regression/pennant/nohsmall
+rm -rf /home/jgraham/local/regression/pennant/sedov
+rm -rf /home/jgraham/local/regression/pennant/sedovsmall
 
-system("sbatch leblanc") == 0
-	or die "Unable to submit job";
-system("sbatch noh") == 0
-	or die "Unable to submit job";
-system("sbatch nohsmall") == 0
-	or die "Unable to submit job";
-system("sbatch sedov") == 0
-	or die "Unable to submit job";
-system("sbatch sedovsmall") == 0
-	or die "Unable to submit job";
-system("sbatch leblanc4") == 0
-	or die "Unable to submit job";
-system("sbatch noh4") == 0
-	or die "Unable to submit job";
-system("sbatch nohsmall4") == 0
-	or die "Unable to submit job";
-system("sbatch sedov4") == 0
-	or die "Unable to submit job";
-system("sbatch sedovsmall4") == 0
-	or die "Unable to submit job";
+./leblanc.mac
+./noh.mac
+./nohsmall.mac
+./sedov.mac
+./sedovsmall.mac
 

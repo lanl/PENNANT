@@ -4,4 +4,4 @@ mkdir -p ${HOME}/local/regression/pennant/noh  #${SLURM_JOB_ID}
 cd ${HOME}/local/regression/pennant/noh  #${SLURM_JOB_ID}
 cp ${HOME}/github/PENNANT//pennant . 
 cp ${HOME}/github/PENNANT/test/noh/noh.pnt  . 
-./pennant noh.pnt
+GASNET_BACKTRACE=1  GASNET_MASTERIP='127.0.0.1' GASNET_SPAWN=-L SSH_SERVERS="localhost,localhost,localhost,localhost,localhost,localhost,localhost,localhost" /Users/jgraham/opt/gasnet/1.26.3/bin/amudprun -np 4 ./pennant 1 noh.pnt
