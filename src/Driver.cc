@@ -27,6 +27,23 @@
 
 using namespace std;
 
+DriverTask::DriverTask(SPMDArgs *args)
+	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, sizeof(SPMDArgs)))
+{
+}
+
+/*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
+
+/*static*/
+void DriverTask::cpu_run(const Task *task,
+		const std::vector<PhysicalRegion> &regions,
+        Context ctx, HighLevelRuntime* rt)
+{
+	// Unmap all the regions we were given since we won't actually use them
+	rt->unmap_all_regions(ctx);
+
+    SPMDArgs *args = (SPMDArgs *)(task->args);
+}
 
 Driver::Driver(const InputFile* inp, const string& pname)
         : probname(pname) {

@@ -13,6 +13,8 @@
 #ifndef DRIVER_HH_
 #define DRIVER_HH_
 
+#include "main.hh"
+
 #include <string>
 
 
@@ -21,6 +23,17 @@ class InputFile;
 class Mesh;
 class Hydro;
 
+class DriverTask : public TaskLauncher {
+public:
+	DriverTask(SPMDArgs *args);
+	static const char * const TASK_NAME;
+	static const int TASK_ID = DRIVER_TASK_ID;
+	static const bool CPU_BASE_LEAF = false;
+
+	static void cpu_run(const Task *task,
+			  const std::vector<PhysicalRegion> &regions,
+			  Context ctx, HighLevelRuntime* rt);
+};
 
 class Driver {
 public:

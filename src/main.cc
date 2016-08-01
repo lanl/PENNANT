@@ -17,7 +17,6 @@
 #include <iostream>
 
 #include "Parallel.hh"
-#include "InputFile.hh"
 #include "Driver.hh"
 
 
@@ -64,6 +63,7 @@ int main(int argc, char **argv)
 			Processor::LOC_PROC, true/*single*/, false/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
 
+	TaskHelper::register_cpu_variants<DriverTask>();
 
 	return HighLevelRuntime::start(argc, argv);
 }
