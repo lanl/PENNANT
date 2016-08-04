@@ -87,9 +87,6 @@ void GenerateMesh::generateRect(
         std::vector<int>& masterslvcounts,
         std::vector<int>& masterpoints) {
 
-    using Parallel::num_subregions;
-    using Parallel::mype;
-
     const int nz = nzones_x_ * nzones_y_;
     const int npx = nzones_x_ + 1;
     const int npy = nzones_y_ + 1;
@@ -123,7 +120,7 @@ void GenerateMesh::generateRect(
        }
     }
 
-    if (num_subregions == 1) return;
+    if (Parallel::num_subregions() == 1) return;
 
     // estimate sizes of slave/master arrays
     slavepoints.reserve((proc_index_y_ != 0) * npx + (proc_index_x_ != 0) * npy);
@@ -133,14 +130,14 @@ void GenerateMesh::generateRect(
     // enumerate slave points
     // slave point with master at lower left
     if (proc_index_x_ != 0 && proc_index_y_ != 0) {
-        int mstrpe = mype - num_proc_x_ - 1;
+        int mstrpe = Parallel::mype() - num_proc_x_ - 1;
         slavepoints.push_back(0);
         slavemstrpes.push_back(mstrpe);
         slavemstrcounts.push_back(1);
     }
     // slave points with master below
     if (proc_index_y_ != 0) {
-        int mstrpe = mype - num_proc_x_;
+        int mstrpe = Parallel::mype() - num_proc_x_;
         int oldsize = slavepoints.size();
         int p = 0;
         for (int i = 0; i < npx; ++i) {
@@ -153,7 +150,7 @@ void GenerateMesh::generateRect(
     }
     // slave points with master to left
     if (proc_index_x_ != 0) {
-        int mstrpe = mype - 1;
+        int mstrpe = Parallel::mype() - 1;
         int oldsize = slavepoints.size();
         int p = 0;
         for (int j = 0; j < npy; ++j) {
@@ -168,7 +165,7 @@ void GenerateMesh::generateRect(
     // enumerate master points
     // master points with slave to right
     if (proc_index_x_ != num_proc_x_ - 1) {
-        int slvpe = mype + 1;
+        int slvpe = Parallel::mype() + 1;
         int oldsize = masterpoints.size();
         int p = npx - 1;
         for (int j = 0; j < npy; ++j) {
@@ -181,7 +178,7 @@ void GenerateMesh::generateRect(
     }
     // master points with slave above
     if (proc_index_y_ != num_proc_y_ - 1) {
-        int slvpe = mype + num_proc_x_;
+        int slvpe = Parallel::mype() + num_proc_x_;
         int oldsize = masterpoints.size();
         int p = (npy - 1) * npx;
         for (int i = 0; i < npx; ++i) {
@@ -194,7 +191,7 @@ void GenerateMesh::generateRect(
     }
     // master point with slave at upper right
     if (proc_index_x_ != num_proc_x_ - 1 && proc_index_y_ != num_proc_y_ - 1) {
-        int slvpe = mype + num_proc_x_ + 1;
+        int slvpe = Parallel::mype() + num_proc_x_ + 1;
         int p = npx * npy - 1;
         masterpoints.push_back(p);
         masterslvpes.push_back(slvpe);
@@ -215,9 +212,6 @@ void GenerateMesh::generatePie(
         std::vector<int>& masterslvpes,
         std::vector<int>& masterslvcounts,
         std::vector<int>& masterpoints) {
-
-    using Parallel::num_subregions;
-    using Parallel::mype;
 
     const int nz = nzones_x_ * nzones_y_;
     const int npx = nzones_x_ + 1;
@@ -265,7 +259,7 @@ void GenerateMesh::generatePie(
         }
     }
 
-    if (num_subregions == 1) return;
+    if (Parallel::num_subregions() == 1) return;
 
     // estimate sizes of slave/master arrays
     slavepoints.reserve((proc_index_y_ != 0) * npx + (proc_index_x_ != 0) * npy);
@@ -275,14 +269,14 @@ void GenerateMesh::generatePie(
     // enumerate slave points
     // slave point with master at lower left
     if (proc_index_x_ != 0 && proc_index_y_ != 0) {
-        int mstrpe = mype - num_proc_x_ - 1;
+        int mstrpe = Parallel::mype() - num_proc_x_ - 1;
         slavepoints.push_back(0);
         slavemstrpes.push_back(mstrpe);
         slavemstrcounts.push_back(1);
     }
     // slave points with master below
     if (proc_index_y_ != 0) {
-        int mstrpe = mype - num_proc_x_;
+        int mstrpe = Parallel::mype() - num_proc_x_;
         int oldsize = slavepoints.size();
         int p = 0;
         for (int i = 0; i < npx; ++i) {
@@ -295,7 +289,7 @@ void GenerateMesh::generatePie(
     }
     // slave points with master to left
     if (proc_index_x_ != 0) {
-        int mstrpe = mype - 1;
+        int mstrpe = Parallel::mype() - 1;
         int oldsize = slavepoints.size();
         if (proc_index_y_ == 0) {
             slavepoints.push_back(0);
@@ -319,7 +313,7 @@ void GenerateMesh::generatePie(
     // enumerate master points
     // master points with slave to right
     if (proc_index_x_ != num_proc_x_ - 1) {
-        int slvpe = mype + 1;
+        int slvpe = Parallel::mype() + 1;
         int oldsize = masterpoints.size();
         // special case:  origin as master for slave on PE 1
         if (proc_index_x_ == 0 && proc_index_y_ == 0) {
@@ -343,7 +337,7 @@ void GenerateMesh::generatePie(
     }
     // master points with slave above
     if (proc_index_y_ != num_proc_y_ - 1) {
-        int slvpe = mype + num_proc_x_;
+        int slvpe = Parallel::mype() + num_proc_x_;
         int oldsize = masterpoints.size();
         int p = (npy - 1) * npx;
         if (proc_index_y_ == 0) p -= npx - 1;
@@ -357,7 +351,7 @@ void GenerateMesh::generatePie(
     }
     // master point with slave at upper right
     if (proc_index_x_ != num_proc_x_ - 1 && proc_index_y_ != num_proc_y_ - 1) {
-        int slvpe = mype + num_proc_x_ + 1;
+        int slvpe = Parallel::mype() + num_proc_x_ + 1;
         int p = npx * npy - 1;
         if (proc_index_y_ == 0) p -= npx - 1;
         masterpoints.push_back(p);
@@ -379,9 +373,6 @@ void GenerateMesh::generateHex(
         std::vector<int>& masterslvpes,
         std::vector<int>& masterslvcounts,
         std::vector<int>& masterpoints) {
-
-    using Parallel::num_subregions;
-    using Parallel::mype;
 
     const int nz = nzones_x_ * nzones_y_;
     const int npx = nzones_x_ + 1;
@@ -463,7 +454,7 @@ void GenerateMesh::generateHex(
         } // for i
     } // for j
 
-    if (num_subregions == 1) return;
+    if (Parallel::num_subregions() == 1) return;
 
     // estimate upper bounds for sizes of slave/master arrays
     slavepoints.reserve((proc_index_y_ != 0) * 2 * npx +
@@ -474,7 +465,7 @@ void GenerateMesh::generateHex(
     // enumerate slave points
     // slave points with master at lower left
     if (proc_index_x_ != 0 && proc_index_y_ != 0) {
-        int mstrpe = mype - num_proc_x_ - 1;
+        int mstrpe = Parallel::mype() - num_proc_x_ - 1;
         slavepoints.push_back(0);
         slavepoints.push_back(1);
         slavemstrpes.push_back(mstrpe);
@@ -483,7 +474,7 @@ void GenerateMesh::generateHex(
     // slave points with master below
     if (proc_index_y_ != 0) {
         int p = 0;
-        int mstrpe = mype - num_proc_x_;
+        int mstrpe = Parallel::mype() - num_proc_x_;
         int oldsize = slavepoints.size();
         for (int i = 0; i < npx; ++i) {
             if (i == 0 && proc_index_x_ != 0) {
@@ -502,7 +493,7 @@ void GenerateMesh::generateHex(
     }  // if mypey != 0
     // slave points with master to left
     if (proc_index_x_ != 0) {
-        int mstrpe = mype - 1;
+        int mstrpe = Parallel::mype() - 1;
         int oldsize = slavepoints.size();
         for (int j = 0; j < npy; ++j) {
             if (j == 0 && proc_index_y_ != 0) continue;
@@ -521,7 +512,7 @@ void GenerateMesh::generateHex(
     // enumerate master points
     // master points with slave to right
     if (proc_index_x_ != num_proc_x_ - 1) {
-        int slvpe = mype + 1;
+        int slvpe = Parallel::mype() + 1;
         int oldsize = masterpoints.size();
         for (int j = 0; j < npy; ++j) {
             if (j == 0 && proc_index_y_ != 0) continue;
@@ -539,7 +530,7 @@ void GenerateMesh::generateHex(
     // master points with slave above
     if (proc_index_y_ != num_proc_y_ - 1) {
         int p = pbase[nzones_y_];
-        int slvpe = mype + num_proc_x_;
+        int slvpe = Parallel::mype() + num_proc_x_;
         int oldsize = masterpoints.size();
         for (int i = 0; i < npx; ++i) {
             if (i == 0 && proc_index_x_ != 0) {
@@ -558,7 +549,7 @@ void GenerateMesh::generateHex(
     }  // if mypey != numpey - 1
     // master points with slave at upper right
     if (proc_index_x_ != num_proc_x_ - 1 && proc_index_y_ != num_proc_y_ - 1) {
-        int slvpe = mype + num_proc_x_ + 1;
+        int slvpe = Parallel::mype() + num_proc_x_ + 1;
         masterpoints.push_back(np-2);
         masterpoints.push_back(np-1);
         masterslvpes.push_back(slvpe);
@@ -570,9 +561,6 @@ void GenerateMesh::generateHex(
 
 void GenerateMesh::calcPartitions() {
 
-    using Parallel::num_subregions;
-    using Parallel::mype;
-
     // pick numpex, numpey such that PE blocks are as close to square
     // as possible
     // we would like:  gnzx / numpex == gnzy / numpey,
@@ -583,23 +571,23 @@ void GenerateMesh::calcPartitions() {
     double ny = static_cast<double>(global_nzones_y_);
     bool swapflag = (nx > ny);
     if (swapflag) swap(nx, ny);
-    double n = sqrt(num_subregions * nx / ny);
+    double n = sqrt(Parallel::num_subregions() * nx / ny);
     // need to constrain n to be an integer with numpe % n == 0
     // try rounding n both up and down
     int n1 = floor(n + 1.e-12);
     n1 = max(n1, 1);
-    while (num_subregions % n1 != 0) --n1;
+    while (Parallel::num_subregions() % n1 != 0) --n1;
     int n2 = ceil(n - 1.e-12);
-    while (num_subregions % n2 != 0) ++n2;
+    while (Parallel::num_subregions() % n2 != 0) ++n2;
     // pick whichever of n1 and n2 gives blocks closest to square,
     // i.e. gives the shortest long side
-    double longside1 = max(nx / n1, ny / (num_subregions/n1));
-    double longside2 = max(nx / n2, ny / (num_subregions/n2));
+    double longside1 = max(nx / n1, ny / (Parallel::num_subregions()/n1));
+    double longside2 = max(nx / n2, ny / (Parallel::num_subregions()/n2));
     num_proc_x_ = (longside1 <= longside2 ? n1 : n2);
-    num_proc_y_ = num_subregions / num_proc_x_;
+    num_proc_y_ = Parallel::num_subregions() / num_proc_x_;
     if (swapflag) swap(num_proc_x_, num_proc_y_);
-    proc_index_x_ = mype % num_proc_x_;
-    proc_index_y_ = mype / num_proc_x_;
+    proc_index_x_ = Parallel::mype() % num_proc_x_;
+    proc_index_y_ = Parallel::mype() / num_proc_x_;
 
 }
 

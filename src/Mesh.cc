@@ -275,7 +275,7 @@ void Mesh::initParallel(
         const vector<int>& masterslvpes,
         const vector<int>& masterslvcounts,
         const vector<int>& masterpoints) {
-    if (Parallel::num_subregions == 1) return;
+    if (Parallel::num_subregions() == 1) return;
 
     num_mesg_send2master = slavemstrpes.size();
     map_master_pe2globale_pe = AbstractedMemory::alloc<int>(num_mesg_send2master);
@@ -315,7 +315,7 @@ void Mesh::writeMeshStats() {
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
-    if (Parallel::num_subregions > 1) gnump -= num_slaves;
+    if (Parallel::num_subregions() > 1) gnump -= num_slaves;
     int64_t gnumz = num_zones_;
     int64_t gnums = num_sides_;
     int64_t gnume = num_edges_;
@@ -728,7 +728,7 @@ void Mesh::parallelScatter(
 
 template <typename T>
 void Mesh::sumAcrossProcs(T* pvar) {
-    if (Parallel::num_subregions == 1) return;
+    if (Parallel::num_subregions() == 1) return;
 //    std::vector<T> prxvar(numprx);
     T* prxvar = AbstractedMemory::alloc<T>(num_proxies);
     parallelGather(pvar, &prxvar[0]);
@@ -764,7 +764,7 @@ void Mesh::sumToPoints(
         double* pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::num_subregions > 1)
+    if (Parallel::num_subregions() > 1)
         sumAcrossProcs(pvar);
 
 }
@@ -776,7 +776,7 @@ void Mesh::sumToPoints(
         double2* pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::num_subregions > 1)
+    if (Parallel::num_subregions() > 1)
         sumAcrossProcs(pvar);
 
 }

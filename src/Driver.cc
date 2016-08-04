@@ -68,8 +68,6 @@ Driver::~Driver() {
 }
 
 void Driver::run() {
-    using Parallel::mype;
-
     time = 0.0;
     cycle = 0;
 
@@ -77,7 +75,7 @@ void Driver::run() {
     hydro->writeEnergyCheck();
 
     double tbegin, tlast;
-    if (mype == 0) {
+    if (Parallel::mype() == 0) {
         // get starting timestamp
         struct timeval sbegin;
         gettimeofday(&sbegin, NULL);
@@ -98,7 +96,7 @@ void Driver::run() {
 
         time += dt;
 
-        if (mype == 0 &&
+        if (Parallel::mype() == 0 &&
                 (cycle == 1 || cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
@@ -113,11 +111,11 @@ void Driver::run() {
             cout << "dt limiter: " << msgdt << endl;
 
             tlast = tcurr;
-        } // if mype...
+        } // if Parallel::mype()...
 
     } // while cycle...
 
-    if (mype == 0) {
+    if (Parallel::mype() == 0) {
 
         // get stopping timestamp
         struct timeval send;
@@ -139,7 +137,7 @@ void Driver::run() {
         cout << "hydro cycle run time= " << setw(14) << runtime << endl;
         cout << "************************************" << endl;
 
-    } // if mype
+    } // if Parallel::mype()
 
     // do energy check
     hydro->writeEnergyCheck();
@@ -152,8 +150,6 @@ void Driver::run() {
 
 
 void Driver::calcGlobalDt() {
-
-    using Parallel::mype;
 
     // Save timestep from last cycle
     dtlast = dt;
@@ -197,13 +193,13 @@ void Driver::calcGlobalDt() {
     // if the global min isn't on this PE, get the right message
     if (pedt > 0) {
         const int tagmpi = 300;
-        if (mype == pedt) {
+        if (Parallel::mype() == pedt) {
             char cmsgdt[80];
             strncpy(cmsgdt, msgdt.c_str(), 80);
             MPI_Send(cmsgdt, 80, MPI_CHAR, 0, tagmpi,
                     MPI_COMM_WORLD);
         }
-        else if (mype == 0) {
+        else if (Parallel::mype() == 0) {
             char cmsgdt[80];
             MPI_Status status;
             MPI_Recv(cmsgdt, 80, MPI_CHAR, pedt, tagmpi,
@@ -215,7 +211,7 @@ void Driver::calcGlobalDt() {
 
     // if timestep was determined by hydro, report which PE
     // caused it
-    if (mype == 0 && msgdt.substr(0, 5) == "Hydro") {
+    if (Parallel::mype() == 0 && msgdt.substr(0, 5) == "Hydro") {
         ostringstream oss;
         oss << "PE " << pedt << ", " << msgdt;
         msgdt = oss.str();

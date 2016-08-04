@@ -32,14 +32,12 @@ void WriteXY::write(
         const double* ze,
         const double* zp) {
 
-    using Parallel::num_subregions;
-    using Parallel::mype;
     const int numz = mesh->num_zones_;
 
     int gnumz = numz;
     Parallel::globalSum(gnumz);
-    gnumz = (mype == 0 ? gnumz : 0);
-    vector<int> penumz(mype == 0 ? num_subregions : 0);
+    gnumz = (Parallel::mype() == 0 ? gnumz : 0);
+    vector<int> penumz(Parallel::mype() == 0 ? Parallel::num_subregions() : 0);
     Parallel::gather(numz, &penumz[0]);
 
     vector<double> gzr(gnumz), gze(gnumz), gzp(gnumz);
@@ -47,7 +45,7 @@ void WriteXY::write(
     Parallel::gatherv(&ze[0], numz, &gze[0], &penumz[0]);
     Parallel::gatherv(&zp[0], numz, &gzp[0], &penumz[0]);
 
-    if (mype == 0) {
+    if (Parallel::mype() == 0) {
         string xyname = basename + ".xy";
         ofstream ofs(xyname.c_str());
         ofs << scientific << setprecision(8);
@@ -65,7 +63,7 @@ void WriteXY::write(
         }
         ofs.close();
 
-    } // if mype
+    } // if Parallel::mype()
 
 }
 

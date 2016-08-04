@@ -599,8 +599,6 @@ void Hydro::resetDtHydro() {
 
 void Hydro::writeEnergyCheck() {
 
-    using Parallel::mype;
-    
     double ei = 0.;
     double ek = 0.;
     for (int sch = 0; sch < mesh->num_side_chunks; ++sch) {
@@ -623,7 +621,7 @@ void Hydro::writeEnergyCheck() {
     Parallel::globalSum(ei);
     Parallel::globalSum(ek);
 
-    if (mype == 0) {
+    if (Parallel::mype() == 0) {
         cout << scientific << setprecision(6);
         cout << "Energy check:  "
              << "total energy  = " << setw(14) << ei + ek << endl;

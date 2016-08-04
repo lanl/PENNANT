@@ -22,18 +22,13 @@
 #include "Vec2.hh"
 
 
-namespace Parallel {
+//Parallel::Parallel()
+//{
+//}
 
-// We're in serial mode, so only 1 PE.
-int num_subregions = 1;
-int mype = 0;
-MustEpochLauncher must_epoch_launcher;
-Context ctx_;
-HighLevelRuntime *runtime_;
-
-void init(InputParameters input_params,
+void Parallel::init(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime) {
-	  num_subregions = input_params.ntasks_;
+	  //num_subregions = input_params.ntasks_;
 
 	  ctx_ = ctx;
 	  runtime_ = runtime;
@@ -49,30 +44,30 @@ void init(InputParameters input_params,
 	    if((*it).kind() == Processor::LOC_PROC)
 	      num_loc_procs++;
 
-	  if(num_loc_procs < num_subregions) {
+	  if(num_loc_procs < num_subregions()) {
 	    printf("FATAL ERROR: This test uses a must epoch launcher, which requires\n");
 	    printf("  a separate Realm processor for each subregion.  %d of the necessary\n",
 		   num_loc_procs);
 	    printf("  %d are available.  Please rerun with '-ll:cpu %d'.\n",
-		   num_subregions, num_subregions);
+		   num_subregions(), num_subregions());
 	    exit(1);
 	  }
 
-	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions-1));
+	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions()-1));
 
 	  double zero = 0.0;
 	  DynamicCollective add_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions, AddReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions(), AddReductionOp::redop_id,
 						   &zero, sizeof(zero));
 
 	  TimeStep max;
 	  DynamicCollective min_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions, MinReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions(), MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
-	  std::vector<SPMDArgs> args(num_subregions);
+	  std::vector<SPMDArgs> args(num_subregions());
 
-	  for (int color = 0; color < num_subregions; color++) {
+	  for (int color = 0; color < num_subregions(); color++) {
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].shard_id_ = color;
@@ -86,17 +81,17 @@ void init(InputParameters input_params,
 }  // init
 
 
-void run() {
+void Parallel::run() {
 	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
 	  fm.wait_all_results();
 }
 
-void finalize() {
+void Parallel::finalize() {
 }  // final
 
 
-void globalMinLoc(double& x, int& xpe) {
-    if (num_subregions == 1) {
+void Parallel::globalMinLoc(double& x, int& xpe) {
+    if (num_subregions() == 1) {
         xpe = 0;
         return;
     }
@@ -115,8 +110,8 @@ void globalMinLoc(double& x, int& xpe) {
 }
 
 
-void globalSum(int& x) {
-    if (num_subregions == 1) return;
+void Parallel::globalSum(int& x) {
+    if (num_subregions() == 1) return;
 #ifdef USE_MPI
     int y;
     MPI_Allreduce(&x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -125,8 +120,8 @@ void globalSum(int& x) {
 }
 
 
-void globalSum(int64_t& x) {
-    if (num_subregions == 1) return;
+void Parallel::globalSum(int64_t& x) {
+    if (num_subregions() == 1) return;
 #ifdef USE_MPI
     int64_t y;
     MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
@@ -135,8 +130,8 @@ void globalSum(int64_t& x) {
 }
 
 
-void globalSum(double& x) {
-    if (num_subregions == 1) return;
+void Parallel::globalSum(double& x) {
+    if (num_subregions() == 1) return;
 #ifdef USE_MPI
     double y;
     MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -145,8 +140,8 @@ void globalSum(double& x) {
 }
 
 
-void gather(int x, int* y) {
-    if (num_subregions == 1) {
+void Parallel::gather(int x, int* y) {
+    if (num_subregions() == 1) {
         y[0] = x;
         return;
     }
@@ -156,8 +151,8 @@ void gather(int x, int* y) {
 }
 
 
-void scatter(const int* x, int& y) {
-    if (num_subregions == 1) {
+void Parallel::scatter(const int* x, int& y) {
+    if (num_subregions() == 1) {
         y = x[0];
         return;
     }
@@ -168,11 +163,11 @@ void scatter(const int* x, int& y) {
 
 
 template<typename T>
-void gathervImpl(
+void Parallel::gathervImpl(
         const T *x, const int numx,
         T* y, const int* numy) {
 
-    if (num_subregions == 1) {
+    if (num_subregions() == 1) {
         std::copy(x, x + numx, y);
         return;
     }
@@ -200,7 +195,7 @@ void gathervImpl(
 
 
 template<>
-void gatherv(
+void Parallel::gatherv(
         const double2 *x, const int numx,
         double2* y, const int* numy) {
     gathervImpl(x, numx, y, numy);
@@ -208,7 +203,7 @@ void gatherv(
 
 
 template<>
-void gatherv(
+void Parallel::gatherv(
         const double *x, const int numx,
         double* y, const int* numy) {
     gathervImpl(x, numx, y, numy);
@@ -216,12 +211,8 @@ void gatherv(
 
 
 template<>
-void gatherv(
+void Parallel::gatherv(
         const int *x, const int numx,
         int* y, const int* numy) {
     gathervImpl(x, numx, y, numy);
 }
-
-
-}  // namespace Parallel
-

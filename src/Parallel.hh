@@ -27,41 +27,42 @@ using namespace LegionRuntime::Accessor;
 
 // JPG TODO: make this an actual object
 
-namespace Parallel {
-    extern int num_subregions;           // number of MPI PEs in use
+class Parallel {
+public:
+    static int num_subregions() {return 1;}           // number of MPI PEs in use
                                 // (1 if not using MPI)
-    extern int mype;            // PE number for my rank
+    static int mype() { return 0; }            // PE number for my rank
                                 // (0 if not using MPI)
-	extern MustEpochLauncher must_epoch_launcher;
-	extern Context ctx_;
-	extern HighLevelRuntime *runtime_;
+	MustEpochLauncher must_epoch_launcher;
+	Context ctx_;
+	HighLevelRuntime *runtime_;
 
     void init(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
     void run();
     void finalize();
 
-    void globalMinLoc(double& x, int& xpe);
+    static void globalMinLoc(double& x, int& xpe);
                                 // find minimum over all PEs, and
                                 // report which PE had the minimum
-    void globalSum(int& x);     // find sum over all PEs - overloaded
-    void globalSum(int64_t& x);
-    void globalSum(double& x);
-    void gather(const int x, int* y);
+    static void globalSum(int& x);     // find sum over all PEs - overloaded
+    static void globalSum(int64_t& x);
+    static void globalSum(double& x);
+    static void gather(const int x, int* y);
                                 // gather list of ints from all PEs
-    void scatter(const int* x, int& y);
+    static void scatter(const int* x, int& y);
                                 // gather list of ints from all PEs
 
     template<typename T>
-    void gatherv(               // gather variable-length list
+    static void gatherv(               // gather variable-length list
             const T *x, const int numx,
             T* y, const int* numy);
     template<typename T>
-    void gathervImpl(           // helper function for gatherv
+    static void gathervImpl(           // helper function for gatherv
             const T *x, const int numx,
             T* y, const int* numy);
 
-}  // namespace Parallel
+};  // class Parallel
 
 
 struct SPMDArgs {

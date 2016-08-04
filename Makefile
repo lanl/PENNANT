@@ -62,7 +62,7 @@ src/Hydro.o: src/Hydro.hh src/Parallel.hh src/Memory.hh \
 	src/Mesh.hh src/PolyGas.hh src/TTS.hh src/QCS.hh src/HydroBC.hh \
 	src/InputParameters.hh
 src/HydroBC.o: src/HydroBC.hh src/Memory.hh src/Mesh.hh src/Vec2.hh
-src/InputFile.o: src/InputFile.hh src/Parallel.o
+src/InputFile.o: src/InputFile.hh
 src/Memory.o: src/Memory.hh
 src/Mesh.o: src/Mesh.hh src/Vec2.hh src/Memory.hh src/Parallel.hh \
 	src/WriteXY.hh src/ExportGold.hh src/GenerateMesh.hh \

@@ -60,14 +60,14 @@ void top_level_task(const Task *task,
     input_params.ntasks_ = ntasks;
     input_params.probname = probname;
 
-	Parallel::init(input_params, ctx, runtime);
+	//Parallel::init(input_params, ctx, runtime);
 
 	Driver drv(input_params);
 
     drv.run();
 
 	//Parallel::run();
-	Parallel::finalize();
+	//Parallel::finalize();
 
 }
 
