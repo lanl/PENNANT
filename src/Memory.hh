@@ -21,7 +21,7 @@
 // but they are abstracted here to make it easier to replace them
 // if needed.
 
-namespace Memory {
+namespace AbstractedMemory {
 
 template<typename T>
 inline T* alloc(const int count) {
@@ -33,6 +33,6 @@ inline void free(T* ptr) {
     std::free(ptr);
 }
 
-};  // namespace Memory
+};  // namespace AbstractedMemory
 
 #endif /* MEMORY_HH_ */

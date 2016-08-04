@@ -82,26 +82,26 @@ void Hydro::init() {
     const double* zvol = mesh->zone_vol_;
 
     // allocate arrays
-    pt_vel = Memory::alloc<double2>(nump);
-    pt_vel0 = Memory::alloc<double2>(nump);
-    pt_accel = Memory::alloc<double2>(nump);
-    pt_force = Memory::alloc<double2>(nump);
-    pt_weighted_mass = Memory::alloc<double>(nump);
-    crnr_weighted_mass = Memory::alloc<double>(nums);
-    zone_mass = Memory::alloc<double>(numz);
-    zone_rho = Memory::alloc<double>(numz);
-    zone_rho_pred = Memory::alloc<double>(numz);
-    zone_energy_density = Memory::alloc<double>(numz);
-    zone_energy_tot = Memory::alloc<double>(numz);
-    zone_work = Memory::alloc<double>(numz);
-    zone_work_rate = Memory::alloc<double>(numz);
-    zone_pres = Memory::alloc<double>(numz);
-    zone_sound_speed = Memory::alloc<double>(numz);
-    zone_dvel = Memory::alloc<double>(numz);
-    side_force_pres = Memory::alloc<double2>(nums);
-    side_force_visc = Memory::alloc<double2>(nums);
-    side_force_tts = Memory::alloc<double2>(nums);
-    crnr_force_tot = Memory::alloc<double2>(nums);
+    pt_vel = AbstractedMemory::alloc<double2>(nump);
+    pt_vel0 = AbstractedMemory::alloc<double2>(nump);
+    pt_accel = AbstractedMemory::alloc<double2>(nump);
+    pt_force = AbstractedMemory::alloc<double2>(nump);
+    pt_weighted_mass = AbstractedMemory::alloc<double>(nump);
+    crnr_weighted_mass = AbstractedMemory::alloc<double>(nums);
+    zone_mass = AbstractedMemory::alloc<double>(numz);
+    zone_rho = AbstractedMemory::alloc<double>(numz);
+    zone_rho_pred = AbstractedMemory::alloc<double>(numz);
+    zone_energy_density = AbstractedMemory::alloc<double>(numz);
+    zone_energy_tot = AbstractedMemory::alloc<double>(numz);
+    zone_work = AbstractedMemory::alloc<double>(numz);
+    zone_work_rate = AbstractedMemory::alloc<double>(numz);
+    zone_pres = AbstractedMemory::alloc<double>(numz);
+    zone_sound_speed = AbstractedMemory::alloc<double>(numz);
+    zone_dvel = AbstractedMemory::alloc<double>(numz);
+    side_force_pres = AbstractedMemory::alloc<double2>(nums);
+    side_force_visc = AbstractedMemory::alloc<double2>(nums);
+    side_force_tts = AbstractedMemory::alloc<double2>(nums);
+    crnr_force_tot = AbstractedMemory::alloc<double2>(nums);
 
     // initialize hydro vars
     for (int zch = 0; zch < numzch; ++zch) {

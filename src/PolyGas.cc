@@ -40,7 +40,7 @@ void PolyGas::calcStateAtHalf(
         const int zfirst,
         const int zlast) {
 
-    double* z0per = Memory::alloc<double>(zlast - zfirst);
+    double* z0per = AbstractedMemory::alloc<double>(zlast - zfirst);
 
     const double dth = 0.5 * dt;
 
@@ -59,7 +59,7 @@ void PolyGas::calcStateAtHalf(
         zp[z] += (z0per[z0] * src - zr0[z] * bulk * dv) / denom;
     }
 
-    Memory::free(z0per);
+    AbstractedMemory::free(z0per);
 }
 
 

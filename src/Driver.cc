@@ -20,7 +20,6 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Parallel.hh"
 #include "InputFile.hh"
 #include "Mesh.hh"
 #include "Hydro.hh"
@@ -47,7 +46,7 @@ void DriverTask::cpu_run(const Task *task,
 
 Driver::Driver(const InputFile* inp, const string& pname)
         : probname(pname) {
-    using Parallel::numpe;
+    using Parallel::num_subregions;
     using Parallel::mype;
 
     if (mype == 0) {
@@ -57,7 +56,7 @@ Driver::Driver(const InputFile* inp, const string& pname)
         cout << endl;
 
 #ifdef USE_MPI
-        cout << "Running on " << numpe << " MPI PE(s)" << endl;
+        cout << "Running on " << num_subregions << " MPI PE(s)" << endl;
 #endif
     }  // if mype == 0
 

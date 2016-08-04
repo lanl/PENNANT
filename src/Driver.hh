@@ -13,7 +13,7 @@
 #ifndef DRIVER_HH_
 #define DRIVER_HH_
 
-#include "main.hh"
+#include "Parallel.hh"
 
 #include <string>
 

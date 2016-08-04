@@ -10,17 +10,20 @@
  * license; see top-level LICENSE file for full license text.
  */
 
-#include "main.hh"
-
 #include <cstdlib>
 #include <string>
 #include <iostream>
+#include "math.h"
 
-#include "Parallel.hh"
 #include "Driver.hh"
+#include "InputFile.hh"
+#include "InputParameters.hh"
+#include "Parallel.hh"
 
 
 using namespace std;
+
+InputParameters parseInputFile(InputFile *inp);
 
 void top_level_task(const Task *task,
                     const std::vector<PhysicalRegion> &regions,
@@ -29,7 +32,7 @@ void top_level_task(const Task *task,
 	const InputArgs &command_args = HighLevelRuntime::get_input_args();
 
 	if (command_args.argc < 3) {
-        cerr << "Usage: pennant-circuit <ntasks> <filename>" << endl;
+        cerr << "Usage: pennant <ntasks> <filename>" << endl;
         exit(1);
     }
 	int ntasks = atoi(command_args.argv[1]);
@@ -44,13 +47,24 @@ void top_level_task(const Task *task,
     if (probname.substr(len - 4, 4) == ".pnt")
         probname = probname.substr(0, len - 4);
 
-	Parallel::init();
+    cout << "********************" << endl;
+    cout << "Running PENNANT v0.9" << endl;
+    cout << "********************" << endl;
+    cout << endl;
+
+    cout << "Running with " << ntasks << " Legion Tasks" << endl;
+
+    InputParameters input_params = parseInputFile(&inp);
+    input_params.ntasks_ = ntasks;
+    input_params.probname = probname;
+
+	Parallel::init(input_params, ctx, runtime);
 
     Driver drv(&inp, probname);
 
     drv.run();
 
-    Parallel::final();
+    Parallel::finalize();
 
 }
 
@@ -65,7 +79,85 @@ int main(int argc, char **argv)
 
 	TaskHelper::register_cpu_variants<DriverTask>();
 
+	Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
+
+	Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
+
+
 	return HighLevelRuntime::start(argc, argv);
 }
 
 
+
+InputParameters parseInputFile(InputFile *inp) {
+	InputParameters value;
+
+    value.cstop_ = inp->getInt("cstop", 999999);
+    value.tstop_ = inp->getDouble("tstop", 1.e99);
+    if (value.cstop_ == 999999 && value.tstop_ == 1.e99) {
+    	cerr << "Must specify either cstop or tstop" << endl;
+    	exit(1);
+    }
+    value.dtmax_ = inp->getDouble("dtmax", 1.e99);
+    value.dtinit_ = inp->getDouble("dtinit", 1.e99);
+    value.dtfac_ = inp->getDouble("dtfac", 1.2);
+    value.dtreport_ = inp->getInt("dtreport", 10);
+    value.chunk_size_ = inp->getInt("chunksize", 0);
+    if (value.chunk_size_ < 0) {
+        cerr << "Error: bad chunksize " << value.chunk_size_ << endl;
+        exit(1);
+    }
+
+    value.subregion_ = inp->getDoubleList("subregion", vector<double>());
+    if (value.subregion_.size() != 0 && value.subregion_.size() != 4) {
+        cerr << "Error:  subregion must have 4 entries" << endl;
+        exit(1);
+    }
+
+    value.write_xy_file_ = inp->getInt("writexy", 0);
+    value.write_gold_file_ = inp->getInt("writegold", 0);
+
+    value.meshtype_ = inp->getString("meshtype", "");
+    if (value.meshtype_.empty()) {
+        cerr << "Error:  must specify meshtype" << endl;
+        exit(1);
+    }
+    if (value.meshtype_ != "pie" &&
+    		value.meshtype_ != "rect" &&
+			value.meshtype_ != "hex") {
+        cerr << "Error:  invalid meshtype " << value.meshtype_ << endl;
+        exit(1);
+    }
+    vector<double> params =
+            inp->getDoubleList("meshparams", vector<double>());
+    if (params.empty()) {
+        cerr << "Error:  must specify meshparams" << endl;
+        exit(1);
+    }
+    if (params.size() > 4) {
+        cerr << "Error:  meshparams must have <= 4 values" << endl;
+        exit(1);
+    }
+
+    value.nzones_x_ = params[0];
+    value.nzones_y_ = (params.size() >= 2 ? params[1] : value.nzones_x_);
+    if (value.meshtype_ != "pie")
+    	value.len_x_ = (params.size() >= 3 ? params[2] : 1.0);
+    else
+        // convention:  x = theta, y = r
+    	value.len_x_ = (params.size() >= 3 ? params[2] : 90.0)
+                * M_PI / 180.0;
+    value.len_y_ = (params.size() >= 4 ? params[3] : 1.0);
+
+    if (value.nzones_x_ <= 0 || value.nzones_y_ <= 0 || value.len_x_ <= 0. || value.len_y_ <= 0. ) {
+        cerr << "Error:  meshparams values must be positive" << endl;
+        exit(1);
+    }
+    if (value.meshtype_ == "pie" && value.len_x_ >= 2. * M_PI) {
+        cerr << "Error:  meshparams theta must be < 360" << endl;
+        exit(1);
+    }
+
+
+	return value;
+}

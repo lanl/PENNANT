@@ -32,14 +32,14 @@ void WriteXY::write(
         const double* ze,
         const double* zp) {
 
-    using Parallel::numpe;
+    using Parallel::num_subregions;
     using Parallel::mype;
     const int numz = mesh->num_zones_;
 
     int gnumz = numz;
     Parallel::globalSum(gnumz);
     gnumz = (mype == 0 ? gnumz : 0);
-    vector<int> penumz(mype == 0 ? numpe : 0);
+    vector<int> penumz(mype == 0 ? num_subregions : 0);
     Parallel::gather(numz, &penumz[0]);
 
     vector<double> gzr(gnumz), gze(gnumz), gzp(gnumz);

@@ -24,7 +24,7 @@ HydroBC::HydroBC(
         const vector<int>& mbp)
     : mesh(msh), numb(mbp.size()), vfix(v) {
 
-    mapbp = Memory::alloc<int>(numb);
+    mapbp = AbstractedMemory::alloc<int>(numb);
     copy(mbp.begin(), mbp.end(), mapbp);
 
     mesh->getPlaneChunks(numb, mapbp, pchbfirst, pchblast);

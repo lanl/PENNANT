@@ -85,10 +85,10 @@ void Mesh::init() {
 
     // copy cell sizes to mesh
 
-//    zone_npts_ = Memory::alloc<int>(num_zones_);
+//    zone_npts_ = AbstractedMemory::alloc<int>(num_zones_);
 //    copy(cellsize.begin(), cellsize.end(), zone_npts_);
 
-    zone_pts_ptr_ = Memory::alloc<int>(num_zones_+1);
+    zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
     copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
 
     // populate maps:
@@ -121,26 +121,26 @@ void Mesh::init() {
     writeMeshStats();
 
     // allocate remaining arrays
-    pt_x_ = Memory::alloc<double2>(num_pts_);
-    edge_x = Memory::alloc<double2>(num_edges_);
-    zone_x_ = Memory::alloc<double2>(num_zones_);
-    pt_x0 = Memory::alloc<double2>(num_pts_);
-    pt_x_pred = Memory::alloc<double2>(num_pts_);
-    edge_x_pred = Memory::alloc<double2>(num_edges_);
-    zone_x_pred = Memory::alloc<double2>(num_zones_);
-    side_area_ = Memory::alloc<double>(num_sides_);
-    side_vol_ = Memory::alloc<double>(num_sides_);
-    zone_area_ = Memory::alloc<double>(num_zones_);
-    zone_vol_ = Memory::alloc<double>(num_zones_);
-    side_area_pred = Memory::alloc<double>(num_sides_);
-    side_vol_pred = Memory::alloc<double>(num_sides_);
-    zone_area_pred = Memory::alloc<double>(num_zones_);
-    zone_vol_pred = Memory::alloc<double>(num_zones_);
-    zone_vol0 = Memory::alloc<double>(num_zones_);
-    side_surfp = Memory::alloc<double2>(num_sides_);
-    edge_len = Memory::alloc<double>(num_edges_);
-    zone_dl = Memory::alloc<double>(num_zones_);
-    side_mass_frac = Memory::alloc<double>(num_sides_);
+    pt_x_ = AbstractedMemory::alloc<double2>(num_pts_);
+    edge_x = AbstractedMemory::alloc<double2>(num_edges_);
+    zone_x_ = AbstractedMemory::alloc<double2>(num_zones_);
+    pt_x0 = AbstractedMemory::alloc<double2>(num_pts_);
+    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts_);
+    edge_x_pred = AbstractedMemory::alloc<double2>(num_edges_);
+    zone_x_pred = AbstractedMemory::alloc<double2>(num_zones_);
+    side_area_ = AbstractedMemory::alloc<double>(num_sides_);
+    side_vol_ = AbstractedMemory::alloc<double>(num_sides_);
+    zone_area_ = AbstractedMemory::alloc<double>(num_zones_);
+    zone_vol_ = AbstractedMemory::alloc<double>(num_zones_);
+    side_area_pred = AbstractedMemory::alloc<double>(num_sides_);
+    side_vol_pred = AbstractedMemory::alloc<double>(num_sides_);
+    zone_area_pred = AbstractedMemory::alloc<double>(num_zones_);
+    zone_vol_pred = AbstractedMemory::alloc<double>(num_zones_);
+    zone_vol0 = AbstractedMemory::alloc<double>(num_zones_);
+    side_surfp = AbstractedMemory::alloc<double2>(num_sides_);
+    edge_len = AbstractedMemory::alloc<double>(num_edges_);
+    zone_dl = AbstractedMemory::alloc<double>(num_zones_);
+    side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
     // do a few initial calculations
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
@@ -169,9 +169,9 @@ void Mesh::initSideMappingArrays(
         const vector<int>& cellstart,
         const vector<int>& cellnodes) {
 
-    map_side2pt1_ = Memory::alloc<int>(num_sides_);
+    map_side2pt1_ = AbstractedMemory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
-    map_side2zone_  = Memory::alloc<int>(num_sides_);
+    map_side2zone_  = AbstractedMemory::alloc<int>(num_sides_);
 
     for (int z = 0; z < num_zones_; ++z) {
         int sbase = cellstart[z];
@@ -190,7 +190,7 @@ void Mesh::initEdgeMappingArrays() {
 
     vector<vector<int> > edgepp(num_pts_), edgepe(num_pts_);
 
-    map_side2edge_ = Memory::alloc<int>(num_sides_);
+    map_side2edge_ = AbstractedMemory::alloc<int>(num_sides_);
 
     int e = 0;
     for (int s = 0; s < num_sides_; ++s) {
@@ -259,8 +259,8 @@ void Mesh::populateChunks() {
 
 
 void Mesh::populateInverseMap() {
-    map_pt2crn_first = Memory::alloc<int>(num_pts_);
-    map_crn2crn_next = Memory::alloc<int>(num_sides_);
+    map_pt2crn_first = AbstractedMemory::alloc<int>(num_pts_);
+    map_crn2crn_next = AbstractedMemory::alloc<int>(num_sides_);
 
     vector<pair<int, int> > pcpair(num_sides_);
     for (int c = 0; c < num_corners_; ++c)
@@ -290,36 +290,36 @@ void Mesh::initParallel(
         const vector<int>& masterslvpes,
         const vector<int>& masterslvcounts,
         const vector<int>& masterpoints) {
-    if (Parallel::numpe == 1) return;
+    if (Parallel::num_subregions == 1) return;
 
     num_mesg_send2master = slavemstrpes.size();
-    map_master_pe2globale_pe = Memory::alloc<int>(num_mesg_send2master);
+    map_master_pe2globale_pe = AbstractedMemory::alloc<int>(num_mesg_send2master);
     copy(slavemstrpes.begin(), slavemstrpes.end(), map_master_pe2globale_pe);
-    master_pe_num_slaves = Memory::alloc<int>(num_mesg_send2master);
+    master_pe_num_slaves = AbstractedMemory::alloc<int>(num_mesg_send2master);
     copy(slavemstrcounts.begin(), slavemstrcounts.end(), master_pe_num_slaves);
-    map_master_pe2slave1 = Memory::alloc<int>(num_mesg_send2master);
+    map_master_pe2slave1 = AbstractedMemory::alloc<int>(num_mesg_send2master);
     int count = 0;
     for (int mstrpe = 0; mstrpe < num_mesg_send2master; ++mstrpe) {
         map_master_pe2slave1[mstrpe] = count;
         count += master_pe_num_slaves[mstrpe];
     }
     num_slaves = slavepoints.size();
-    map_slave2pt = Memory::alloc<int>(num_slaves);
+    map_slave2pt = AbstractedMemory::alloc<int>(num_slaves);
     copy(slavepoints.begin(), slavepoints.end(), map_slave2pt);
 
     num_slave_pes = masterslvpes.size();
-    map_slave_pe2global_pe = Memory::alloc<int>(num_slave_pes);
+    map_slave_pe2global_pe = AbstractedMemory::alloc<int>(num_slave_pes);
     copy(masterslvpes.begin(), masterslvpes.end(), map_slave_pe2global_pe);
-    slave_pe_num_prox = Memory::alloc<int>(num_slave_pes);
+    slave_pe_num_prox = AbstractedMemory::alloc<int>(num_slave_pes);
     copy(masterslvcounts.begin(), masterslvcounts.end(), slave_pe_num_prox);
-    map_slave_pe2prox1 = Memory::alloc<int>(num_slave_pes);
+    map_slave_pe2prox1 = AbstractedMemory::alloc<int>(num_slave_pes);
     count = 0;
     for (int slvpe = 0; slvpe < num_slave_pes; ++slvpe) {
         map_slave_pe2prox1[slvpe] = count;
         count += slave_pe_num_prox[slvpe];
     }
     num_proxies = masterpoints.size();
-    map_prox2master_pt = Memory::alloc<int>(num_proxies);
+    map_prox2master_pt = AbstractedMemory::alloc<int>(num_proxies);
     copy(masterpoints.begin(), masterpoints.end(), map_prox2master_pt);
 
 }
@@ -330,7 +330,7 @@ void Mesh::writeMeshStats() {
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
-    if (Parallel::numpe > 1) gnump -= num_slaves;
+    if (Parallel::num_subregions > 1) gnump -= num_slaves;
     int64_t gnumz = num_zones_;
     int64_t gnums = num_sides_;
     int64_t gnume = num_edges_;
@@ -616,12 +616,12 @@ void Mesh::parallelGather(
     const int tagmpi = 100;
     const int type_size = sizeof(T);
 //    std::vector<T> slvvar(numslv);
-    T* slvvar = Memory::alloc<T>(num_slaves);
+    T* slvvar = AbstractedMemory::alloc<T>(num_slaves);
 
     // Post receives for incoming messages from slaves.
     // Store results in proxy buffer.
 //    vector<MPI_Request> request(numslvpe);
-    MPI_Request* request = Memory::alloc<MPI_Request>(num_slave_pes);
+    MPI_Request* request = AbstractedMemory::alloc<MPI_Request>(num_slave_pes);
     for (int slvpe = 0; slvpe < num_slave_pes; ++slvpe) {
         int pe = map_slave_pe2global_pe[slvpe];
         int nprx = slave_pe_num_prox[slvpe];
@@ -647,7 +647,7 @@ void Mesh::parallelGather(
 
     // Wait for all receives to complete.
 //    vector<MPI_Status> status(numslvpe);
-    MPI_Status* status = Memory::alloc<MPI_Status>(num_slave_pes);
+    MPI_Status* status = AbstractedMemory::alloc<MPI_Status>(num_slave_pes);
     int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
@@ -656,9 +656,9 @@ void Mesh::parallelGather(
         exit(1);
     }
 
-    Memory::free(slvvar);
-    Memory::free(request);
-    Memory::free(status);
+    AbstractedMemory::free(slvvar);
+    AbstractedMemory::free(request);
+    AbstractedMemory::free(status);
 #endif
 }
 
@@ -694,12 +694,12 @@ void Mesh::parallelScatter(
     const int tagmpi = 200;
     const int type_size = sizeof(T);
 //    std::vector<T> slvvar(numslv);
-    T* slvvar = Memory::alloc<T>(num_slaves);
+    T* slvvar = AbstractedMemory::alloc<T>(num_slaves);
 
     // Post receives for incoming messages from masters.
     // Store results in slave buffer.
 //    vector<MPI_Request> request(nummstrpe);
-    MPI_Request* request = Memory::alloc<MPI_Request>(num_mesg_send2master);
+    MPI_Request* request = AbstractedMemory::alloc<MPI_Request>(num_mesg_send2master);
     for (int mstrpe = 0; mstrpe < num_mesg_send2master; ++mstrpe) {
         int pe = map_master_pe2globale_pe[mstrpe];
         int nslv = master_pe_num_slaves[mstrpe];
@@ -719,7 +719,7 @@ void Mesh::parallelScatter(
 
     // Wait for all receives to complete.
 //    vector<MPI_Status> status(nummstrpe);
-    MPI_Status* status = Memory::alloc<MPI_Status>(num_mesg_send2master);
+    MPI_Status* status = AbstractedMemory::alloc<MPI_Status>(num_mesg_send2master);
     int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
@@ -734,22 +734,22 @@ void Mesh::parallelScatter(
         pvar[p] = slvvar[slv];
     }
 
-    Memory::free(slvvar);
-    Memory::free(request);
-    Memory::free(status);
+    AbstractedMemory::free(slvvar);
+    AbstractedMemory::free(request);
+    AbstractedMemory::free(status);
 #endif
 }
 
 
 template <typename T>
 void Mesh::sumAcrossProcs(T* pvar) {
-    if (Parallel::numpe == 1) return;
+    if (Parallel::num_subregions == 1) return;
 //    std::vector<T> prxvar(numprx);
-    T* prxvar = Memory::alloc<T>(num_proxies);
+    T* prxvar = AbstractedMemory::alloc<T>(num_proxies);
     parallelGather(pvar, &prxvar[0]);
     parallelSum(pvar, &prxvar[0]);
     parallelScatter(pvar, &prxvar[0]);
-    Memory::free(prxvar);
+    AbstractedMemory::free(prxvar);
 }
 
 
@@ -779,7 +779,7 @@ void Mesh::sumToPoints(
         double* pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::numpe > 1)
+    if (Parallel::num_subregions > 1)
         sumAcrossProcs(pvar);
 
 }
@@ -791,7 +791,7 @@ void Mesh::sumToPoints(
         double2* pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::numpe > 1)
+    if (Parallel::num_subregions > 1)
         sumAcrossProcs(pvar);
 
 }

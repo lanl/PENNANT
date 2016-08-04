@@ -41,12 +41,12 @@ void QCS::calcForce(
     int clast = slast;
 
     // declare temporary variables
-    double* c0area = Memory::alloc<double>(clast - cfirst);
-    double* c0evol = Memory::alloc<double>(clast - cfirst);
-    double* c0du = Memory::alloc<double>(clast - cfirst);
-    double* c0div = Memory::alloc<double>(clast - cfirst);
-    double* c0cos = Memory::alloc<double>(clast - cfirst);
-    double2* c0qe = Memory::alloc<double2>(2 * (clast - cfirst));
+    double* c0area = AbstractedMemory::alloc<double>(clast - cfirst);
+    double* c0evol = AbstractedMemory::alloc<double>(clast - cfirst);
+    double* c0du = AbstractedMemory::alloc<double>(clast - cfirst);
+    double* c0div = AbstractedMemory::alloc<double>(clast - cfirst);
+    double* c0cos = AbstractedMemory::alloc<double>(clast - cfirst);
+    double2* c0qe = AbstractedMemory::alloc<double2>(2 * (clast - cfirst));
 
     // [1] Find the right, left, top, bottom  edges to use for the
     //     limiters
@@ -76,12 +76,12 @@ void QCS::calcForce(
     // [6] Set velocity difference to use to compute timestep
     setVelDiff(sfirst, slast);
 
-    Memory::free(c0area);
-    Memory::free(c0evol);
-    Memory::free(c0du);
-    Memory::free(c0div);
-    Memory::free(c0cos);
-    Memory::free(c0qe);
+    AbstractedMemory::free(c0area);
+    AbstractedMemory::free(c0evol);
+    AbstractedMemory::free(c0du);
+    AbstractedMemory::free(c0div);
+    AbstractedMemory::free(c0cos);
+    AbstractedMemory::free(c0qe);
 }
 
 
@@ -114,7 +114,7 @@ void QCS::setCornerDiv(
     int zfirst = mesh->map_side2zone_[sfirst];
     int zlast = (slast < nums ? mesh->map_side2zone_[slast] : numz);
 
-    double2* z0uc = Memory::alloc<double2>(zlast - zfirst);
+    double2* z0uc = AbstractedMemory::alloc<double2>(zlast - zfirst);
     double2 up0, up1, up2, up3;
     double2 xp0, xp1, xp2, xp3;
 
@@ -208,7 +208,7 @@ void QCS::setCornerDiv(
         c0du[c0]   = (c0div[c0] < 0.0 ? du   : 0.);
     }  // for s
 
-    Memory::free(z0uc);
+    AbstractedMemory::free(z0uc);
 }
 
 
@@ -231,7 +231,7 @@ void QCS::setQCnForce(
     int cfirst = sfirst;
     int clast = slast;
 
-    double* c0rmu = Memory::alloc<double>(clast - cfirst);
+    double* c0rmu = AbstractedMemory::alloc<double>(clast - cfirst);
 
     const double gammap1 = qgamma + 1.0;
 
@@ -272,7 +272,7 @@ void QCS::setQCnForce(
 
     } // for s
 
-    Memory::free(c0rmu);
+    AbstractedMemory::free(c0rmu);
 }
 
 
@@ -291,7 +291,7 @@ void QCS::setForce(
     int cfirst = sfirst;
     int clast = slast;
 
-    double* c0w = Memory::alloc<double>(clast - cfirst);
+    double* c0w = AbstractedMemory::alloc<double>(clast - cfirst);
 
     // [5.1] Preparation of extra variables
     #pragma ivdep
@@ -320,7 +320,7 @@ void QCS::setForce(
 
     } // for s
 
-    Memory::free(c0w);
+    AbstractedMemory::free(c0w);
 }
 
 
@@ -340,7 +340,7 @@ void QCS::setVelDiff(
     double* zdu = hydro->zone_dvel;
     const double* elen = mesh->edge_len;
 
-    double* z0tmp = Memory::alloc<double>(zlast - zfirst);
+    double* z0tmp = AbstractedMemory::alloc<double>(zlast - zfirst);
 
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
@@ -364,6 +364,6 @@ void QCS::setVelDiff(
         zdu[z] = q1 * zss[z] + 2. * q2 * z0tmp[z0];
     }
 
-    Memory::free(z0tmp);
+    AbstractedMemory::free(z0tmp);
 }
 

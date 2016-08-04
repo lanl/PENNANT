@@ -63,11 +63,12 @@ src/InputFile.o: src/InputFile.hh src/Parallel.o
 src/Memory.o: src/Memory.hh
 src/Mesh.o: src/Mesh.hh src/Vec2.hh src/Memory.hh src/Parallel.hh src/InputFile.hh \
 	src/WriteXY.hh src/ExportGold.hh src/GenerateMesh.hh src/Vec2.hh
-src/Parallel.o: src/Parallel.hh src/Vec2.hh
+src/Parallel.o: src/Parallel.hh src/Vec2.hh src/AddReductionOp.hh src/Driver.hh \
+	src/MinReductionOp.hh
 src/PolyGas.o: src/PolyGas.hh src/Memory.hh src/InputFile.hh src/Hydro.hh src/Mesh.hh \
 	src/Vec2.hh
 src/QCS.o: src/QCS.hh src/Memory.hh src/InputFile.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh
 src/TTS.o: src/TTS.hh src/Vec2.hh src/InputFile.hh src/Mesh.hh src/Hydro.hh
 src/WriteXY.o: src/WriteXY.hh src/Parallel.hh src/Mesh.hh
-src/main.o: src/main.hh src/Parallel.hh src/InputFile.hh src/Driver.hh
+src/main.o: src/Parallel.hh src/InputParameters.hh src/Driver.hh src/InputFile.hh
 

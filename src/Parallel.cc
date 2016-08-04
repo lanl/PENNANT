@@ -16,41 +16,78 @@
 #include <algorithm>
 #include <numeric>
 
+#include "AddReductionOp.hh"
+#include "Driver.hh"
+#include "MinReductionOp.hh"
 #include "Vec2.hh"
 
 
 namespace Parallel {
 
-#ifdef USE_MPI
-// We're running under MPI, so set these to dummy values
-// that will be overwritten on MPI_Init.
-int numpe = 0;
-int mype = -1;
-#else
 // We're in serial mode, so only 1 PE.
-int numpe = 1;
+int num_subregions = 1;
 int mype = 0;
-#endif
 
 
-void init() {
-#ifdef USE_MPI
-    MPI_Init(0, 0);
-    MPI_Comm_size(MPI_COMM_WORLD, &numpe);
-    MPI_Comm_rank(MPI_COMM_WORLD, &mype);
-#endif
+void init(InputParameters input_params,
+		Context ctx, HighLevelRuntime *runtime) {
+	  num_subregions = input_params.ntasks_;
+
+	  // we're going to use a must epoch launcher, so we need at least as many
+	  //  processors in our system as we have subregions - check that now
+	  std::set<Processor> all_procs;
+	  Realm::Machine::get_machine().get_all_processors(all_procs);
+	  int num_loc_procs = 0;
+	  for(std::set<Processor>::const_iterator it = all_procs.begin();
+	      it != all_procs.end();
+	      it++)
+	    if((*it).kind() == Processor::LOC_PROC)
+	      num_loc_procs++;
+
+	  if(num_loc_procs < num_subregions) {
+	    printf("FATAL ERROR: This test uses a must epoch launcher, which requires\n");
+	    printf("  a separate Realm processor for each subregion.  %d of the necessary\n",
+		   num_loc_procs);
+	    printf("  %d are available.  Please rerun with '-ll:cpu %d'.\n",
+		   num_subregions, num_subregions);
+	    exit(1);
+	  }
+
+	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions-1));
+
+	  double zero = 0.0;
+	  DynamicCollective add_reduction =
+		runtime->create_dynamic_collective(ctx, num_subregions, AddReductionOp::redop_id,
+						   &zero, sizeof(zero));
+
+	  TimeStep max;
+	  DynamicCollective min_reduction =
+		runtime->create_dynamic_collective(ctx, num_subregions, MinReductionOp::redop_id,
+						   &max, sizeof(max));
+
+	  MustEpochLauncher must_epoch_launcher;
+	  std::vector<SPMDArgs> args(num_subregions);
+
+	  for (int color = 0; color < num_subregions; color++) {
+		  args[color].add_reduction_ = add_reduction;
+		  args[color].min_reduction_ = min_reduction;
+		  args[color].shard_id_ = color;
+		  args[color].input_params_ = input_params;
+
+		  DriverTask driver_launcher(&(args[color]));
+		  DomainPoint point(color);
+		  must_epoch_launcher.add_single_task(point, driver_launcher);
+	  }
+
 }  // init
 
 
-void final() {
-#ifdef USE_MPI
-    MPI_Finalize();
-#endif
+void finalize() {
 }  // final
 
 
 void globalMinLoc(double& x, int& xpe) {
-    if (numpe == 1) {
+    if (num_subregions == 1) {
         xpe = 0;
         return;
     }
@@ -70,7 +107,7 @@ void globalMinLoc(double& x, int& xpe) {
 
 
 void globalSum(int& x) {
-    if (numpe == 1) return;
+    if (num_subregions == 1) return;
 #ifdef USE_MPI
     int y;
     MPI_Allreduce(&x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -80,7 +117,7 @@ void globalSum(int& x) {
 
 
 void globalSum(int64_t& x) {
-    if (numpe == 1) return;
+    if (num_subregions == 1) return;
 #ifdef USE_MPI
     int64_t y;
     MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
@@ -90,7 +127,7 @@ void globalSum(int64_t& x) {
 
 
 void globalSum(double& x) {
-    if (numpe == 1) return;
+    if (num_subregions == 1) return;
 #ifdef USE_MPI
     double y;
     MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -100,7 +137,7 @@ void globalSum(double& x) {
 
 
 void gather(int x, int* y) {
-    if (numpe == 1) {
+    if (num_subregions == 1) {
         y[0] = x;
         return;
     }
@@ -111,7 +148,7 @@ void gather(int x, int* y) {
 
 
 void scatter(const int* x, int& y) {
-    if (numpe == 1) {
+    if (num_subregions == 1) {
         y = x[0];
         return;
     }
@@ -126,7 +163,7 @@ void gathervImpl(
         const T *x, const int numx,
         T* y, const int* numy) {
 
-    if (numpe == 1) {
+    if (num_subregions == 1) {
         std::copy(x, x + numx, y);
         return;
     }
@@ -135,13 +172,13 @@ void gathervImpl(
     int sendcount = type_size * numx;
     std::vector<int> recvcount, disp;
     if (mype == 0) {
-        recvcount.resize(numpe);
-        for (int pe = 0; pe < numpe; ++pe) {
+        recvcount.resize(num_subregions);
+        for (int pe = 0; pe < num_subregions; ++pe) {
             recvcount[pe] = type_size * numy[pe];
         }
         // exclusive scan isn't available in the standard library,
         // so we use an inclusive scan and displace it by one place
-        disp.resize(numpe + 1);
+        disp.resize(num_subregions + 1);
         std::partial_sum(recvcount.begin(), recvcount.end(), &disp[1]);
     } // if mype
 

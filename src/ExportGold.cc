@@ -89,7 +89,7 @@ void ExportGold::writeGeoFile(
         const string& basename,
         const int cycle,
         const double time) {
-    using Parallel::numpe;
+    using Parallel::num_subregions;
     using Parallel::mype;
 
     // open file
@@ -125,9 +125,9 @@ void ExportGold::writeGeoFile(
 
     int gnump = nump;
     Parallel::globalSum(gnump);
-    vector<int> penump(mype == 0 ? numpe : 0);
+    vector<int> penump(mype == 0 ? num_subregions : 0);
     Parallel::gather(nump, &penump[0]);
-    vector<int> peoffset(mype == 0 ? numpe + 1 : 1);
+    vector<int> peoffset(mype == 0 ? num_subregions + 1 : 1);
     partial_sum(penump.begin(), penump.end(), &peoffset[1]);
     int offset;
     Parallel::scatter(&peoffset[0], offset);
@@ -155,9 +155,9 @@ void ExportGold::writeGeoFile(
     const int nothers = others.size();
 
     if (mype == 0) {
-        pentris.resize(numpe);
-        penquads.resize(numpe);
-        penothers.resize(numpe);
+        pentris.resize(num_subregions);
+        penquads.resize(num_subregions);
+        penothers.resize(num_subregions);
     }
     Parallel::gather(ntris, &pentris[0]);
     Parallel::gather(nquads, &penquads[0]);
@@ -167,14 +167,14 @@ void ExportGold::writeGeoFile(
     gnquads = accumulate(penquads.begin(), penquads.end(), 0);
     gnothers = accumulate(penothers.begin(), penothers.end(), 0);
 
-    vector<int> pesizes(mype == 0 ? numpe : 0);
+    vector<int> pesizes(mype == 0 ? num_subregions : 0);
 
     // gather triangle info to PE 0
     vector<int> trip(3 * ntris);
     vector<int> gtris(gntris), gtrip(3 * gntris);
     Parallel::gatherv(&tris[0], ntris, &gtris[0], &pentris[0]);
     if (mype == 0) {
-        for (int pe = 0; pe < numpe; ++pe)
+        for (int pe = 0; pe < num_subregions; ++pe)
             pesizes[pe] = pentris[pe] * 3;
     }
     for (int t = 0; t < ntris; ++t) {
@@ -204,7 +204,7 @@ void ExportGold::writeGeoFile(
     vector<int> gquads(gnquads), gquadp(4 * gnquads);
     Parallel::gatherv(&quads[0], nquads, &gquads[0], &penquads[0]);
     if (mype == 0) {
-        for (int pe = 0; pe < numpe; ++pe)
+        for (int pe = 0; pe < num_subregions; ++pe)
             pesizes[pe] = penquads[pe] * 4;
     }
     for (int q = 0; q < nquads; ++q) {
