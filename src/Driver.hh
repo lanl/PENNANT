@@ -25,7 +25,7 @@ class Hydro;
 
 class DriverTask : public TaskLauncher {
 public:
-	DriverTask(SPMDArgs *args);
+	DriverTask(void *args, const size_t &size);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = DRIVER_TASK_ID;
 	static const bool CPU_BASE_LEAF = false;

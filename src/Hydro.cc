@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <limits>
 
 #include "Parallel.hh"
 #include "Memory.hh"
@@ -112,15 +113,18 @@ void Hydro::init() {
         fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
         fill(&zone_work_rate[zfirst], &zone_work_rate[zlast], 0.);
 
-        const vector<double>& subrgn = mesh->subregion_;
-        if (!subrgn.empty()) {
+        const double& subrgn_xmin = mesh->subregion_xmin_;
+        const double& subrgn_xmax = mesh->subregion_xmax_;
+        const double& subrgn_ymin = mesh->subregion_ymin_;
+        const double& subrgn_ymax = mesh->subregion_ymax_;
+        if (subrgn_xmin != std::numeric_limits<double>::max()) {
             const double eps = 1.e-12;
             #pragma ivdep
             for (int z = zfirst; z < zlast; ++z) {
-                if (zx[z].x > (subrgn[0] - eps) &&
-                    zx[z].x < (subrgn[1] + eps) &&
-                    zx[z].y > (subrgn[2] - eps) &&
-                    zx[z].y < (subrgn[3] + eps)) {
+                if (zx[z].x > (subrgn_xmin - eps) &&
+                    zx[z].x < (subrgn_xmax + eps) &&
+                    zx[z].y > (subrgn_ymin - eps) &&
+                    zx[z].y < (subrgn_ymax + eps)) {
                     zone_rho[z] = rho_init_sub;
                     zone_energy_density[z] = energy_init_sub;
                 }

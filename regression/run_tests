@@ -1,10 +1,6 @@
 #!/bin/bash
 
-rm -rf /home/jgraham/local/regression/pennant/leblanc
-rm -rf /home/jgraham/local/regression/pennant/noh
-rm -rf /home/jgraham/local/regression/pennant/nohsmall
-rm -rf /home/jgraham/local/regression/pennant/sedov
-rm -rf /home/jgraham/local/regression/pennant/sedovsmall
+rm -rf /home/jgraham/local/regression/pennant/
 
 ./leblanc.mac
 ./noh.mac

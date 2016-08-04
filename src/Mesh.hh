@@ -30,9 +30,10 @@ public:
 
     // parameters
     int chunk_size_;                 // max size for processing chunks
-    std::vector<double> subregion_; // bounding box for a subregion
-                                   // if nonempty, should have 4 entries:
-                                   // xmin, xmax, ymin, ymax
+    double subregion_xmin_; 		   // bounding box for a subregion
+    double subregion_xmax_; 		   // if xmin != std::numeric_limits<double>::max(),
+    double subregion_ymin_;         // should have 4 entries:
+    double subregion_ymax_; 		   // xmin, xmax, ymin, ymax
     bool write_xy_file_;                  // flag:  write .xy file?
     bool write_gold_file_;                // flag:  write Ensight file?
 

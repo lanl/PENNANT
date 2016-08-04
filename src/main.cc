@@ -11,8 +11,9 @@
  */
 
 #include <cstdlib>
-#include <string>
 #include <iostream>
+#include <limits>
+#include <string>
 #include "math.h"
 
 #include "AddReductionOp.hh"
@@ -48,6 +49,7 @@ void top_level_task(const Task *task,
     int len = probname.length();
     if (probname.substr(len - 4, 4) == ".pnt")
         probname = probname.substr(0, len - 4);
+    cout << "Probname " << probname << endl;
 
     cout << "********************" << endl;
     cout << "Running PENNANT v0.9" << endl;
@@ -58,7 +60,7 @@ void top_level_task(const Task *task,
 
     InputParameters input_params = parseInputFile(&inp);
     input_params.ntasks_ = ntasks;
-    input_params.probname = probname;
+    input_params.probname_ = probname;
 
 	Parallel parallel;
 	parallel.init(input_params, ctx, runtime);
@@ -105,10 +107,20 @@ InputParameters parseInputFile(InputFile *inp) {
         exit(1);
     }
 
-    value.subregion_ = inp->getDoubleList("subregion", vector<double>());
-    if (value.subregion_.size() != 0 && value.subregion_.size() != 4) {
+    vector<double> subregion = inp->getDoubleList("subregion", vector<double>());
+    if (subregion.size() != 0 && subregion.size() != 4) {
         cerr << "Error:  subregion must have 4 entries" << endl;
         exit(1);
+    } else if (subregion.size() == 4) {
+		value.subregion_xmin_ = subregion[0];
+		value.subregion_xmax_ = subregion[1];
+		value.subregion_ymin_ = subregion[2];
+		value.subregion_ymax_ = subregion[3];
+    } else if (subregion.size() == 0) {
+		value.subregion_xmin_ = std::numeric_limits<double>::max();
+		value.subregion_xmax_ = std::numeric_limits<double>::max();
+		value.subregion_ymin_ = std::numeric_limits<double>::max();
+		value.subregion_ymax_ = std::numeric_limits<double>::max();
     }
 
     value.write_xy_file_ = inp->getInt("writexy", 0);

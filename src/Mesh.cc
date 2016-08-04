@@ -29,11 +29,14 @@ using namespace std;
 
 
 Mesh::Mesh(const InputParameters& params) :
-    gmesh_(NULL), egold_(NULL), wxy_(NULL),
-	chunk_size_(params.chunk_size_),
-	subregion_(params.subregion_),
-	write_xy_file_(params.write_xy_file_),
-	write_gold_file_(params.write_gold_file_)
+			chunk_size_(params.chunk_size_),
+			subregion_xmin_(params.subregion_xmin_),
+			subregion_xmax_(params.subregion_xmax_),
+			subregion_ymin_(params.subregion_ymin_),
+			subregion_ymax_(params.subregion_ymax_),
+			write_xy_file_(params.write_xy_file_),
+			write_gold_file_(params.write_gold_file_),
+			gmesh_(NULL), egold_(NULL), wxy_(NULL)
 	{
 
     gmesh_ = new GenerateMesh(params);
@@ -139,8 +142,8 @@ void Mesh::init() {
 
     num_bad_sides = 0;
     for (int sch = 0; sch < num_side_chunks; ++sch) {
-        int sfirst = side_chunks_first[sch];
-        int slast = side_chunks_last[sch];
+        //int sfirst = side_chunks_first[sch];
+        //int slast = side_chunks_last[sch];
         calcCtrs(sch, false);
         calcVols(sch, false);
         calcSideMassFracs(sch);
@@ -331,7 +334,7 @@ void Mesh::writeMeshStats() {
     Parallel::globalSum(gnumzch);
     Parallel::globalSum(gnumsch);
 
-    if (Parallel::mype > 0) return;
+    if (Parallel::mype() > 0) return;
 
     cout << "--- Mesh Information ---" << endl;
     cout << "Points:  " << gnump << endl;
@@ -356,12 +359,12 @@ void Mesh::write(
         const double* zp) {
 
     if (write_xy_file_) {
-        if (Parallel::mype == 0)
+        if (Parallel::mype() == 0)
             cout << "Writing .xy file..." << endl;
         wxy_->write(probname, zr, ze, zp);
     }
     if (write_gold_file_) {
-        if (Parallel::mype == 0) 
+        if (Parallel::mype() == 0)
             cout << "Writing gold file..." << endl;
         egold_->write(probname, cycle, time, zr, ze, zp);
     }
@@ -636,7 +639,7 @@ void Mesh::parallelGather(
     int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
-                " on PE " << Parallel::mype << endl;
+                " on PE " << Parallel::mype() << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -708,7 +711,7 @@ void Mesh::parallelScatter(
     int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
-                " on PE " << Parallel::mype << endl;
+                " on PE " << Parallel::mype() << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }

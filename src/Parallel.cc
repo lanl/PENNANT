@@ -66,33 +66,85 @@ void Parallel::init(InputParameters input_params,
 		runtime_->create_dynamic_collective(ctx_, num_subregions(), MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
-	  args.resize(num_subregions());
+	  std::vector<SPMDArgs> args(num_subregions());
+	  indirects.resize(num_subregions());
 
 	  for (int color = 0; color < num_subregions(); color++) {
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].shard_id_ = color;
-		  args[color].input_params_ = input_params;
-		  std::cout << "PRLL cstop = " << args[color].input_params_.cstop_ << std::endl;
-		  std::cout << "PRLL tstop = " << args[color].input_params_.tstop_ << std::endl;
-		  std::cout << "PRLL meshtype = " << args[color].input_params_.meshtype_ << std::endl;
-		  std::cout << "PRLL meshparams = " << args[color].input_params_.nzones_x_ << ","
-		   		 << args[color].input_params_.nzones_y_ << ","
-				 << args[color].input_params_.len_x_ << ","
-				 << args[color].input_params_.len_y_ << ","
-				 << std::endl;
-		  std::cout << "bcx = " << args[color].input_params_.bcx_[0] << ","
-				  << args[color].input_params_.bcx_[1] << std::endl;
-		  std::cout << "bcy = " << args[color].input_params_.bcy_[0] << ","
-				  << args[color].input_params_.bcy_[1] << std::endl;
+		  args[color].ntasks_ = input_params.ntasks_;
+		  args[color].task_id_ = input_params.task_id_;
+		  args[color].tstop_ = input_params.tstop_;
+		  args[color].cstop_ = input_params.cstop_;
+		  args[color].dtmax_ = input_params.dtmax_;
+		  args[color].dtinit_ = input_params.dtinit_;
+		  args[color].dtfac_ = input_params.dtfac_;
+		  args[color].dtreport_ = input_params.dtreport_;
+		  args[color].chunk_size_ = input_params.chunk_size_;
+		  args[color].write_xy_file_ = input_params.write_xy_file_;
+		  args[color].write_gold_file_ = input_params.write_gold_file_;
+		  args[color].nzones_x_ = input_params.nzones_x_;
+		  args[color].nzones_y_ = input_params.nzones_y_;
+		  args[color].len_x_ = input_params.len_x_;
+		  args[color].len_y_ = input_params.len_y_;
+		  args[color].cfl_ = input_params.cfl_;
+		  args[color].cflv_ = input_params.cflv_;
+		  args[color].rho_init_ = input_params.rho_init_;
+		  args[color].energy_init_ = input_params.energy_init_;
+		  args[color].rho_init_sub_ = input_params.rho_init_sub_;
+		  args[color].energy_init_sub_ = input_params.energy_init_sub_;
+		  args[color].vel_init_radial_ = input_params.vel_init_radial_;
+		  args[color].gamma_ = input_params.gamma_;
+		  args[color].ssmin_ = input_params.ssmin_;
+		  args[color].alfa_ = input_params.alfa_;
+		  args[color].qgamma_ = input_params.qgamma_;
+		  args[color].q1_ = input_params.q1_;
+		  args[color].q2_ = input_params.q2_;
+		  args[color].subregion_xmin_ = input_params.subregion_xmin_;
+		  args[color].subregion_xmax_ = input_params.subregion_xmax_;
+		  args[color].subregion_ymin_ = input_params.subregion_ymin_;
+		  args[color].subregion_ymax_ = input_params.subregion_ymax_;
+		  // Legion cannot handle data structures with indirections in them
+		  args[color].n_meshtype_ = input_params.meshtype_.length();
+		  args[color].n_probname_ = input_params.probname_.length();
+		  args[color].n_bcx_ = input_params.bcx_.size();
+		  args[color].n_bcy_ = input_params.bcy_.size();
 
-		  DriverTask driver_launcher(&(args[color]));
+		  // Legion cannot handle data structures with indirections in them
+		  size_t size = sizeof(SPMDArgs) + (args[color].n_meshtype_ + args[color].n_probname_)
+				  * sizeof(char) + (args[color].n_bcx_+ args[color].n_bcy_) * sizeof(double);
+		  indirects[color] = malloc(size);
+		  unsigned char *next = (unsigned char*)(indirects[color]) ;
+		  memcpy((void*)next, (void*)(&(args[color])), sizeof(SPMDArgs));
+		  next += sizeof(SPMDArgs);
+
+		  size_t next_size = args[color].n_meshtype_ * sizeof(char);
+		  memcpy((void*)next, (void*)input_params.meshtype_.c_str(), next_size);
+		  next += next_size;
+
+		  next_size = args[color].n_probname_ * sizeof(char);
+		  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
+		  next += next_size;
+
+		  next_size = args[color].n_bcx_ * sizeof(double);
+		  memcpy((void*)next, (void*)&(input_params.bcx_[0]), next_size);
+		  next += next_size;
+
+		  next_size = args[color].n_bcy_ * sizeof(double);
+		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
+
+		  DriverTask driver_launcher(indirects[color], size);
 		  DomainPoint point(color);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
 
 }  // init
 
+Parallel::~Parallel() {
+	for (int i=0; i < indirects.size(); i++)
+		free(indirects[i]);
+}
 
 void Parallel::run() {
 	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
