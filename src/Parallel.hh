@@ -25,7 +25,12 @@ using namespace LegionRuntime::Accessor;
 // running in distributed parallel mode using MPI, or for stubbing
 // these out if not using MPI.
 
-// JPG TODO: make this an actual object
+struct SPMDArgs {
+	DynamicCollective add_reduction_;
+	DynamicCollective min_reduction_;
+	int shard_id_;
+    InputParameters input_params_;
+};
 
 class Parallel {
 public:
@@ -61,16 +66,10 @@ public:
     static void gathervImpl(           // helper function for gatherv
             const T *x, const int numx,
             T* y, const int* numy);
-
+private:
+	  std::vector<SPMDArgs> args;
 };  // class Parallel
 
-
-struct SPMDArgs {
-    InputParameters input_params_;
-	DynamicCollective add_reduction_;
-	DynamicCollective min_reduction_;
-	int shard_id_;
-};
 
 struct TimeStep {
 	double dt_;

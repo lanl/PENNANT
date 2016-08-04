@@ -26,7 +26,7 @@
 using namespace std;
 
 DriverTask::DriverTask(SPMDArgs *args)
-	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, sizeof(SPMDArgs)))
+	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, sizeof(*args)))
 {
 }
 
@@ -41,13 +41,40 @@ void DriverTask::cpu_run(const Task *task,
 	rt->unmap_all_regions(ctx);
 
     SPMDArgs *args = (SPMDArgs *)(task->args);
+    //const SPMDArgs& args = *(const SPMDArgs *)(task->args);
+    cout << "shard_id = " << args->shard_id_ << endl;
+    cout << "cstop = " << args->input_params_.cstop_ << endl;
+    cout << "tstop = " << args->input_params_.tstop_ << endl;
+    cout << "meshtype = " << args->input_params_.meshtype_ << endl;
+    cout << "meshparams = " << args->input_params_.nzones_x_ << ","
+    		<< args->input_params_.nzones_y_ << ","
+		<< args->input_params_.len_x_ << ","
+		<< args->input_params_.len_y_ << ","
+     	<< endl;
+    cout << "subregion = " << args->input_params_.subregion_[1] << endl;
+    cout << "rinitsub = " << args->input_params_.rho_init_sub_ << endl;
+    cout << "einitsub = " << args->input_params_.energy_init_sub_ << endl;
+    cout << "bcx = " << args->input_params_.bcx_[0] << endl;
+    cout << "bcx = " << args->input_params_.bcx_[1] << endl;
+    cout << "bcy = " << args->input_params_.bcy_[0] << endl;
+    cout << "bcy = " << args->input_params_.bcy_[1] << endl;
+    cout << "ssmin = " << args->input_params_.ssmin_ << endl;
+    cout << "q1 = " << args->input_params_.q1_ << endl;
+    cout << "q2 = " << args->input_params_.q2_ << endl;
+    cout << "dtinit = " << args->input_params_.dtinit_ << endl;
+    cout << "writexy = " << args->input_params_.write_xy_file_ << endl;
+    cout << "chunksize = " << args->input_params_.chunk_size_ << endl;
+
+    Driver drv(args->input_params_);
+
+    drv.run();
 
 }
 
 Driver::Driver(const InputParameters& params)
         : probname(params.probname),
-		  cstop(params.cstop_),
 		  tstop(params.tstop_),
+		  cstop(params.cstop_),
 		  dtmax(params.dtmax_),
 		  dtinit(params.dtinit_),
 		  dtfac(params.dtfac_),

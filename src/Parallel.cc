@@ -15,6 +15,7 @@
 #include <vector>
 #include <algorithm>
 #include <numeric>
+#include <iostream>
 
 #include "AddReductionOp.hh"
 #include "Driver.hh"
@@ -65,13 +66,25 @@ void Parallel::init(InputParameters input_params,
 		runtime_->create_dynamic_collective(ctx_, num_subregions(), MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
-	  std::vector<SPMDArgs> args(num_subregions());
+	  args.resize(num_subregions());
 
 	  for (int color = 0; color < num_subregions(); color++) {
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].shard_id_ = color;
 		  args[color].input_params_ = input_params;
+		  std::cout << "PRLL cstop = " << args[color].input_params_.cstop_ << std::endl;
+		  std::cout << "PRLL tstop = " << args[color].input_params_.tstop_ << std::endl;
+		  std::cout << "PRLL meshtype = " << args[color].input_params_.meshtype_ << std::endl;
+		  std::cout << "PRLL meshparams = " << args[color].input_params_.nzones_x_ << ","
+		   		 << args[color].input_params_.nzones_y_ << ","
+				 << args[color].input_params_.len_x_ << ","
+				 << args[color].input_params_.len_y_ << ","
+				 << std::endl;
+		  std::cout << "bcx = " << args[color].input_params_.bcx_[0] << ","
+				  << args[color].input_params_.bcx_[1] << std::endl;
+		  std::cout << "bcy = " << args[color].input_params_.bcy_[0] << ","
+				  << args[color].input_params_.bcy_[1] << std::endl;
 
 		  DriverTask driver_launcher(&(args[color]));
 		  DomainPoint point(color);
