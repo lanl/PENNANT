@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -76,7 +77,7 @@ public:
     double2* side_force_tts;      // side force from tts
     double2* crnr_force_tot;    // corner force, total from all sources
 
-    Hydro(const InputFile* inp, Mesh* m);
+    Hydro(const InputParameters& params, Mesh* m);
     ~Hydro();
 
     void init();

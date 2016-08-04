@@ -13,6 +13,7 @@
 #ifndef TTS_HH_
 #define TTS_HH_
 
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -29,7 +30,7 @@ public:
     double alfa;                   // alpha coefficient for TTS model
     double ssmin;                  // minimum sound speed
 
-    TTS(const InputFile* inp, Hydro* h);
+    TTS(const InputParameters& params, Hydro* h);
     ~TTS();
 
 void calcForce(

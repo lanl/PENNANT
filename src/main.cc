@@ -62,11 +62,12 @@ void top_level_task(const Task *task,
 
 	Parallel::init(input_params, ctx, runtime);
 
-    Driver drv(&inp, probname);
+	Driver drv(input_params);
 
     drv.run();
 
-    Parallel::finalize();
+	//Parallel::run();
+	Parallel::finalize();
 
 }
 
@@ -160,6 +161,21 @@ InputParameters parseInputFile(InputFile *inp) {
         exit(1);
     }
 
+    value.cfl_ = inp->getDouble("cfl", 0.6);
+    value.cflv_ = inp->getDouble("cflv", 0.1);
+    value.rho_init_ = inp->getDouble("rinit", 1.);
+    value.energy_init_ = inp->getDouble("einit", 0.);
+    value.rho_init_sub_ = inp->getDouble("rinitsub", 1.);
+    value.energy_init_sub_ = inp->getDouble("einitsub", 0.);
+    value.vel_init_radial_ = inp->getDouble("uinitradial", 0.);
+    value.bcx_ = inp->getDoubleList("bcx", vector<double>());
+    value.bcy_ = inp->getDoubleList("bcy", vector<double>());
+    value.gamma_ = inp->getDouble("gamma", 5. / 3.);
+    value.ssmin_ = inp->getDouble("ssmin", 0.);
+    value.alfa_ = inp->getDouble("alfa", 0.5);
+    value.qgamma_ = inp->getDouble("qgamma", 5. / 3.);
+    value.q1_ = inp->getDouble("q1", 0.);
+    value.q2_ = inp->getDouble("q2", 2.);
 
 	return value;
 }

@@ -13,17 +13,17 @@
 #include "TTS.hh"
 
 #include "Vec2.hh"
-#include "InputFile.hh"
 #include "Mesh.hh"
 #include "Hydro.hh"
 
 using namespace std;
 
 
-TTS::TTS(const InputFile* inp, Hydro* h) : hydro(h) {
-    alfa = inp->getDouble("alfa", 0.5);
-    ssmin = inp->getDouble("ssmin", 0.);
-
+TTS::TTS(const InputParameters& params, Hydro* h) :
+		hydro(h),
+		alfa(params.alfa_),
+		ssmin(params.ssmin_)
+{
 }
 
 

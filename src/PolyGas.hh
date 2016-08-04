@@ -13,6 +13,7 @@
 #ifndef POLYGAS_HH_
 #define POLYGAS_HH_
 
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -29,7 +30,7 @@ public:
     double gamma;                  // coeff. for ideal gas equation
     double ssmin;                  // minimum sound speed for gas
 
-    PolyGas(const InputFile* inp, Hydro* h);
+    PolyGas(const InputParameters& params, Hydro* h);
     ~PolyGas();
 
     void calcStateAtHalf(

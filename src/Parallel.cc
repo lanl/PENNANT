@@ -27,11 +27,16 @@ namespace Parallel {
 // We're in serial mode, so only 1 PE.
 int num_subregions = 1;
 int mype = 0;
-
+MustEpochLauncher must_epoch_launcher;
+Context ctx_;
+HighLevelRuntime *runtime_;
 
 void init(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime) {
 	  num_subregions = input_params.ntasks_;
+
+	  ctx_ = ctx;
+	  runtime_ = runtime;
 
 	  // we're going to use a must epoch launcher, so we need at least as many
 	  //  processors in our system as we have subregions - check that now
@@ -57,15 +62,14 @@ void init(InputParameters input_params,
 
 	  double zero = 0.0;
 	  DynamicCollective add_reduction =
-		runtime->create_dynamic_collective(ctx, num_subregions, AddReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions, AddReductionOp::redop_id,
 						   &zero, sizeof(zero));
 
 	  TimeStep max;
 	  DynamicCollective min_reduction =
-		runtime->create_dynamic_collective(ctx, num_subregions, MinReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions, MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
-	  MustEpochLauncher must_epoch_launcher;
 	  std::vector<SPMDArgs> args(num_subregions);
 
 	  for (int color = 0; color < num_subregions; color++) {
@@ -81,6 +85,11 @@ void init(InputParameters input_params,
 
 }  // init
 
+
+void run() {
+	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
+	  fm.wait_all_results();
+}
 
 void finalize() {
 }  // final

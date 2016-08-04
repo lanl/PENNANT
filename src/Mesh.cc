@@ -21,7 +21,6 @@
 #include "Vec2.hh"
 #include "Memory.hh"
 #include "Parallel.hh"
-#include "InputFile.hh"
 #include "WriteXY.hh"
 #include "ExportGold.hh"
 #include "GenerateMesh.hh"
@@ -29,29 +28,15 @@
 using namespace std;
 
 
-Mesh::Mesh(const InputFile* inp) :
-    gmesh_(NULL), egold_(NULL), wxy_(NULL) {
+Mesh::Mesh(const InputParameters& params) :
+    gmesh_(NULL), egold_(NULL), wxy_(NULL),
+	chunk_size_(params.chunk_size_),
+	subregion_(params.subregion_),
+	write_xy_file_(params.write_xy_file_),
+	write_gold_file_(params.write_gold_file_)
+	{
 
-    using Parallel::mype;
-
-    chunk_size_ = inp->getInt("chunksize", 0);
-    if (chunk_size_ < 0) {
-        if (mype == 0)
-            cerr << "Error: bad chunksize " << chunk_size_ << endl;
-        exit(1);
-    }
-
-    subregion_ = inp->getDoubleList("subregion", vector<double>());
-    if (subregion_.size() != 0 && subregion_.size() != 4) {
-        if (mype == 0)
-            cerr << "Error:  subregion must have 4 entries" << endl;
-        exit(1);
-    }
-
-    write_xy_file_ = inp->getInt("writexy", 0);
-    write_gold_file_ = inp->getInt("writegold", 0);
-
-    gmesh_ = new GenerateMesh(inp);
+    gmesh_ = new GenerateMesh(params);
     wxy_ = new WriteXY(this);
     egold_ = new ExportGold(this);
 

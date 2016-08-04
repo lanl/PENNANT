@@ -25,6 +25,45 @@ using namespace LegionRuntime::Accessor;
 // running in distributed parallel mode using MPI, or for stubbing
 // these out if not using MPI.
 
+// JPG TODO: make this an actual object
+
+namespace Parallel {
+    extern int num_subregions;           // number of MPI PEs in use
+                                // (1 if not using MPI)
+    extern int mype;            // PE number for my rank
+                                // (0 if not using MPI)
+	extern MustEpochLauncher must_epoch_launcher;
+	extern Context ctx_;
+	extern HighLevelRuntime *runtime_;
+
+    void init(InputParameters input_params,
+    		Context ctx, HighLevelRuntime *runtime);
+    void run();
+    void finalize();
+
+    void globalMinLoc(double& x, int& xpe);
+                                // find minimum over all PEs, and
+                                // report which PE had the minimum
+    void globalSum(int& x);     // find sum over all PEs - overloaded
+    void globalSum(int64_t& x);
+    void globalSum(double& x);
+    void gather(const int x, int* y);
+                                // gather list of ints from all PEs
+    void scatter(const int* x, int& y);
+                                // gather list of ints from all PEs
+
+    template<typename T>
+    void gatherv(               // gather variable-length list
+            const T *x, const int numx,
+            T* y, const int* numy);
+    template<typename T>
+    void gathervImpl(           // helper function for gatherv
+            const T *x, const int numx,
+            T* y, const int* numy);
+
+}  // namespace Parallel
+
+
 struct SPMDArgs {
     InputParameters input_params_;
 	DynamicCollective add_reduction_;
@@ -108,39 +147,5 @@ namespace TaskHelper {
   }
 
 };
-
-namespace Parallel {
-    extern int num_subregions;           // number of MPI PEs in use
-                                // (1 if not using MPI)
-    extern int mype;            // PE number for my rank
-                                // (0 if not using MPI)
-
-    void init(InputParameters input_params,
-    		Context ctx, HighLevelRuntime *runtime);
-    void run();
-    void finalize();
-
-    void globalMinLoc(double& x, int& xpe);
-                                // find minimum over all PEs, and
-                                // report which PE had the minimum
-    void globalSum(int& x);     // find sum over all PEs - overloaded
-    void globalSum(int64_t& x);
-    void globalSum(double& x);
-    void gather(const int x, int* y);
-                                // gather list of ints from all PEs
-    void scatter(const int* x, int& y);
-                                // gather list of ints from all PEs
-
-    template<typename T>
-    void gatherv(               // gather variable-length list
-            const T *x, const int numx,
-            T* y, const int* numy);
-    template<typename T>
-    void gathervImpl(           // helper function for gatherv
-            const T *x, const int numx,
-            T* y, const int* numy);
-
-}  // namespace Parallel
-
 
 #endif /* PARALLEL_HH_ */

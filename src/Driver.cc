@@ -20,7 +20,6 @@
 #include <sstream>
 #include <iomanip>
 
-#include "InputFile.hh"
 #include "Mesh.hh"
 #include "Hydro.hh"
 
@@ -42,39 +41,22 @@ void DriverTask::cpu_run(const Task *task,
 	rt->unmap_all_regions(ctx);
 
     SPMDArgs *args = (SPMDArgs *)(task->args);
+
 }
 
-Driver::Driver(const InputFile* inp, const string& pname)
-        : probname(pname) {
-    using Parallel::num_subregions;
-    using Parallel::mype;
-
-    if (mype == 0) {
-        cout << "********************" << endl;
-        cout << "Running PENNANT v0.9" << endl;
-        cout << "********************" << endl;
-        cout << endl;
-
-#ifdef USE_MPI
-        cout << "Running on " << num_subregions << " MPI PE(s)" << endl;
-#endif
-    }  // if mype == 0
-
-    cstop = inp->getInt("cstop", 999999);
-    tstop = inp->getDouble("tstop", 1.e99);
-    if (cstop == 999999 && tstop == 1.e99) {
-        if (mype == 0)
-            cerr << "Must specify either cstop or tstop" << endl;
-        exit(1);
-    }
-    dtmax = inp->getDouble("dtmax", 1.e99);
-    dtinit = inp->getDouble("dtinit", 1.e99);
-    dtfac = inp->getDouble("dtfac", 1.2);
-    dtreport = inp->getInt("dtreport", 10);
+Driver::Driver(const InputParameters& params)
+        : probname(params.probname),
+		  cstop(params.cstop_),
+		  tstop(params.tstop_),
+		  dtmax(params.dtmax_),
+		  dtinit(params.dtinit_),
+		  dtfac(params.dtfac_),
+		  dtreport(params.dtreport_)
+{
 
     // initialize mesh, hydro
-    mesh = new Mesh(inp);
-    hydro = new Hydro(inp, mesh);
+    mesh = new Mesh(params);
+    hydro = new Hydro(params, mesh);
 
 }
 

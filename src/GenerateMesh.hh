@@ -15,6 +15,8 @@
 
 #include <string>
 #include <vector>
+
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -37,7 +39,7 @@ public:
     int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
                                 // global, in x and y directions
 
-    GenerateMesh(const InputFile* inp);
+    GenerateMesh(const InputParameters& params);
     ~GenerateMesh();
 
     void generate(

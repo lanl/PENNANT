@@ -56,7 +56,7 @@ public:
     std::string msgdt;             // dt limiter message
     std::string msgdtlast;         // previous dt limiter message
 
-    Driver(const InputFile* inp, const std::string& pname);
+    Driver(const InputParameters &params);
     ~Driver();
 
     void run();

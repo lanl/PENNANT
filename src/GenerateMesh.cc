@@ -19,62 +19,17 @@
 
 #include "Vec2.hh"
 #include "Parallel.hh"
-#include "InputFile.hh"
 
 using namespace std;
 
 
-GenerateMesh::GenerateMesh(const InputFile* inp) {
-
-    using Parallel::mype;
-
-    meshtype_ = inp->getString("meshtype", "");
-    if (meshtype_.empty()) {
-        if (mype == 0)
-            cerr << "Error:  must specify meshtype" << endl;
-        exit(1);
-    }
-    if (meshtype_ != "pie" &&
-            meshtype_ != "rect" &&
-            meshtype_ != "hex") {
-        if (mype == 0)
-            cerr << "Error:  invalid meshtype " << meshtype_ << endl;
-        exit(1);
-    }
-    vector<double> params =
-            inp->getDoubleList("meshparams", vector<double>());
-    if (params.empty()) {
-        if (mype == 0)
-            cerr << "Error:  must specify meshparams" << endl;
-        exit(1);
-    }
-    if (params.size() > 4) {
-        if (mype == 0)
-            cerr << "Error:  meshparams must have <= 4 values" << endl;
-        exit(1);
-    }
-
-    global_nzones_x_ = params[0];
-    global_nzones_y_ = (params.size() >= 2 ? params[1] : global_nzones_x_);
-    if (meshtype_ != "pie")
-        len_x_ = (params.size() >= 3 ? params[2] : 1.0);
-    else
-        // convention:  x = theta, y = r
-        len_x_ = (params.size() >= 3 ? params[2] : 90.0)
-                * M_PI / 180.0;
-    len_y_ = (params.size() >= 4 ? params[3] : 1.0);
-
-    if (global_nzones_x_ <= 0 || global_nzones_y_ <= 0 || len_x_ <= 0. || len_y_ <= 0. ) {
-        if (mype == 0)
-            cerr << "Error:  meshparams values must be positive" << endl;
-        exit(1);
-    }
-    if (meshtype_ == "pie" && len_x_ >= 2. * M_PI) {
-        if (mype == 0)
-            cerr << "Error:  meshparams theta must be < 360" << endl;
-        exit(1);
-    }
-
+GenerateMesh::GenerateMesh(const InputParameters& input_params) :
+	meshtype_(input_params.meshtype_),
+	global_nzones_x_(input_params.nzones_x_),
+	global_nzones_y_(input_params.nzones_y_),
+	len_x_(input_params.len_x_),
+	len_y_(input_params.len_y_)
+{
 }
 
 

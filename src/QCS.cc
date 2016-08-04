@@ -15,7 +15,6 @@
 #include <cassert>
 #include <cmath>
 #include "Memory.hh"
-#include "InputFile.hh"
 #include "Vec2.hh"
 #include "Mesh.hh"
 #include "Hydro.hh"
@@ -23,11 +22,12 @@
 using namespace std;
 
 
-QCS::QCS(const InputFile* inp, Hydro* h) : hydro(h) {
-    qgamma = inp->getDouble("qgamma", 5. / 3.);
-    q1 = inp->getDouble("q1", 0.);
-    q2 = inp->getDouble("q2", 2.);
-
+QCS::QCS(const InputParameters& params, Hydro* h) :
+		hydro(h),
+		qgamma(params.qgamma_),
+		q1(params.q1_),
+		q2(params.q2_)
+{
 }
 
 QCS::~QCS() {}

@@ -13,17 +13,17 @@
 #include "PolyGas.hh"
 
 #include "Memory.hh"
-#include "InputFile.hh"
 #include "Hydro.hh"
 #include "Mesh.hh"
 
 using namespace std;
 
 
-PolyGas::PolyGas(const InputFile* inp, Hydro* h) : hydro(h) {
-    gamma = inp->getDouble("gamma", 5. / 3.);
-    ssmin = inp->getDouble("ssmin", 0.);
-
+PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
+		hydro(h),
+		gamma(params.gamma_),
+		ssmin(params.ssmin_)
+{
 }
 
 

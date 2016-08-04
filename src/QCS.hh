@@ -13,6 +13,7 @@
 #ifndef QCS_HH_
 #define QCS_HH_
 
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -30,7 +31,7 @@ public:
     double q1, q2;                 // linear and quadratic coefficients
                                    // for Q model
 
-    QCS(const InputFile* inp, Hydro* h);
+    QCS(const InputParameters& params, Hydro* h);
     ~QCS();
 
     void calcForce(

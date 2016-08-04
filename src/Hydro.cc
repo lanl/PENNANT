@@ -24,7 +24,6 @@
 
 #include "Parallel.hh"
 #include "Memory.hh"
-#include "InputFile.hh"
 #include "Mesh.hh"
 #include "PolyGas.hh"
 #include "TTS.hh"
@@ -33,21 +32,22 @@
 
 using namespace std;
 
-
-Hydro::Hydro(const InputFile* inp, Mesh* m) : mesh(m) {
-    cfl = inp->getDouble("cfl", 0.6);
-    cflv = inp->getDouble("cflv", 0.1);
-    rho_init = inp->getDouble("rinit", 1.);
-    energy_init = inp->getDouble("einit", 0.);
-    rho_init_sub = inp->getDouble("rinitsub", 1.);
-    energy_init_sub = inp->getDouble("einitsub", 0.);
-    vel_init_radial = inp->getDouble("uinitradial", 0.);
-    bcx = inp->getDoubleList("bcx", vector<double>());
-    bcy = inp->getDoubleList("bcy", vector<double>());
-
-    pgas = new PolyGas(inp, this);
-    tts = new TTS(inp, this);
-    qcs = new QCS(inp, this);
+// JPG TODO: declare const initialized in all constructors as const
+Hydro::Hydro(const InputParameters& params, Mesh* m) :
+		mesh(m),
+		cfl(params.cfl_),
+		cflv(params.cflv_),
+		rho_init(params.rho_init_),
+		energy_init(params.energy_init_),
+		rho_init_sub(params.rho_init_sub_),
+		energy_init_sub(params.energy_init_sub_),
+		vel_init_radial(params.vel_init_radial_),
+		bcx(params.bcx_),
+		bcy(params.bcy_)
+{
+    pgas = new PolyGas(params, this);
+    tts = new TTS(params, this);
+    qcs = new QCS(params, this);
 
     const double2 vfixx = double2(1., 0.);
     const double2 vfixy = double2(0., 1.);

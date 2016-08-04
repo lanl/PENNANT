@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -104,7 +105,7 @@ public:
     std::vector<int> zone_chunk_first;    // start/stop index for zone chunks
     std::vector<int> zone_chunk_last;
 
-    Mesh(const InputFile* inp);
+    Mesh(const InputParameters& params);
     ~Mesh();
 
     // write mesh
