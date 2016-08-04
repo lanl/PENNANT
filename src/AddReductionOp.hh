@@ -36,41 +36,19 @@
  *
  */
 
-const double AddReductionOp::identity = 0.0;
+struct AddReductionOp {
+	static const ReductionOpID redop_id = ADD_REDOP_ID;
 
-template<>
-void
-AddReductionOp::apply<true>(LHS &lhs, RHS rhs) {
-    lhs += rhs;
-}
+	typedef double LHS;
+    typedef double RHS;
+    static const double identity;
 
-template<>
-void
-AddReductionOp::apply<false>(LHS &lhs, RHS rhs) {
-    int64_t *target = (int64_t *)&lhs;
-    union { int64_t as_int; double as_T; } oldval, newval;
-    do {
-        oldval.as_int = *target;
-        newval.as_T = oldval.as_T + rhs;
-    } while (!__sync_bool_compare_and_swap(target, oldval.as_int, newval.as_int));
-}
+    template <bool EXCLUSIVE>
+    static void apply(LHS &lhs, RHS rhs);
 
-template<>
-void
-AddReductionOp::fold<true>(RHS &rhs1, RHS rhs2) {
-    rhs1 += rhs2;
-}
+    template <bool EXCLUSIVE>
+    static void fold(RHS &rhs1, RHS rhs2);
 
-template<>
-void
-AddReductionOp::fold<false>(RHS &rhs1, RHS rhs2) {
-    int64_t *target = (int64_t *)&rhs1;
-    union { int64_t as_int; double as_T; } oldval, newval;
-    do {
-        oldval.as_int = *target;
-        newval.as_T = oldval.as_T + rhs2;
-    } while (!__sync_bool_compare_and_swap(target, oldval.as_int, newval.as_int));
-}
-
+};
 
 #endif

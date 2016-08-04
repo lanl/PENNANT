@@ -109,36 +109,6 @@ namespace TaskHelper {
 
 };
 
-struct AddReductionOp {
-	static const ReductionOpID redop_id = ADD_REDOP_ID;
-
-	typedef double LHS;
-    typedef double RHS;
-    static const double identity;
-
-    template <bool EXCLUSIVE>
-    static void apply(LHS &lhs, RHS rhs);
-
-    template <bool EXCLUSIVE>
-    static void fold(RHS &rhs1, RHS rhs2);
-
-};
-
-struct MinReductionOp {
-	static const ReductionOpID redop_id = MIN_REDOP_ID;
-
-	typedef TimeStep LHS;
-    typedef TimeStep RHS;
-    static const TimeStep identity;
-
-    template <bool EXCLUSIVE>
-    static void apply(LHS &lhs, RHS rhs);
-
-    template <bool EXCLUSIVE>
-    static void fold(RHS &rhs1, RHS rhs2);
-
-};
-
 namespace Parallel {
     extern int num_subregions;           // number of MPI PEs in use
                                 // (1 if not using MPI)

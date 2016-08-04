@@ -70,5 +70,6 @@ src/PolyGas.o: src/PolyGas.hh src/Memory.hh src/InputFile.hh src/Hydro.hh src/Me
 src/QCS.o: src/QCS.hh src/Memory.hh src/InputFile.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh
 src/TTS.o: src/TTS.hh src/Vec2.hh src/InputFile.hh src/Mesh.hh src/Hydro.hh
 src/WriteXY.o: src/WriteXY.hh src/Parallel.hh src/Mesh.hh
-src/main.o: src/Parallel.hh src/InputParameters.hh src/Driver.hh src/InputFile.hh
+src/main.o: src/Parallel.hh src/InputParameters.hh src/Driver.hh src/InputFile.hh \
+	src/AddReductionOp.hh src/MinReductionOp.hh
 

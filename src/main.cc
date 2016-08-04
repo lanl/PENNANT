@@ -15,9 +15,11 @@
 #include <iostream>
 #include "math.h"
 
+#include "AddReductionOp.hh"
 #include "Driver.hh"
 #include "InputFile.hh"
 #include "InputParameters.hh"
+#include "MinReductionOp.hh"
 #include "Parallel.hh"
 
 
