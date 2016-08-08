@@ -21,8 +21,8 @@ using namespace std;
 
 PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
 		hydro(h),
-		gamma(params.gamma_),
-		ssmin(params.ssmin_)
+		gamma(params.directs_.gamma_),
+		ssmin(params.directs_.ssmin_)
 {
 }
 

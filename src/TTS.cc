@@ -21,8 +21,8 @@ using namespace std;
 
 TTS::TTS(const InputParameters& params, Hydro* h) :
 		hydro(h),
-		alfa(params.alfa_),
-		ssmin(params.ssmin_)
+		alfa(params.directs_.alfa_),
+		ssmin(params.directs_.ssmin_)
 {
 }
 

@@ -41,114 +41,59 @@ void DriverTask::cpu_run(const Task *task,
 	rt->unmap_all_regions(ctx);
 
 	// Legion cannot handle data structures with indirections in them
-    void *indirect_args = task->args;
+    unsigned char *serialized_args = (unsigned char *) task->args;
     SPMDArgs args;
-    memcpy((void*)(&args), indirect_args, sizeof(SPMDArgs));
-	unsigned char *next = (unsigned char*)indirect_args ;
-	next += sizeof(SPMDArgs);
+	size_t next_size = sizeof(SPMDArgs);
+    memcpy((void*)(&args), (void*)serialized_args, next_size);
+	serialized_args += sizeof(SPMDArgs);
 
-    InputParameters barf;
+    InputParameters params;
+    params.directs_ = args.direct_input_params_;
 
-	  barf.ntasks_ = args.ntasks_;
-	  barf.task_id_ = args.task_id_;
-	  barf.tstop_ = args.tstop_;
-	  barf.cstop_ = args.cstop_;
-	  barf.dtmax_ = args.dtmax_;
-	  barf.dtinit_ = args.dtinit_;
-	  barf.dtfac_ = args.dtfac_;
-	  barf.dtreport_ = args.dtreport_;
-	  barf.chunk_size_ = args.chunk_size_;
-	  barf.write_xy_file_ = args.write_xy_file_;
-	  barf.write_gold_file_ = args.write_gold_file_;
-	  barf.nzones_x_ = args.nzones_x_;
-	  barf.nzones_y_ = args.nzones_y_;
-	  barf.len_x_ = args.len_x_;
-	  barf.len_y_ = args.len_y_;
-	  barf.cfl_ = args.cfl_;
-	  barf.cflv_ = args.cflv_;
-	  barf.rho_init_ = args.rho_init_;
-	  barf.energy_init_ = args.energy_init_;
-	  barf.rho_init_sub_ = args.rho_init_sub_;
-	  barf.energy_init_sub_ = args.energy_init_sub_;
-	  barf.vel_init_radial_ = args.vel_init_radial_;
-	  barf.gamma_ = args.gamma_;
-	  barf.ssmin_ = args.ssmin_;
-	  barf.alfa_ = args.alfa_;
-	  barf.qgamma_ = args.qgamma_;
-	  barf.q1_ = args.q1_;
-	  barf.q2_ = args.q2_;
-	  barf.subregion_xmin_ = args.subregion_xmin_;
-	  barf.subregion_xmax_ = args.subregion_xmax_;
-	  barf.subregion_ymin_ = args.subregion_ymin_;
-	  barf.subregion_ymax_ = args.subregion_ymax_;
-
-	  // Legion cannot handle data structures with indirections in them
-
-	  size_t next_size = args.n_meshtype_ * sizeof(char);
-	  char *love_legion1 = (char *)malloc(next_size+1);
-	  memcpy((void *)love_legion1, (void *)next, next_size);
-	  love_legion1[next_size] = '\0';
-	  cout << "Love legion " << love_legion1 << endl;
-	  barf.meshtype_ = string(love_legion1);
-	  free(love_legion1);
-	  next += next_size;
-
+    // Legion cannot handle data structures with indirections in them
+    {
+      next_size = args.n_meshtype_ * sizeof(char);
+	  char *buffer = (char *)malloc(next_size+1);
+	  memcpy((void *)buffer, (void *)serialized_args, next_size);
+	  buffer[next_size] = '\0';
+	  params.meshtype_ = string(buffer);
+	  free(buffer);
+	  serialized_args += next_size;
+    }
+    {
 	  next_size = args.n_probname_ * sizeof(char);
-	  char *love_legion2 = (char *)malloc(next_size+1);
-	  memcpy((void *)love_legion2, (void *)next, next_size);
-	  love_legion2[next_size] = '\0';
-	  cout << "Love legion " << love_legion2 << endl;
-	  barf.probname_ = string(love_legion2);
-	  free(love_legion2);
-	  next += next_size;
-
-	  barf.bcx_.resize(args.n_bcx_);
+	  char *buffer = (char *)malloc(next_size+1);
+	  memcpy((void *)buffer, (void *)serialized_args, next_size);
+	  buffer[next_size] = '\0';
+	  params.probname_ = string(buffer);
+	  free(buffer);
+	  serialized_args += next_size;
+    }
+    {
+	  params.bcx_.resize(args.n_bcx_);
 	  next_size = args.n_bcx_ * sizeof(double);
-	  memcpy((void *)&(barf.bcx_[0]), (void *)next, next_size);
-	  next += next_size;
-
-	  barf.bcy_.resize(args.n_bcy_);
+	  memcpy((void *)&(params.bcx_[0]), (void *)serialized_args, next_size);
+	  serialized_args += next_size;
+    }
+    {
+	  params.bcy_.resize(args.n_bcy_);
 	  next_size = args.n_bcy_ * sizeof(double);
-	  memcpy((void *)&(barf.bcy_[0]), (void *)next, next_size);
+	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
+    }
 
-    cout << "shard_id = " << args.shard_id_ << endl;
-    cout << "cstop = " << barf.cstop_ << endl;
-    cout << "tstop = " << barf.tstop_ << endl;
-    cout << "meshtype = " << barf.meshtype_ << endl;
-    cout << "probname = " << barf.probname_ << endl;
-    cout << "meshparams = " << barf.nzones_x_ << ","
-    		<< barf.nzones_y_ << ","
-		<< barf.len_x_ << ","
-		<< barf.len_y_ << ","
-     	<< endl;
-    cout << "subregion = " << barf.subregion_xmax_ << endl;
-    cout << "rinitsub = " << barf.rho_init_sub_ << endl;
-    cout << "einitsub = " << barf.energy_init_sub_ << endl;
-    cout << barf.bcx_.size() << " bcx = " << barf.bcx_[0] << endl;
-    cout << "bcx = " << barf.bcx_[1] << endl;
-    cout << barf.bcy_.size() << " bcy = " << barf.bcy_[0] << endl;
-    cout << "bcy = " << barf.bcy_[1] << endl;
-    cout << "ssmin = " << barf.ssmin_ << endl;
-    cout << "q1 = " << barf.q1_ << endl;
-    cout << "q2 = " << barf.q2_ << endl;
-    cout << "dtinit = " << barf.dtinit_ << endl;
-    cout << "writexy = " << barf.write_xy_file_ << endl;
-    cout << "chunksize = " << barf.chunk_size_ << endl;
-
-    Driver drv(barf);
-
+    Driver drv(params);
     drv.run();
 
 }
 
 Driver::Driver(const InputParameters& params)
         : probname(params.probname_),
-		  tstop(params.tstop_),
-		  cstop(params.cstop_),
-		  dtmax(params.dtmax_),
-		  dtinit(params.dtinit_),
-		  dtfac(params.dtfac_),
-		  dtreport(params.dtreport_)
+		  tstop(params.directs_.tstop_),
+		  cstop(params.directs_.cstop_),
+		  dtmax(params.directs_.dtmax_),
+		  dtinit(params.directs_.dtinit_),
+		  dtfac(params.directs_.dtfac_),
+		  dtreport(params.directs_.dtreport_)
 {
 
     // initialize mesh, hydro

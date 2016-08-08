@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf /home/jgraham/local/regression/pennant/
+rm -rf ${HOME}/local/regression/pennant
 
 ./leblanc.mac
 ./noh.mac

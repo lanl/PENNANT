@@ -1,5 +1,6 @@
 #!/bin/bash
 
+rm -rf ${HOME}/local/regression/pennant/sedovsmall  #${SLURM_JOB_ID}
 mkdir -p ${HOME}/local/regression/pennant/sedovsmall  #${SLURM_JOB_ID}
 cd ${HOME}/local/regression/pennant/sedovsmall  #${SLURM_JOB_ID}
 cp ${HOME}/github/PENNANT//pennant . 

@@ -36,13 +36,13 @@ using namespace std;
 // JPG TODO: declare const initialized in all constructors as const
 Hydro::Hydro(const InputParameters& params, Mesh* m) :
 		mesh(m),
-		cfl(params.cfl_),
-		cflv(params.cflv_),
-		rho_init(params.rho_init_),
-		energy_init(params.energy_init_),
-		rho_init_sub(params.rho_init_sub_),
-		energy_init_sub(params.energy_init_sub_),
-		vel_init_radial(params.vel_init_radial_),
+		cfl(params.directs_.cfl_),
+		cflv(params.directs_.cflv_),
+		rho_init(params.directs_.rho_init_),
+		energy_init(params.directs_.energy_init_),
+		rho_init_sub(params.directs_.rho_init_sub_),
+		energy_init_sub(params.directs_.energy_init_sub_),
+		vel_init_radial(params.directs_.vel_init_radial_),
 		bcx(params.bcx_),
 		bcy(params.bcy_)
 {

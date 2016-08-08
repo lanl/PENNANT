@@ -24,9 +24,9 @@ using namespace std;
 
 QCS::QCS(const InputParameters& params, Hydro* h) :
 		hydro(h),
-		qgamma(params.qgamma_),
-		q1(params.q1_),
-		q2(params.q2_)
+		qgamma(params.directs_.qgamma_),
+		q1(params.directs_.q1_),
+		q2(params.directs_.q2_)
 {
 }
 

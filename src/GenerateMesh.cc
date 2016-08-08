@@ -25,10 +25,10 @@ using namespace std;
 
 GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 	meshtype_(input_params.meshtype_),
-	global_nzones_x_(input_params.nzones_x_),
-	global_nzones_y_(input_params.nzones_y_),
-	len_x_(input_params.len_x_),
-	len_y_(input_params.len_y_)
+	global_nzones_x_(input_params.directs_.nzones_x_),
+	global_nzones_y_(input_params.directs_.nzones_y_),
+	len_x_(input_params.directs_.len_x_),
+	len_y_(input_params.directs_.len_y_)
 {
 }
 

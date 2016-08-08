@@ -62,48 +62,15 @@ public:
             const T *x, const int numx,
             T* y, const int* numy);
 private:
-	std::vector<void*> indirects;
+	std::vector<void*> serializer;
 };  // class Parallel
 
 struct SPMDArgs {
 	DynamicCollective add_reduction_;
 	DynamicCollective min_reduction_;
 	int shard_id_;
-	int ntasks_;
-	int task_id_;
-    double tstop_;                  // simulation stop time
-    int cstop_;                     // simulation stop cycle
-    double dtmax_;                  // maximum timestep size
-    double dtinit_;                 // initial timestep size
-    double dtfac_;                  // factor limiting timestep growth
-    int dtreport_;                  // frequency for timestep reports
-    int chunk_size_;                // max size for processing chunks
-    bool write_xy_file_;            // flag:  write .xy file?
-    bool write_gold_file_;          // flag:  write Ensight file?
-    int nzones_x_, nzones_y_;       // global number of zones, in x and y
-                                    // directions
-    double len_x_, len_y_;          // length of mesh sides, in x and y
-                                    // directions
-    double cfl_;                    // Courant number, limits timestep
-    double cflv_;                   // volume change limit for timestep
-    double rho_init_;               // initial density for main mesh
-    double energy_init_;            // initial energy for main mesh
-    double rho_init_sub_;           // initial density in subregion
-    double energy_init_sub_;        // initial energy in subregion
-    double vel_init_radial_;        // initial velocity in radial direction
-    double gamma_;                  // coeff. for ideal gas equation
-    double ssmin_;                  // minimum sound speed for gas
-    double alfa_;                   // alpha coefficient for TTS model
-    double qgamma_;                 // gamma coefficient for Q model
-    double q1_, q2_;                // linear and quadratic coefficients
-                                    // for Q model
-    double subregion_xmin_; 		   // bounding box for a subregion
-    double subregion_xmax_; 		   // if xmin != std::numeric_limits<double>::max(),
-    double subregion_ymin_;         // should have 4 entries:
-    double subregion_ymax_; 		   // xmin, xmax, ymin, ymax
-
+	DirectInputParameters direct_input_params_;
     // Legion cannot handle data structures with indirections in them
-
     int n_meshtype_;
     int n_probname_;
     int n_bcx_;

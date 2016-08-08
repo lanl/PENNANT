@@ -67,44 +67,13 @@ void Parallel::init(InputParameters input_params,
 						   &max, sizeof(max));
 
 	  std::vector<SPMDArgs> args(num_subregions());
-	  indirects.resize(num_subregions());
+	  serializer.resize(num_subregions());
 
 	  for (int color = 0; color < num_subregions(); color++) {
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].shard_id_ = color;
-		  args[color].ntasks_ = input_params.ntasks_;
-		  args[color].task_id_ = input_params.task_id_;
-		  args[color].tstop_ = input_params.tstop_;
-		  args[color].cstop_ = input_params.cstop_;
-		  args[color].dtmax_ = input_params.dtmax_;
-		  args[color].dtinit_ = input_params.dtinit_;
-		  args[color].dtfac_ = input_params.dtfac_;
-		  args[color].dtreport_ = input_params.dtreport_;
-		  args[color].chunk_size_ = input_params.chunk_size_;
-		  args[color].write_xy_file_ = input_params.write_xy_file_;
-		  args[color].write_gold_file_ = input_params.write_gold_file_;
-		  args[color].nzones_x_ = input_params.nzones_x_;
-		  args[color].nzones_y_ = input_params.nzones_y_;
-		  args[color].len_x_ = input_params.len_x_;
-		  args[color].len_y_ = input_params.len_y_;
-		  args[color].cfl_ = input_params.cfl_;
-		  args[color].cflv_ = input_params.cflv_;
-		  args[color].rho_init_ = input_params.rho_init_;
-		  args[color].energy_init_ = input_params.energy_init_;
-		  args[color].rho_init_sub_ = input_params.rho_init_sub_;
-		  args[color].energy_init_sub_ = input_params.energy_init_sub_;
-		  args[color].vel_init_radial_ = input_params.vel_init_radial_;
-		  args[color].gamma_ = input_params.gamma_;
-		  args[color].ssmin_ = input_params.ssmin_;
-		  args[color].alfa_ = input_params.alfa_;
-		  args[color].qgamma_ = input_params.qgamma_;
-		  args[color].q1_ = input_params.q1_;
-		  args[color].q2_ = input_params.q2_;
-		  args[color].subregion_xmin_ = input_params.subregion_xmin_;
-		  args[color].subregion_xmax_ = input_params.subregion_xmax_;
-		  args[color].subregion_ymin_ = input_params.subregion_ymin_;
-		  args[color].subregion_ymax_ = input_params.subregion_ymax_;
+		  args[color].direct_input_params_ = input_params.directs_;
 		  // Legion cannot handle data structures with indirections in them
 		  args[color].n_meshtype_ = input_params.meshtype_.length();
 		  args[color].n_probname_ = input_params.probname_.length();
@@ -114,8 +83,8 @@ void Parallel::init(InputParameters input_params,
 		  // Legion cannot handle data structures with indirections in them
 		  size_t size = sizeof(SPMDArgs) + (args[color].n_meshtype_ + args[color].n_probname_)
 				  * sizeof(char) + (args[color].n_bcx_+ args[color].n_bcy_) * sizeof(double);
-		  indirects[color] = malloc(size);
-		  unsigned char *next = (unsigned char*)(indirects[color]) ;
+		  serializer[color] = malloc(size);
+		  unsigned char *next = (unsigned char*)(serializer[color]) ;
 		  memcpy((void*)next, (void*)(&(args[color])), sizeof(SPMDArgs));
 		  next += sizeof(SPMDArgs);
 
@@ -134,7 +103,7 @@ void Parallel::init(InputParameters input_params,
 		  next_size = args[color].n_bcy_ * sizeof(double);
 		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
 
-		  DriverTask driver_launcher(indirects[color], size);
+		  DriverTask driver_launcher(serializer[color], size);
 		  DomainPoint point(color);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
@@ -142,8 +111,8 @@ void Parallel::init(InputParameters input_params,
 }  // init
 
 Parallel::~Parallel() {
-	for (int i=0; i < indirects.size(); i++)
-		free(indirects[i]);
+	for (int i=0; i < serializer.size(); i++)
+		free(serializer[i]);
 }
 
 void Parallel::run() {

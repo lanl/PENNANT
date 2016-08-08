@@ -29,13 +29,13 @@ using namespace std;
 
 
 Mesh::Mesh(const InputParameters& params) :
-			chunk_size_(params.chunk_size_),
-			subregion_xmin_(params.subregion_xmin_),
-			subregion_xmax_(params.subregion_xmax_),
-			subregion_ymin_(params.subregion_ymin_),
-			subregion_ymax_(params.subregion_ymax_),
-			write_xy_file_(params.write_xy_file_),
-			write_gold_file_(params.write_gold_file_),
+			chunk_size_(params.directs_.chunk_size_),
+			subregion_xmin_(params.directs_.subregion_xmin_),
+			subregion_xmax_(params.directs_.subregion_xmax_),
+			subregion_ymin_(params.directs_.subregion_ymin_),
+			subregion_ymax_(params.directs_.subregion_ymax_),
+			write_xy_file_(params.directs_.write_xy_file_),
+			write_gold_file_(params.directs_.write_gold_file_),
 			gmesh_(NULL), egold_(NULL), wxy_(NULL)
 	{
 
