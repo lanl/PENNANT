@@ -23,7 +23,6 @@
 #include <iomanip>
 #include <limits>
 
-#include "Parallel.hh"
 #include "Memory.hh"
 #include "Mesh.hh"
 #include "PolyGas.hh"
@@ -34,7 +33,9 @@
 using namespace std;
 
 // JPG TODO: declare const initialized in all constructors as const
-Hydro::Hydro(const InputParameters& params, Mesh* m) :
+Hydro::Hydro(const InputParameters& params, Mesh* m,
+		DynamicCollective add_reduction,
+        Context ctx, HighLevelRuntime* rt) :
 		mesh(m),
 		cfl(params.directs_.cfl_),
 		cflv(params.directs_.cflv_),
@@ -44,7 +45,10 @@ Hydro::Hydro(const InputParameters& params, Mesh* m) :
 		energy_init_sub(params.directs_.energy_init_sub_),
 		vel_init_radial(params.directs_.vel_init_radial_),
 		bcx(params.bcx_),
-		bcy(params.bcy_)
+		bcy(params.bcy_),
+		add_reduction_(add_reduction),
+		ctx_(ctx),
+		runtime_(rt)
 {
     pgas = new PolyGas(params, this);
     tts = new TTS(params, this);
@@ -622,8 +626,12 @@ void Hydro::writeEnergyCheck() {
         }
     }
 
-    Parallel::globalSum(ei);
-    Parallel::globalSum(ek);
+
+	Future future_sum = Parallel::globalSum(ei, add_reduction_, runtime_, ctx_);
+	ei = future_sum.get_result<double>();
+
+	future_sum = Parallel::globalSum(ek, add_reduction_, runtime_, ctx_);
+	ek = future_sum.get_result<double>();
 
     if (Parallel::mype() == 0) {
         cout << scientific << setprecision(6);

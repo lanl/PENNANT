@@ -233,6 +233,29 @@ void Parallel::gatherv(
 
 // Legion Stuff
 
+Future Parallel::globalSum(double local_value,
+		DynamicCollective& dc_reduction,
+		Runtime *runtime, Context ctx,
+		Predicate pred)
+{
+  TaskLauncher launcher(sumTaskID, TaskArgument(&local_value, sizeof(local_value)), pred, 0 /*default mapper*/);
+  double zero = 0.0;
+  launcher.set_predicate_false_result(TaskArgument(&zero, sizeof(zero)));
+  Future f = runtime->execute_task(ctx, launcher);
+  runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
+  f.get_result<double>();
+  dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
+  Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
+  return ff2;
+}
+
+double Parallel::globalSumTask (const Task *task,
+                  const std::vector<PhysicalRegion> &regions,
+                  Context ctx, HighLevelRuntime *runtime)
+{
+	double value = *(const double *)(task->args);
+	return value;
+}
 
 Future Parallel::globalMin(TimeStep local_value,
 		DynamicCollective& dc_reduction,

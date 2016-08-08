@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "InputParameters.hh"
+#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -27,7 +28,7 @@ class TTS;
 class QCS;
 class HydroBC;
 
-
+// TODO making all member variables public is not encapsulation
 class Hydro {
 public:
 
@@ -77,7 +78,9 @@ public:
     double2* side_force_tts;      // side force from tts
     double2* crnr_force_tot;    // corner force, total from all sources
 
-    Hydro(const InputParameters& params, Mesh* m);
+    Hydro(const InputParameters& params, Mesh* m,
+    		DynamicCollective add_reduction,
+        Context ctx, HighLevelRuntime* rt);
     ~Hydro();
 
     void init();
@@ -211,6 +214,11 @@ public:
     void resetDtHydro();
 
     void writeEnergyCheck();
+
+private:
+    DynamicCollective add_reduction_;
+    Context ctx_;
+    HighLevelRuntime* runtime_;
 
 }; // class Hydro
 

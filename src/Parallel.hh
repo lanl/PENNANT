@@ -98,12 +98,21 @@ public:
             const T *x, const int numx,
             T* y, const int* numy);
     // Legion stuff
-	  static Future globalMin(TimeStep local_value,
+    static Future globalSum(double local_value,
 			  DynamicCollective& dc_reduction,
 			  Runtime *runtime, Context ctx,
 			  Predicate pred = Predicate::TRUE_PRED);
-	  static const TaskID minTaskID = GLOBAL_MIN_TASK_ID;
-	  static TimeStep globalMinTask(const Task *task,
+	static const TaskID sumTaskID = GLOBAL_SUM_TASK_ID;
+	static double globalSumTask(const Task *task,
+					const std::vector<PhysicalRegion> &regions,
+					Context ctx, HighLevelRuntime *runtime);
+
+	static Future globalMin(TimeStep local_value,
+			  DynamicCollective& dc_reduction,
+			  Runtime *runtime, Context ctx,
+			  Predicate pred = Predicate::TRUE_PRED);
+	static const TaskID minTaskID = GLOBAL_MIN_TASK_ID;
+	static TimeStep globalMinTask(const Task *task,
 					const std::vector<PhysicalRegion> &regions,
 					Context ctx, HighLevelRuntime *runtime);
 

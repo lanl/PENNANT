@@ -77,6 +77,10 @@ int main(int argc, char **argv)
 
 	TaskHelper::register_cpu_variants<DriverTask>();
 
+	HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
+			Processor::LOC_PROC, true/*single*/, true/*index*/,
+			AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumTask");
+
 	Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
 
 	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,

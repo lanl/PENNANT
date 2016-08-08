@@ -81,12 +81,13 @@ void DriverTask::cpu_run(const Task *task,
 	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
     }
 
-    Driver drv(params, args.min_reduction_, ctx, rt);
+    Driver drv(params, args.add_reduction_, args.min_reduction_, ctx, rt);
     drv.run();
 
 }
 
 Driver::Driver(const InputParameters& params,
+		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
@@ -96,6 +97,7 @@ Driver::Driver(const InputParameters& params,
 		  dtinit(params.directs_.dtinit_),
 		  dtfac(params.directs_.dtfac_),
 		  dtreport(params.directs_.dtreport_),
+		  add_reduction_(add_reduction),
 		  min_reduction_(min_reduction),
 		  ctx_(ctx),
 		  runtime_(rt)
@@ -103,7 +105,7 @@ Driver::Driver(const InputParameters& params,
 
     // initialize mesh, hydro
     mesh = new Mesh(params);
-    hydro = new Hydro(params, mesh);
+    hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);
 
 }
 

@@ -57,6 +57,7 @@ public:
     std::string msgdtlast;         // previous dt limiter message
 
     Driver(const InputParameters &params,
+    		DynamicCollective add_reduction,
     		DynamicCollective min_reduction,
         Context ctx, HighLevelRuntime* rt);
     ~Driver();
@@ -65,6 +66,7 @@ public:
     void calcGlobalDt();
 
 private:
+    DynamicCollective add_reduction_;
     DynamicCollective min_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;
