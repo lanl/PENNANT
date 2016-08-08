@@ -124,26 +124,6 @@ void Parallel::finalize() {
 }  // final
 
 
-void Parallel::globalMinLoc(double& x, int& xpe) {
-    if (num_subregions() == 1) {
-        xpe = 0;
-        return;
-    }
-#ifdef USE_MPI
-    struct doubleInt {
-        double d;
-        int i;
-    } xdi, ydi;
-    xdi.d = x;
-    xdi.i = mype;
-    MPI_Allreduce(&xdi, &ydi, 1, MPI_DOUBLE_INT, MPI_MINLOC,
-            MPI_COMM_WORLD);
-    x = ydi.d;
-    xpe = ydi.i;
-#endif
-}
-
-
 void Parallel::globalSum(int& x) {
     if (num_subregions() == 1) return;
 #ifdef USE_MPI
@@ -250,3 +230,31 @@ void Parallel::gatherv(
         int* y, const int* numy) {
     gathervImpl(x, numx, y, numy);
 }
+
+// Legion Stuff
+
+
+Future Parallel::globalMin(TimeStep local_value,
+		DynamicCollective& dc_reduction,
+		Runtime *runtime, Context ctx,
+		Predicate pred)
+{
+  TaskLauncher launcher(minTaskID, TaskArgument(&local_value, sizeof(local_value)), pred, 0 /*default mapper*/);
+  TimeStep max;
+  launcher.set_predicate_false_result(TaskArgument(&max, sizeof(max)));
+  Future f = runtime->execute_task(ctx, launcher);
+  runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
+  f.get_result<TimeStep>();
+  dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
+  Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
+  return ff2;
+}
+
+TimeStep Parallel::globalMinTask (const Task *task,
+                  const std::vector<PhysicalRegion> &regions,
+                  Context ctx, HighLevelRuntime *runtime)
+{
+	TimeStep value = *(const TimeStep *)(task->args);
+	return value;
+}
+

@@ -81,19 +81,24 @@ void DriverTask::cpu_run(const Task *task,
 	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
     }
 
-    Driver drv(params);
+    Driver drv(params, args.min_reduction_, ctx, rt);
     drv.run();
 
 }
 
-Driver::Driver(const InputParameters& params)
+Driver::Driver(const InputParameters& params,
+		DynamicCollective min_reduction,
+        Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
 		  cstop(params.directs_.cstop_),
 		  dtmax(params.directs_.dtmax_),
 		  dtinit(params.directs_.dtinit_),
 		  dtfac(params.directs_.dtfac_),
-		  dtreport(params.directs_.dtreport_)
+		  dtreport(params.directs_.dtreport_),
+		  min_reduction_(min_reduction),
+		  ctx_(ctx),
+		  runtime_(rt)
 {
 
     // initialize mesh, hydro
@@ -228,37 +233,14 @@ void Driver::calcGlobalDt() {
     // compare to hydro dt
     hydro->getDtHydro(dt, msgdt);
 
-#ifdef USE_MPI
-    int pedt;
-    Parallel::globalMinLoc(dt, pedt);
+	TimeStep recommend;
+	recommend.dt_ = dt;
+	snprintf(recommend.message_, 80, "%s", msgdt.c_str());
+	Future future_min = Parallel::globalMin(recommend, min_reduction_, runtime_, ctx_);
 
-    // if the global min isn't on this PE, get the right message
-    if (pedt > 0) {
-        const int tagmpi = 300;
-        if (Parallel::mype() == pedt) {
-            char cmsgdt[80];
-            strncpy(cmsgdt, msgdt.c_str(), 80);
-            MPI_Send(cmsgdt, 80, MPI_CHAR, 0, tagmpi,
-                    MPI_COMM_WORLD);
-        }
-        else if (Parallel::mype() == 0) {
-            char cmsgdt[80];
-            MPI_Status status;
-            MPI_Recv(cmsgdt, 80, MPI_CHAR, pedt, tagmpi,
-                    MPI_COMM_WORLD, &status);
-            cmsgdt[79] = '\0';
-            msgdt = string(cmsgdt);
-        }
-    }  // if pedt > 0
-
-    // if timestep was determined by hydro, report which PE
-    // caused it
-    if (Parallel::mype() == 0 && msgdt.substr(0, 5) == "Hydro") {
-        ostringstream oss;
-        oss << "PE " << pedt << ", " << msgdt;
-        msgdt = oss.str();
-    }
-#endif
+	TimeStep ts = future_min.get_result<TimeStep>();
+	dt = ts.dt_;
+	msgdt = string(ts.message_);
 
 }
 

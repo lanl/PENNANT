@@ -79,6 +79,10 @@ int main(int argc, char **argv)
 
 	Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
 
+	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,
+			Processor::LOC_PROC, true/*single*/, true/*index*/,
+			AUTO_GENERATE_ID, TaskConfigOptions(), "globalMinTask");
+
 	Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
 
 

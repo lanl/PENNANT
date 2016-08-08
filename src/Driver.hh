@@ -56,12 +56,18 @@ public:
     std::string msgdt;             // dt limiter message
     std::string msgdtlast;         // previous dt limiter message
 
-    Driver(const InputParameters &params);
+    Driver(const InputParameters &params,
+    		DynamicCollective min_reduction,
+        Context ctx, HighLevelRuntime* rt);
     ~Driver();
 
     void run();
     void calcGlobalDt();
 
+private:
+    DynamicCollective min_reduction_;
+    Context ctx_;
+    HighLevelRuntime* runtime_;
 };  // class Driver
 
 

@@ -22,60 +22,8 @@
 using namespace LegionRuntime::HighLevel;
 using namespace LegionRuntime::Accessor;
 
-// Namespace Parallel provides helper functions and variables for
-// running in distributed parallel mode using MPI, or for stubbing
-// these out if not using MPI.
-
-class Parallel {
-public:
-    static int num_subregions() {return 1;}           // number of MPI PEs in use
-                                // (1 if not using MPI)
-    static int mype() { return 0; }            // PE number for my rank
-                                // (0 if not using MPI)
-	MustEpochLauncher must_epoch_launcher;
-	Context ctx_;
-	HighLevelRuntime *runtime_;
-
-    void init(InputParameters input_params,
-    		Context ctx, HighLevelRuntime *runtime);
-    void run();
-    void finalize();
-    ~Parallel();
-
-    static void globalMinLoc(double& x, int& xpe);
-                                // find minimum over all PEs, and
-                                // report which PE had the minimum
-    static void globalSum(int& x);     // find sum over all PEs - overloaded
-    static void globalSum(int64_t& x);
-    static void globalSum(double& x);
-    static void gather(const int x, int* y);
-                                // gather list of ints from all PEs
-    static void scatter(const int* x, int& y);
-                                // gather list of ints from all PEs
-
-    template<typename T>
-    static void gatherv(               // gather variable-length list
-            const T *x, const int numx,
-            T* y, const int* numy);
-    template<typename T>
-    static void gathervImpl(           // helper function for gatherv
-            const T *x, const int numx,
-            T* y, const int* numy);
-private:
-	std::vector<void*> serializer;
-};  // class Parallel
-
-struct SPMDArgs {
-	DynamicCollective add_reduction_;
-	DynamicCollective min_reduction_;
-	int shard_id_;
-	DirectInputParameters direct_input_params_;
-    // Legion cannot handle data structures with indirections in them
-    int n_meshtype_;
-    int n_probname_;
-    int n_bcx_;
-    int n_bcy_;
-};
+// Parallel provides helper functions and variables for
+// running in distributed parallel mode using Legion.
 
 struct TimeStep {
 	double dt_;
@@ -115,6 +63,64 @@ enum TaskIDs {
 	GLOBAL_MIN_TASK_ID,
 	ADD_REDOP_ID,
 	MIN_REDOP_ID,
+};
+
+class Parallel {
+public:
+    static int num_subregions() {return 1;}           // number of MPI PEs in use
+                                // (1 if not using MPI)
+    static int mype() { return 0; }            // PE number for my rank
+                                // (0 if not using MPI)
+	MustEpochLauncher must_epoch_launcher;
+	Context ctx_;
+	HighLevelRuntime *runtime_;
+
+    void init(InputParameters input_params,
+    		Context ctx, HighLevelRuntime *runtime);
+    void run();
+    void finalize();
+    ~Parallel();
+
+    static void globalSum(int& x);     // find sum over all PEs - overloaded
+    static void globalSum(int64_t& x);
+    static void globalSum(double& x);
+    static void gather(const int x, int* y);
+                                // gather list of ints from all PEs
+    static void scatter(const int* x, int& y);
+                                // gather list of ints from all PEs
+
+    template<typename T>
+    static void gatherv(               // gather variable-length list
+            const T *x, const int numx,
+            T* y, const int* numy);
+    template<typename T>
+    static void gathervImpl(           // helper function for gatherv
+            const T *x, const int numx,
+            T* y, const int* numy);
+    // Legion stuff
+	  static Future globalMin(TimeStep local_value,
+			  DynamicCollective& dc_reduction,
+			  Runtime *runtime, Context ctx,
+			  Predicate pred = Predicate::TRUE_PRED);
+	  static const TaskID minTaskID = GLOBAL_MIN_TASK_ID;
+	  static TimeStep globalMinTask(const Task *task,
+					const std::vector<PhysicalRegion> &regions,
+					Context ctx, HighLevelRuntime *runtime);
+
+private:
+	std::vector<void*> serializer;
+};  // class Parallel
+
+struct SPMDArgs {
+	DynamicCollective add_reduction_;
+	DynamicCollective min_reduction_;
+	int shard_id_;
+	DirectInputParameters direct_input_params_;
+    // Legion cannot handle data structures with indirections in them
+    int n_meshtype_;
+    int n_probname_;
+    int n_bcx_;
+    int n_bcy_;
 };
 
 enum Variants {
