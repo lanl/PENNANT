@@ -35,6 +35,7 @@ using namespace std;
 // JPG TODO: declare const initialized in all constructors as const
 Hydro::Hydro(const InputParameters& params, Mesh* m,
 		DynamicCollective add_reduction,
+		const PhysicalRegion &zones,
         Context ctx, HighLevelRuntime* rt) :
 		mesh(m),
 		cfl(params.directs_.cfl_),
@@ -60,6 +61,11 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
         bcs.push_back(new HydroBC(mesh, vfixx, mesh->getXPlane(bcx[i])));
     for (int i = 0; i < bcy.size(); ++i)
         bcs.push_back(new HydroBC(mesh, vfixy, mesh->getYPlane(bcy[i])));
+
+    ispace_zones_ = zones.get_logical_region().get_index_space();
+    zone_rho_ = zones.get_field_accessor(FID_ZR).typeify<double>();
+    zone_energy_density_ = zones.get_field_accessor(FID_ZE).typeify<double>();
+    zone_pressure_ = zones.get_field_accessor(FID_ZP).typeify<double>();
 
     init();
 }
@@ -96,7 +102,7 @@ void Hydro::init() {
     zone_mass = AbstractedMemory::alloc<double>(numz);
     zone_rho = AbstractedMemory::alloc<double>(numz);
     zone_rho_pred = AbstractedMemory::alloc<double>(numz);
-    zone_energy_density = AbstractedMemory::alloc<double>(numz);
+    //zone_energy_density = AbstractedMemory::alloc<double>(numz);
     zone_energy_tot = AbstractedMemory::alloc<double>(numz);
     zone_work = AbstractedMemory::alloc<double>(numz);
     zone_work_rate = AbstractedMemory::alloc<double>(numz);
@@ -109,12 +115,12 @@ void Hydro::init() {
     crnr_force_tot = AbstractedMemory::alloc<double2>(nums);
 
     // initialize hydro vars
+    fillZoneAccessor(&zone_energy_density_, energy_init);
     for (int zch = 0; zch < numzch; ++zch) {
         int zfirst = mesh->zone_chunk_first[zch];
         int zlast = mesh->zone_chunk_last[zch];
 
         fill(&zone_rho[zfirst], &zone_rho[zlast], rho_init);
-        fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
         fill(&zone_work_rate[zfirst], &zone_work_rate[zlast], 0.);
 
         const double& subrgn_xmin = mesh->subregion_xmin_;
@@ -125,20 +131,22 @@ void Hydro::init() {
             const double eps = 1.e-12;
             #pragma ivdep
             for (int z = zfirst; z < zlast; ++z) {
+            		ptr_t zone_ptr(z);
                 if (zx[z].x > (subrgn_xmin - eps) &&
                     zx[z].x < (subrgn_xmax + eps) &&
                     zx[z].y > (subrgn_ymin - eps) &&
                     zx[z].y < (subrgn_ymax + eps)) {
                     zone_rho[z] = rho_init_sub;
-                    zone_energy_density[z] = energy_init_sub;
+                    zone_energy_density_.write(zone_ptr,energy_init_sub);
                 }
             }
         }
 
         #pragma ivdep
         for (int z = zfirst; z < zlast; ++z) {
+        		ptr_t zone_ptr(z);
             zone_mass[z] = zone_rho[z] * zvol[z];
-            zone_energy_tot[z] = zone_energy_density[z] * zone_mass[z];
+            zone_energy_tot[z] = zone_energy_density_.read(zone_ptr) * zone_mass[z];
         }
     }  // for sch
 
@@ -155,6 +163,14 @@ void Hydro::init() {
 
 }
 
+void Hydro::fillZoneAccessor(RegionAccessor<AccessorType::Generic, double> *acc, double value)
+{
+	IndexIterator itr(runtime_, ctx_, ispace_zones_);
+	while (itr.has_next()) {
+		ptr_t zone_ptr = itr.next();
+		acc->write(zone_ptr, value);
+	}
+}
 
 void Hydro::initRadialVel(
         const double vel,
@@ -215,7 +231,7 @@ void Hydro::doCycle(
         calcCrnrMass(zone_rho_pred, mesh->zone_area_pred, mesh->side_mass_frac, crnr_weighted_mass, sfirst, slast);
 
         // 3. compute material state (half-advanced)
-        pgas->calcStateAtHalf(zone_rho, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density, zone_work_rate, zone_mass, dt,
+        pgas->calcStateAtHalf(zone_rho, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density_, zone_work_rate, zone_mass, dt,
                 zone_pres, zone_sound_speed, zfirst, zlast);
 
         // 4. compute forces
@@ -277,7 +293,7 @@ void Hydro::doCycle(
         calcWorkRate(mesh->zone_vol0, mesh->zone_vol_, zone_work, zone_pres, dt, zone_work_rate, zfirst, zlast);
 
         // 8. update state variables
-        calcEnergy(zone_energy_tot, zone_mass, zone_energy_density, zfirst, zlast);
+        calcEnergy(zone_energy_tot, zone_mass, zone_energy_density_, zfirst, zlast);
         calcRho(zone_mass, mesh->zone_vol_, zone_rho, zfirst, zlast);
 
         // 9.  compute timestep for next cycle
@@ -452,14 +468,15 @@ void Hydro::calcWorkRate(
 void Hydro::calcEnergy(
         const double* zetot,
         const double* zm,
-        double* ze,
+		const RegionAccessor<AccessorType::Generic, double> & ze,
         const int zfirst,
         const int zlast) {
 
     const double fuzz = 1.e-99;
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
-        ze[z] = zetot[z] / (zm[z] + fuzz);
+    		ptr_t zone_ptr(z);
+        ze.write(zone_ptr, zetot[z] / (zm[z] + fuzz));
     }
 
 }

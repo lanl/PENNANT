@@ -15,7 +15,6 @@
 #include <fstream>
 #include <iomanip>
 
-#include "Parallel.hh"
 #include "Mesh.hh"
 
 using namespace std;
@@ -29,7 +28,7 @@ WriteXY::~WriteXY() {}
 void WriteXY::write(
         const string& basename,
         const double* zr,
-        const double* ze,
+        const RegionAccessor<AccessorType::Generic, double> & ze,
         const double* zp) {
 
     const int numz = mesh->num_zones_;
@@ -40,9 +39,9 @@ void WriteXY::write(
     vector<int> penumz(Parallel::mype() == 0 ? Parallel::num_subregions() : 0);
     Parallel::gather(numz, &penumz[0]);
 
-    vector<double> gzr(gnumz), gze(gnumz), gzp(gnumz);
+    vector<double> gzr(gnumz), gzp(gnumz);
     Parallel::gatherv(&zr[0], numz, &gzr[0], &penumz[0]);
-    Parallel::gatherv(&ze[0], numz, &gze[0], &penumz[0]);
+    //Parallel::gatherv(&ze[0], numz, &gze[0], &penumz[0]);
     Parallel::gatherv(&zp[0], numz, &gzp[0], &penumz[0]);
 
     if (Parallel::mype() == 0) {
@@ -55,7 +54,8 @@ void WriteXY::write(
         }
         ofs << "#  ze" << endl;
         for (int z = 0; z < gnumz; ++z) {
-            ofs << setw(5) << (z + 1) << setw(18) << gze[z] << endl;
+        		ptr_t zone_ptr(z);
+            ofs << setw(5) << (z + 1) << setw(18) << ze.read(zone_ptr) << endl;
         }
         ofs << "#  zp" << endl;
         for (int z = 0; z < gnumz; ++z) {

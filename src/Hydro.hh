@@ -64,7 +64,7 @@ public:
     double* zone_mass;        // zone mass
     double* zone_rho;        // zone density
     double* zone_rho_pred;       // zone density, middle of cycle
-    double* zone_energy_density;        // zone specific internal energy
+    //double* zone_energy_density;        // zone specific internal energy
                        // (energy per unit mass)
     double* zone_energy_tot;     // zone total internal energy
     double* zone_work;        // zone work done in cycle
@@ -80,6 +80,7 @@ public:
 
     Hydro(const InputParameters& params, Mesh* m,
     		DynamicCollective add_reduction,
+		const PhysicalRegion &zones,
         Context ctx, HighLevelRuntime* rt);
     ~Hydro();
 
@@ -165,7 +166,7 @@ public:
     void calcEnergy(
             const double* zetot,
             const double* zm,
-            double* ze,
+			const RegionAccessor<AccessorType::Generic, double> &ze,
             const int zfirst,
             const int zlast);
 
@@ -215,7 +216,13 @@ public:
 
     void writeEnergyCheck();
 
+	RegionAccessor<AccessorType::Generic, double> zone_rho_;  // TODO make private
+	RegionAccessor<AccessorType::Generic, double> zone_energy_density_;  // TODO make private
+	RegionAccessor<AccessorType::Generic, double> zone_pressure_;  // TODO make private
 private:
+    void fillZoneAccessor(RegionAccessor<AccessorType::Generic, double> *acc, double value);
+
+    IndexSpace ispace_zones_;
     DynamicCollective add_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;

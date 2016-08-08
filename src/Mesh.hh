@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "InputParameters.hh"
+#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -115,7 +116,7 @@ public:
             const int cycle,
             const double time,
             const double* zr,
-            const double* ze,
+            const RegionAccessor<AccessorType::Generic, double> &ze,
             const double* zp);
 
     // find plane with constant x, y value

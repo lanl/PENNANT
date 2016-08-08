@@ -14,6 +14,7 @@
 #define POLYGAS_HH_
 
 #include "InputParameters.hh"
+#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -37,7 +38,7 @@ public:
             const double* zr0,
             const double* zvolp,
             const double* zvol0,
-            const double* ze,
+            const RegionAccessor<AccessorType::Generic, double> &ze,
             const double* zwrate,
             const double* zm,
             const double dt,
@@ -48,7 +49,7 @@ public:
 
     void calcEOS(
             const double* zr,
-            const double* ze,
+            const RegionAccessor<AccessorType::Generic, double> &ze,
             double* zp,
             double* z0per,
             double* zss,

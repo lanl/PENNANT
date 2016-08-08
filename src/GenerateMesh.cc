@@ -30,11 +30,47 @@ GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 	len_x_(input_params.directs_.len_x_),
 	len_y_(input_params.directs_.len_y_)
 {
+    calcPartitions();
 }
 
 
 GenerateMesh::~GenerateMesh() {}
 
+
+int GenerateMesh::numberOfZones() const {
+	return global_nzones_x_ * global_nzones_y_;
+}
+
+void GenerateMesh::colorPartitions(Coloring *zone_map)
+{
+    if (meshtype_ == "pie")
+    		colorPartitionsPie(zone_map);
+    else if (meshtype_ == "rect")
+    		colorPartitionsRect(zone_map);
+    else if (meshtype_ == "hex")
+    		colorPartitionsHex(zone_map);
+}
+
+void GenerateMesh::colorPartitionsPie(Coloring *zone_map)
+{
+	colorPartitionsRect(zone_map);
+}
+
+void GenerateMesh::colorPartitionsHex(Coloring *zone_map)
+{
+	colorPartitionsRect(zone_map);
+}
+
+void GenerateMesh::colorPartitionsRect(Coloring *zone_map)
+{
+	int part = 0;
+	for (int j = 0; j <= global_nzones_y_; j++) {
+		for (int i = 0; i <= global_nzones_x_; i++) {
+			int zone = j * (global_nzones_x_) + i;
+			(*zone_map)[part].points.insert(zone);
+		}
+	}
+}
 
 void GenerateMesh::generate(
         std::vector<double2>& pointpos,
@@ -48,7 +84,6 @@ void GenerateMesh::generate(
         std::vector<int>& masterpoints){
 
     // do calculations common to all mesh types
-    calcPartitions();
     zone_x_offset_ = proc_index_x_ * global_nzones_x_ / num_proc_x_;
     const int zxstop = (proc_index_x_ + 1) * global_nzones_x_ / num_proc_x_;
     nzones_x_ = zxstop - zone_x_offset_;

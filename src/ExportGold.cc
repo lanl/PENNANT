@@ -18,7 +18,6 @@
 #include <cstdlib>
 #include <numeric>
 
-#include "Parallel.hh"
 #include "Vec2.hh"
 #include "Mesh.hh"
 
@@ -35,7 +34,7 @@ void ExportGold::write(
         const int cycle,
         const double time,
         const double* zr,
-        const double* ze,
+        const RegionAccessor<AccessorType::Generic, double> &ze,
         const double* zp) {
 
     writeCaseFile(basename);
@@ -346,6 +345,87 @@ void ExportGold::writeVarFile(
 
 }
 
+
+void ExportGold::writeVarFile(
+        const string& basename,
+        const string& varname,
+        const RegionAccessor<AccessorType::Generic, double>& var) {
+
+    // open file
+    ofstream ofs;
+    if (Parallel::mype() == 0) {
+        const string filename = basename + "." + varname;
+        ofs.open(filename.c_str());
+        if (!ofs.good()) {
+            cerr << "Cannot open file " << filename << " for writing"
+                 << endl;
+            exit(1);
+        }
+    } // if Parallel::mype() == 0
+
+    // write header
+    if (Parallel::mype() == 0) {
+        ofs << scientific << setprecision(5);
+        ofs << varname << endl;
+        ofs << "part" << endl;
+        ofs << setw(10) << 1 << endl;
+    } // if Parallel::mype() == 0
+
+    int ntris = tris.size();
+    int nquads = quads.size();
+    int nothers = others.size();
+
+    // gather values on triangles to PE 0
+    vector<double> tvar(ntris), gtvar(gntris);
+    for (int t = 0; t < ntris; ++t) {
+    		ptr_t zone_ptr(tris[t]);
+        tvar[t] = var.read(zone_ptr);
+    }
+    Parallel::gatherv(&tvar[0], ntris, &gtvar[0], &pentris[0]);
+
+    // write values on triangles
+    if (Parallel::mype() == 0 && gntris > 0) {
+        ofs << "tria3" << endl;
+        for (int t = 0; t < gntris; ++t) {
+            ofs << setw(12) << gtvar[t] << endl;
+        }
+    } // if Parallel::mype() == 0 ...
+
+    // gather values on quads to PE 0
+    vector<double> qvar(nquads), gqvar(gnquads);
+    for (int q = 0; q < nquads; ++q) {
+    		ptr_t zone_ptr(quads[q]);
+        qvar[q] = var.read(zone_ptr);
+    }
+    Parallel::gatherv(&qvar[0], nquads, &gqvar[0], &penquads[0]);
+
+    // write values on quads
+    if (Parallel::mype() == 0 && gnquads > 0) {
+        ofs << "quad4" << endl;
+        for (int q = 0; q < gnquads; ++q) {
+            ofs << setw(12) << gqvar[q] << endl;
+        }
+    } // if Parallel::mype() == 0 ...
+
+    // gather values on others to PE 0
+    vector<double> ovar(nothers), govar(gnothers);
+    for (int n = 0; n < nothers; ++n) {
+    		ptr_t zone_ptr(others[n]);
+        ovar[n] = var.read(zone_ptr);
+    }
+    Parallel::gatherv(&ovar[0], nothers, &govar[0], &penothers[0]);
+
+    // write values on others
+    if (Parallel::mype() == 0 && gnothers > 0) {
+        ofs << "nsided" << endl;
+        for (int n = 0; n < gnothers; ++n) {
+            ofs << setw(12) << govar[n] << endl;
+        }
+    } // if Parallel::mype() == 0 ...
+
+    if (Parallel::mype() == 0) ofs.close();
+
+}
 
 void ExportGold::sortZones() {
 

@@ -12,4 +12,5 @@ q1      0.1
 q2      1.0
 dtinit  0.0025
 writexy 1
+writegold 1
 chunksize 16

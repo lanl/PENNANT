@@ -25,9 +25,15 @@
 
 using namespace std;
 
-DriverTask::DriverTask(void *args, const size_t &size)
+DriverTask::DriverTask(//LogicalRegion lregion_my_zones,
+		LogicalRegion lregion_global_zones,
+		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
+	add_region_requirement(RegionRequirement(lregion_global_zones, WRITE_DISCARD, EXCLUSIVE, lregion_global_zones));
+	add_field(0/*idx*/, FID_ZR);
+	add_field(0/*idx*/, FID_ZE);
+	add_field(0/*idx*/, FID_ZP);
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -37,8 +43,9 @@ void DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* rt)
 {
-	// Unmap all the regions we were given since we won't actually use them
-	rt->unmap_all_regions(ctx);
+	assert(regions.size() == 1);
+	assert(task->regions.size() == 1);
+	assert(task->regions[0].privilege_fields.size() == 3);
 
 	// Legion cannot handle data structures with indirections in them
     unsigned char *serialized_args = (unsigned char *) task->args;
@@ -81,7 +88,9 @@ void DriverTask::cpu_run(const Task *task,
 	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
     }
 
-    Driver drv(params, args.add_reduction_, args.min_reduction_, ctx, rt);
+    Driver drv(params, args.add_reduction_, args.min_reduction_,
+    		regions[0],
+		ctx, rt);
     drv.run();
 
 }
@@ -89,6 +98,7 @@ void DriverTask::cpu_run(const Task *task,
 Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
+		const PhysicalRegion &zones,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -105,7 +115,7 @@ Driver::Driver(const InputParameters& params,
 
     // initialize mesh, hydro
     mesh = new Mesh(params);
-    hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);
+    hydro = new Hydro(params, mesh, add_reduction_, zones, ctx_, runtime_);
 
 }
 
@@ -193,11 +203,11 @@ void Driver::run() {
 
     // do final mesh output
     mesh->write(probname, cycle, time,
-            hydro->zone_rho, hydro->zone_energy_density, hydro->zone_pres);
+            hydro->zone_rho, hydro->zone_energy_density_, hydro->zone_pres);
 
 }
 
-
+// TODO make this a task and collapse Driver into DriverTask
 void Driver::calcGlobalDt() {
 
     // Save timestep from last cycle

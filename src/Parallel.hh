@@ -16,6 +16,7 @@
 #include <limits>
 #include <stdint.h>
 
+#include "GlobalMesh.hh"
 #include "InputParameters.hh"
 
 #include "legion.h"
@@ -24,6 +25,12 @@ using namespace LegionRuntime::Accessor;
 
 // Parallel provides helper functions and variables for
 // running in distributed parallel mode using Legion.
+
+enum ZoneFields {
+	FID_ZR,
+	FID_ZE,
+	FID_ZP,
+};
 
 struct TimeStep {
 	double dt_;
@@ -67,22 +74,21 @@ enum TaskIDs {
 
 class Parallel {
 public:
+	// TODO fix these
     static int num_subregions() {return 1;}           // number of MPI PEs in use
                                 // (1 if not using MPI)
     static int mype() { return 0; }            // PE number for my rank
                                 // (0 if not using MPI)
-	MustEpochLauncher must_epoch_launcher;
-	Context ctx_;
-	HighLevelRuntime *runtime_;
 
-    void init(InputParameters input_params,
+    Parallel(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
-    void run();
-    void finalize();
     ~Parallel();
+    void run();
 
+    // TODO use Legion
     static void globalSum(int& x);     // find sum over all PEs - overloaded
     static void globalSum(int64_t& x);
+    //EXport GOld stuff to be converted to Legion
     static void globalSum(double& x);
     static void gather(const int x, int* y);
                                 // gather list of ints from all PEs
@@ -117,7 +123,11 @@ public:
 					Context ctx, HighLevelRuntime *runtime);
 
 private:
+	GlobalMesh global_mesh_;
 	std::vector<void*> serializer;
+	MustEpochLauncher must_epoch_launcher;
+	Context ctx_;
+	HighLevelRuntime *runtime_;
 };  // class Parallel
 
 struct SPMDArgs {

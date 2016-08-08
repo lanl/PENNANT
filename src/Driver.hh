@@ -25,7 +25,9 @@ class Hydro;
 
 class DriverTask : public TaskLauncher {
 public:
-	DriverTask(void *args, const size_t &size);
+	DriverTask(//LogicalPartition lpart_zone,
+			LogicalRegion lregion_zone,
+			void *args, const size_t &size);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = DRIVER_TASK_ID;
 	static const bool CPU_BASE_LEAF = false;
@@ -59,6 +61,7 @@ public:
     Driver(const InputParameters &params,
     		DynamicCollective add_reduction,
     		DynamicCollective min_reduction,
+		const PhysicalRegion &zones,
         Context ctx, HighLevelRuntime* rt);
     ~Driver();
 

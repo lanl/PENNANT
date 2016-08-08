@@ -22,18 +22,13 @@
 #include "MinReductionOp.hh"
 #include "Vec2.hh"
 
-
-//Parallel::Parallel()
-//{
-//}
-
-void Parallel::init(InputParameters input_params,
-		Context ctx, HighLevelRuntime *runtime) {
-	  //num_subregions = input_params.ntasks_;
-
-	  ctx_ = ctx;
-	  runtime_ = runtime;
-
+Parallel::Parallel(InputParameters input_params,
+		Context ctx, HighLevelRuntime *runtime) :
+		global_mesh_(input_params, ctx, runtime),
+		ctx_(ctx),
+		runtime_(runtime)
+//num_subregions = input_params.ntasks_;
+{
 	  // we're going to use a must epoch launcher, so we need at least as many
 	  //  processors in our system as we have subregions - check that now
 	  std::set<Processor> all_procs;
@@ -102,8 +97,9 @@ void Parallel::init(InputParameters input_params,
 
 		  next_size = args[color].n_bcy_ * sizeof(double);
 		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
-
-		  DriverTask driver_launcher(serializer[color], size);
+		  //LogicalRegion my_zones = runtime_->get_logical_region_by_color(ctx_,
+		  // global_mesh.logical_part_zones_, color);
+		  DriverTask driver_launcher(global_mesh_.logical_region_global_zones_, serializer[color], size);
 		  DomainPoint point(color);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
@@ -119,10 +115,6 @@ void Parallel::run() {
 	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
 	  fm.wait_all_results();
 }
-
-void Parallel::finalize() {
-}  // final
-
 
 void Parallel::globalSum(int& x) {
     if (num_subregions() == 1) return;

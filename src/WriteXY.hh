@@ -15,6 +15,8 @@
 
 #include <string>
 
+#include "Parallel.hh"
+
 // forward declarations
 class Mesh;
 
@@ -30,7 +32,7 @@ public:
     void write(
             const std::string& basename,
             const double* zr,
-            const double* ze,
+            const RegionAccessor<AccessorType::Generic, double> & ze,
             const double* zp);
 
 };

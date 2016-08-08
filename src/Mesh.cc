@@ -20,7 +20,6 @@
 
 #include "Vec2.hh"
 #include "Memory.hh"
-#include "Parallel.hh"
 #include "WriteXY.hh"
 #include "ExportGold.hh"
 #include "GenerateMesh.hh"
@@ -326,6 +325,7 @@ void Mesh::writeMeshStats() {
     int gnumzch = num_zone_chunks;
     int gnumsch = num_side_chunks;
 
+    // TODO use Legion
     Parallel::globalSum(gnump);
     Parallel::globalSum(gnumz);
     Parallel::globalSum(gnums);
@@ -355,7 +355,7 @@ void Mesh::write(
         const int cycle,
         const double time,
         const double* zr,
-        const double* ze,
+        const RegionAccessor<AccessorType::Generic, double> &ze,
         const double* zp) {
 
     if (write_xy_file_) {

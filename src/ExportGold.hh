@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include "Parallel.hh"
+
 // forward declarations
 class Mesh;
 
@@ -45,7 +47,7 @@ public:
             const int cycle,
             const double time,
             const double* zr,
-            const double* ze,
+            const RegionAccessor<AccessorType::Generic, double> &ze,
             const double* zp);
 
     void writeCaseFile(
@@ -60,6 +62,11 @@ public:
             const std::string& basename,
             const std::string& varname,
             const double* var);
+
+    void writeVarFile(
+            const std::string& basename,
+            const std::string& varname,
+            const RegionAccessor<AccessorType::Generic, double> &var);
 
     void sortZones();
 };

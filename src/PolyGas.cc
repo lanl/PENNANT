@@ -31,7 +31,7 @@ void PolyGas::calcStateAtHalf(
         const double* zr0,
         const double* zvolp,
         const double* zvol0,
-        const double* ze,
+        const RegionAccessor<AccessorType::Generic, double> &ze,
         const double* zwrate,
         const double* zm,
         const double dt,
@@ -65,7 +65,7 @@ void PolyGas::calcStateAtHalf(
 
 void PolyGas::calcEOS(
         const double* zr,
-        const double* ze,
+        const RegionAccessor<AccessorType::Generic, double> &ze,
         double* zp,
         double* z0per,
         double* zss,
@@ -77,9 +77,10 @@ void PolyGas::calcEOS(
 
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
+    		ptr_t zone_ptr(z);
         int z0 = z - zfirst;
         double rx = zr[z];
-        double ex = max(ze[z], 0.0);
+        double ex = max(ze.read(zone_ptr), 0.0);
         double px = gm1 * rx * ex;
         double prex = gm1 * ex;
         double perx = gm1 * rx;
