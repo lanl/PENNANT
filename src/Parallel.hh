@@ -33,6 +33,11 @@ enum ZoneFields {
 	FID_ZP,
 };
 
+struct RunStat {
+	int cycle;
+	double time;
+};
+
 struct TimeStep {
 	double dt_;
 	char message_[80];
@@ -67,6 +72,7 @@ struct TimeStep {
 enum TaskIDs {
 	TOP_LEVEL_TASK_ID,
 	DRIVER_TASK_ID,
+	WRITE_TASK_ID,
 	GLOBAL_SUM_TASK_ID,
 	GLOBAL_MIN_TASK_ID,
 	ADD_REDOP_ID,
@@ -86,7 +92,7 @@ public:
     Parallel(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
     ~Parallel();
-    void run();
+    void run(InputParameters input_params);
 
     // TODO use Legion
     static void globalSum(int& x);     // find sum over all PEs - overloaded

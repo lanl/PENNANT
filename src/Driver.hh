@@ -32,7 +32,7 @@ public:
 	static const int TASK_ID = DRIVER_TASK_ID;
 	static const bool CPU_BASE_LEAF = false;
 
-	static void cpu_run(const Task *task,
+	static RunStat cpu_run(const Task *task,
 			  const std::vector<PhysicalRegion> &regions,
 			  Context ctx, HighLevelRuntime* rt);
 };
@@ -45,8 +45,7 @@ public:
     Hydro *hydro;
 
     std::string probname;          // problem name
-    double time;                   // simulation time
-    int cycle;                     // simulation cycle number
+    RunStat run_stat;              // simulation time & cycle number
     double tstop;                  // simulation stop time
     int cstop;                     // simulation stop cycle
     double dtmax;                  // maximum timestep size
@@ -65,7 +64,7 @@ public:
         Context ctx, HighLevelRuntime* rt);
     ~Driver();
 
-    void run();
+    RunStat run();
     void calcGlobalDt();
 
 private:

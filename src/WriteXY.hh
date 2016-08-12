@@ -24,16 +24,14 @@ class Mesh;
 class WriteXY {
 public:
 
-    Mesh* mesh;
-
-    WriteXY(Mesh* m);
-    ~WriteXY();
-
-    void write(
+    static void write(
             const std::string& basename,
             const DoubleAccessor& zr,
             const DoubleAccessor& ze,
-            const DoubleAccessor& zp);
+            const DoubleAccessor& zp,
+			IndexIterator& zr_itr,
+			IndexIterator& ze_itr,
+			IndexIterator& zp_itr);
 
 };
 

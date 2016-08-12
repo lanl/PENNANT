@@ -76,6 +76,8 @@ src/QCS.o: src/QCS.hh src/Memory.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh \
 src/TTS.o: src/TTS.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh \
 	src/InputParameters.hh src/Parallel.hh
 src/WriteXY.o: src/WriteXY.hh src/Parallel.hh src/Mesh.hh
+src/WriteTask.o: src/WriteTask.hh src/Parallel.hh
 src/main.o: src/Parallel.hh src/InputParameters.hh src/InputFile.hh \
-	src/AddReductionOp.hh src/MinReductionOp.hh src/Driver.hh
+	src/AddReductionOp.hh src/MinReductionOp.hh src/Driver.hh \
+	src/WriteTask.hh
 

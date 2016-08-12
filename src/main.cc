@@ -22,6 +22,7 @@
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
 #include "Parallel.hh"
+#include "WriteTask.hh"
 
 
 using namespace std;
@@ -62,7 +63,7 @@ void top_level_task(const Task *task,
     input_params.probname_ = probname;
 
 	Parallel parallel(input_params, ctx, runtime);
-	parallel.run();
+	parallel.run(input_params);
 }
 
 
@@ -74,7 +75,11 @@ int main(int argc, char **argv)
 			Processor::LOC_PROC, true/*single*/, false/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
 
-	TaskHelper::register_cpu_variants<DriverTask>();
+	HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(DRIVER_TASK_ID,
+			Processor::LOC_PROC, false/*single*/, true/*index*/,
+			AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
+
+	TaskHelper::register_cpu_variants<WriteTask>();
 
 	HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
 			Processor::LOC_PROC, true/*single*/, true/*index*/,

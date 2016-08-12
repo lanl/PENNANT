@@ -20,8 +20,6 @@
 
 #include "Vec2.hh"
 #include "Memory.hh"
-#include "WriteXY.hh"
-#include "ExportGold.hh"
 #include "GenerateMesh.hh"
 
 using namespace std;
@@ -33,14 +31,10 @@ Mesh::Mesh(const InputParameters& params) :
 			subregion_xmax_(params.directs_.subregion_xmax_),
 			subregion_ymin_(params.directs_.subregion_ymin_),
 			subregion_ymax_(params.directs_.subregion_ymax_),
-			write_xy_file_(params.directs_.write_xy_file_),
-			write_gold_file_(params.directs_.write_gold_file_),
-			gmesh_(NULL), egold_(NULL), wxy_(NULL)
+			gmesh_(NULL)
 	{
 
     gmesh_ = new GenerateMesh(params);
-    wxy_ = new WriteXY(this);
-    egold_ = new ExportGold(this);
 
     init();
 }
@@ -48,8 +42,6 @@ Mesh::Mesh(const InputParameters& params) :
 
 Mesh::~Mesh() {
     delete gmesh_;
-    delete wxy_;
-    delete egold_;
 }
 
 
@@ -350,26 +342,6 @@ void Mesh::writeMeshStats() {
 }
 
 
-void Mesh::write(
-        const string& probname,
-        const int cycle,
-        const double time,
-        const DoubleAccessor& zr,
-        const DoubleAccessor& ze,
-        const DoubleAccessor& zp) {
-
-    if (write_xy_file_) {
-        if (Parallel::mype() == 0)
-            cout << "Writing .xy file..." << endl;
-        wxy_->write(probname, zr, ze, zp);
-    }
-    if (write_gold_file_) {
-        if (Parallel::mype() == 0)
-            cout << "Writing gold file..." << endl;
-        egold_->write(probname, cycle, time, zr, ze, zp);
-    }
-
-}
 
 
 vector<int> Mesh::getXPlane(const double c) {

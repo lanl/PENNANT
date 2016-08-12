@@ -23,8 +23,6 @@
 // forward declarations
 class InputFile;
 class GenerateMesh;
-class WriteXY;
-class ExportGold;
 
 class Mesh {
 public:
@@ -35,8 +33,6 @@ public:
     double subregion_xmax_; 		   // if xmin != std::numeric_limits<double>::max(),
     double subregion_ymin_;         // should have 4 entries:
     double subregion_ymax_; 		   // xmin, xmax, ymin, ymax
-    bool write_xy_file_;                  // flag:  write .xy file?
-    bool write_gold_file_;                // flag:  write Ensight file?
 
     // mesh variables
     // (See documentation for more details on the mesh
@@ -110,14 +106,6 @@ public:
     Mesh(const InputParameters& params);
     ~Mesh();
 
-    // write mesh
-    void write(
-            const std::string& probname,
-            const int cycle,
-            const double time,
-            const DoubleAccessor& zr,
-            const DoubleAccessor& ze,
-            const DoubleAccessor& zp);
 
     // find plane with constant x, y value
     std::vector<int> getXPlane(const double c);
@@ -156,8 +144,6 @@ private:
 
     // children
     GenerateMesh* gmesh_;
-    ExportGold* egold_;
-    WriteXY* wxy_;
 
     // point-to-corner inverse map is stored as a linked list...
     int* map_pt2crn_first;   // map:  point -> first corner

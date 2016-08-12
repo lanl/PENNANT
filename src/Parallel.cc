@@ -21,6 +21,7 @@
 #include "Driver.hh"
 #include "MinReductionOp.hh"
 #include "Vec2.hh"
+#include "WriteTask.hh"
 
 Parallel::Parallel(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime) :
@@ -111,9 +112,36 @@ Parallel::~Parallel() {
 		free(serializer[i]);
 }
 
-void Parallel::run() {
+void Parallel::run(InputParameters input_params) {
 	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
 	  fm.wait_all_results();
+
+	  RunStat run_stat = fm.get_result<RunStat>(0);
+
+	  // Legion cannot handle data structures with indirections in them
+	  void* serializer;
+	  size_t n_probname = input_params.probname_.length();
+	  size_t size = sizeof(RunStat) + sizeof(DirectInputParameters) + sizeof(size_t)
+			  + n_probname * sizeof(char);
+	  serializer = malloc(size);
+	  unsigned char *next = (unsigned char*)(serializer) ;
+	  memcpy((void*)next, (void*)(&run_stat), sizeof(RunStat));
+	  next += sizeof(RunStat);
+
+	  size_t next_size = sizeof(DirectInputParameters);
+	  memcpy((void*)next, (void*)(&input_params.directs_), next_size);
+	  next += next_size;
+
+	  next_size = sizeof(size_t);
+	  memcpy((void*)next, (void*)(&n_probname), next_size);
+	  next += next_size;
+
+	  next_size = sizeof(char) * n_probname;
+	  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
+
+	  WriteTask write_launcher(global_mesh_.lregion_global_zones_, serializer, size);
+      runtime_->execute_task(ctx_, write_launcher);
+
 }
 
 void Parallel::globalSum(int& x) {

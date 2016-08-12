@@ -39,7 +39,7 @@ DriverTask::DriverTask(//LogicalRegion lregion_my_zones,
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
 
 /*static*/
-void DriverTask::cpu_run(const Task *task,
+RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* rt)
 {
@@ -52,7 +52,7 @@ void DriverTask::cpu_run(const Task *task,
     SPMDArgs args;
 	size_t next_size = sizeof(SPMDArgs);
     memcpy((void*)(&args), (void*)serialized_args, next_size);
-	serialized_args += sizeof(SPMDArgs);
+	serialized_args += next_size;
 
     InputParameters params;
     params.directs_ = args.direct_input_params_;
@@ -91,8 +91,8 @@ void DriverTask::cpu_run(const Task *task,
     Driver drv(params, args.add_reduction_, args.min_reduction_,
     		regions[0],
 		ctx, rt);
-    drv.run();
-
+    RunStat value=drv.run();
+    return value;
 }
 
 Driver::Driver(const InputParameters& params,
@@ -126,9 +126,9 @@ Driver::~Driver() {
 
 }
 
-void Driver::run() {
-    time = 0.0;
-    cycle = 0;
+RunStat Driver::run() {
+    run_stat.time = 0.0;
+    run_stat.cycle = 0;
 
     // do energy check
     hydro->writeEnergyCheck();
@@ -143,9 +143,9 @@ void Driver::run() {
     }
 
     // main event loop
-    while (cycle < cstop && time < tstop) {
+    while (run_stat.cycle < cstop && run_stat.time < tstop) {
 
-        cycle += 1;
+    	run_stat.cycle += 1;
 
         // get timestep
         calcGlobalDt();
@@ -153,18 +153,18 @@ void Driver::run() {
         // begin hydro cycle
         hydro->doCycle(dt);
 
-        time += dt;
+        run_stat.time += dt;
 
         if (Parallel::mype() == 0 &&
-                (cycle == 1 || cycle % dtreport == 0)) {
+                (run_stat.cycle == 1 || run_stat.cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
             double tcurr = scurr.tv_sec + scurr.tv_usec * 1.e-6;
             double tdiff = tcurr - tlast;
 
             cout << scientific << setprecision(5);
-            cout << "End cycle " << setw(6) << cycle
-                 << ", time = " << setw(11) << time
+            cout << "End cycle " << setw(6) << run_stat.cycle
+                 << ", time = " << setw(11) << run_stat.time
                  << ", dt = " << setw(11) << dt
                  << ", wall = " << setw(11) << tdiff << endl;
             cout << "dt limiter: " << msgdt << endl;
@@ -186,9 +186,9 @@ void Driver::run() {
         cout << endl;
         cout << "Run complete" << endl;
         cout << scientific << setprecision(6);
-        cout << "cycle = " << setw(6) << cycle
+        cout << "cycle = " << setw(6) << run_stat.cycle
              << ",         cstop = " << setw(6) << cstop << endl;
-        cout << "time  = " << setw(14) << time
+        cout << "time  = " << setw(14) << run_stat.time
              << ", tstop = " << setw(14) << tstop << endl;
 
         cout << endl;
@@ -201,10 +201,7 @@ void Driver::run() {
     // do energy check
     hydro->writeEnergyCheck();
 
-    // do final mesh output
-    mesh->write(probname, cycle, time,
-            hydro->zone_rho_, hydro->zone_energy_density_, hydro->zone_pressure_);
-
+    return run_stat;
 }
 
 // TODO make this a task and collapse Driver into DriverTask
@@ -218,7 +215,7 @@ void Driver::calcGlobalDt() {
     dt = dtmax;
     msgdt = "Global maximum (dtmax)";
 
-    if (cycle == 1) {
+    if (run_stat.cycle == 1) {
         // compare to initial timestep
         if (dtinit < dt) {
             dt = dtinit;
@@ -237,8 +234,8 @@ void Driver::calcGlobalDt() {
     }
 
     // compare to time-to-end
-    if ((tstop - time) < dt) {
-        dt = tstop - time;
+    if ((tstop - run_stat.time) < dt) {
+        dt = tstop - run_stat.time;
         msgdt = "Global (tstop - time)";
     }
 
