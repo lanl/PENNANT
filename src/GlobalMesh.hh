@@ -19,8 +19,8 @@ public:
 			Context ctx, HighLevelRuntime *runtime);
 	virtual ~GlobalMesh();
 
-	LogicalRegion logical_region_global_zones_;
-	LogicalPartition logical_part_zones_;
+	LogicalRegion lregion_global_zones_;
+	LogicalPartition lpart_zones_;
 
 private:
 	void init();

@@ -354,8 +354,8 @@ void Mesh::write(
         const string& probname,
         const int cycle,
         const double time,
-        const double* zr,
-        const RegionAccessor<AccessorType::Generic, double> &ze,
+        const DoubleAccessor &zr,
+        const DoubleAccessor &ze,
         const double* zp) {
 
     if (write_xy_file_) {

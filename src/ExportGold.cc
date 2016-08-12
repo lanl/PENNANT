@@ -33,8 +33,8 @@ void ExportGold::write(
         const string& basename,
         const int cycle,
         const double time,
-        const double* zr,
-        const RegionAccessor<AccessorType::Generic, double> &ze,
+        const DoubleAccessor &zr,
+        const DoubleAccessor &ze,
         const double* zp) {
 
     writeCaseFile(basename);
@@ -349,7 +349,7 @@ void ExportGold::writeVarFile(
 void ExportGold::writeVarFile(
         const string& basename,
         const string& varname,
-        const RegionAccessor<AccessorType::Generic, double>& var) {
+        const DoubleAccessor& var) {
 
     // open file
     ofstream ofs;

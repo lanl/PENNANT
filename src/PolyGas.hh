@@ -35,10 +35,10 @@ public:
     ~PolyGas();
 
     void calcStateAtHalf(
-            const double* zr0,
+            const DoubleAccessor& zr0,
             const double* zvolp,
             const double* zvol0,
-            const RegionAccessor<AccessorType::Generic, double> &ze,
+            const DoubleAccessor& ze,
             const double* zwrate,
             const double* zm,
             const double dt,
@@ -48,8 +48,8 @@ public:
             const int zlast);
 
     void calcEOS(
-            const double* zr,
-            const RegionAccessor<AccessorType::Generic, double> &ze,
+            const DoubleAccessor& zr,
+            const DoubleAccessor& ze,
             double* zp,
             double* z0per,
             double* zss,

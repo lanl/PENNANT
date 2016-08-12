@@ -28,10 +28,10 @@ PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
 
 
 void PolyGas::calcStateAtHalf(
-        const double* zr0,
+        const DoubleAccessor& zr0,
         const double* zvolp,
         const double* zvol0,
-        const RegionAccessor<AccessorType::Generic, double> &ze,
+        const DoubleAccessor& ze,
         const double* zwrate,
         const double* zm,
         const double dt,
@@ -53,10 +53,11 @@ void PolyGas::calcStateAtHalf(
         int z0 = z - zfirst;
         double zminv = 1. / zm[z];
         double dv = (zvolp[z] - zvol0[z]) * zminv;
-        double bulk = zr0[z] * zss[z] * zss[z];
+        ptr_t zone_ptr(z);
+        double bulk = zr0.read(zone_ptr) * zss[z] * zss[z];
         double denom = 1. + 0.5 * z0per[z0] * dv;
         double src = zwrate[z] * dth * zminv;
-        zp[z] += (z0per[z0] * src - zr0[z] * bulk * dv) / denom;
+        zp[z] += (z0per[z0] * src - zr0.read(zone_ptr) * bulk * dv) / denom;
     }
 
     AbstractedMemory::free(z0per);
@@ -64,8 +65,8 @@ void PolyGas::calcStateAtHalf(
 
 
 void PolyGas::calcEOS(
-        const double* zr,
-        const RegionAccessor<AccessorType::Generic, double> &ze,
+        const DoubleAccessor& zr,
+        const DoubleAccessor& ze,
         double* zp,
         double* z0per,
         double* zss,
@@ -79,7 +80,7 @@ void PolyGas::calcEOS(
     for (int z = zfirst; z < zlast; ++z) {
     		ptr_t zone_ptr(z);
         int z0 = z - zfirst;
-        double rx = zr[z];
+        double rx = zr.read(zone_ptr);
         double ex = max(ze.read(zone_ptr), 0.0);
         double px = gm1 * rx * ex;
         double prex = gm1 * ex;

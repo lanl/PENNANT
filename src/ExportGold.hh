@@ -46,8 +46,8 @@ public:
             const std::string& basename,
             const int cycle,
             const double time,
-            const double* zr,
-            const RegionAccessor<AccessorType::Generic, double> &ze,
+            const DoubleAccessor &zr,
+            const DoubleAccessor &ze,
             const double* zp);
 
     void writeCaseFile(
@@ -66,7 +66,7 @@ public:
     void writeVarFile(
             const std::string& basename,
             const std::string& varname,
-            const RegionAccessor<AccessorType::Generic, double> &var);
+            const DoubleAccessor& var);
 
     void sortZones();
 };

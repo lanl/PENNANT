@@ -31,8 +31,8 @@ public:
 
     void write(
             const std::string& basename,
-            const double* zr,
-            const RegionAccessor<AccessorType::Generic, double> & ze,
+            const DoubleAccessor& zr,
+            const DoubleAccessor& ze,
             const double* zp);
 
 };

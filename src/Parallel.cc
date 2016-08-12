@@ -99,7 +99,7 @@ Parallel::Parallel(InputParameters input_params,
 		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
 		  //LogicalRegion my_zones = runtime_->get_logical_region_by_color(ctx_,
 		  // global_mesh.logical_part_zones_, color);
-		  DriverTask driver_launcher(global_mesh_.logical_region_global_zones_, serializer[color], size);
+		  DriverTask driver_launcher(global_mesh_.lregion_global_zones_, serializer[color], size);
 		  DomainPoint point(color);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }

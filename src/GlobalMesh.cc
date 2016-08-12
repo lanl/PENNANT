@@ -39,8 +39,8 @@ void GlobalMesh::init() {
 	runtime_->attach_name(fspace_zones_, "GlobalMesh::fspace_zones_");
 	allocateZoneFields();
 
-	logical_region_global_zones_ = runtime_->create_logical_region(ctx_, ispace_zones_, fspace_zones_);
-	runtime_->attach_name(logical_region_global_zones_, "GlobalMesh::logical_region_global_zones_");
+	lregion_global_zones_ = runtime_->create_logical_region(ctx_, ispace_zones_, fspace_zones_);
+	runtime_->attach_name(lregion_global_zones_, "GlobalMesh::lregion_global_zones_");
 
 	Coloring local_zones_map;
 	gmesh.colorPartitions(&local_zones_map);
@@ -52,7 +52,7 @@ void GlobalMesh::init() {
 }
 
 void GlobalMesh::clear() {
-	runtime_->destroy_logical_region(ctx_, logical_region_global_zones_);
+	runtime_->destroy_logical_region(ctx_, lregion_global_zones_);
 	runtime_->destroy_field_space(ctx_, fspace_zones_);
 	runtime_->destroy_index_space(ctx_, ispace_zones_);
 }

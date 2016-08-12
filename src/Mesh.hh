@@ -115,8 +115,8 @@ public:
             const std::string& probname,
             const int cycle,
             const double time,
-            const double* zr,
-            const RegionAccessor<AccessorType::Generic, double> &ze,
+            const DoubleAccessor &zr,
+            const DoubleAccessor &ze,
             const double* zp);
 
     // find plane with constant x, y value

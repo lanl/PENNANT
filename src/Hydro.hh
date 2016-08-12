@@ -62,8 +62,8 @@ public:
     double* crnr_weighted_mass;    // corner contribution to pmaswt
 
     double* zone_mass;        // zone mass
-    double* zone_rho;        // zone density
-    double* zone_rho_pred;       // zone density, middle of cycle
+    //double* zone_rho;        // zone density
+    //double* zone_rho_pred;       // zone density, middle of cycle
     //double* zone_energy_density;        // zone specific internal energy
                        // (energy per unit mass)
     double* zone_energy_tot;     // zone total internal energy
@@ -112,7 +112,7 @@ public:
             const int plast);
 
     void calcCrnrMass(
-            const double* zr,
+            const DoubleAccessor& zr,
             const double* zarea,
             const double* smf,
             double* cmaswt,
@@ -137,7 +137,7 @@ public:
     void calcRho(
             const double* zm,
             const double* zvol,
-            double* zr,
+            DoubleAccessor& zr,
             const int zfirst,
             const int zlast);
 
@@ -166,7 +166,7 @@ public:
     void calcEnergy(
             const double* zetot,
             const double* zm,
-			const RegionAccessor<AccessorType::Generic, double> &ze,
+			const DoubleAccessor& ze,
             const int zfirst,
             const int zlast);
 
@@ -216,13 +216,19 @@ public:
 
     void writeEnergyCheck();
 
-	RegionAccessor<AccessorType::Generic, double> zone_rho_;  // TODO make private
-	RegionAccessor<AccessorType::Generic, double> zone_energy_density_;  // TODO make private
-	RegionAccessor<AccessorType::Generic, double> zone_pressure_;  // TODO make private
+	DoubleAccessor zone_rho_;             // zone density // TODO make private
+    DoubleAccessor zone_rho_pred_;       // zone density, middle of cycle
+	DoubleAccessor zone_energy_density_;  // zone specific internal energy
+    // (energy per unit mass)  // TODO make private
+	DoubleAccessor zone_pressure_;        // zone pressure  // TODO make private
 private:
-    void fillZoneAccessor(RegionAccessor<AccessorType::Generic, double> *acc, double value);
+	void allocateZoneFields();
+    void fillZoneAccessor(DoubleAccessor *acc, double value);
 
-    IndexSpace ispace_zones_;
+	FieldSpace fspace_zones_;
+	LogicalRegion lregion_local_zones_;
+
+	IndexSpace ispace_zones_;
     DynamicCollective add_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;

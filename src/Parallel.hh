@@ -28,6 +28,7 @@ using namespace LegionRuntime::Accessor;
 
 enum ZoneFields {
 	FID_ZR,
+	FID_ZRP,
 	FID_ZE,
 	FID_ZP,
 };
@@ -71,6 +72,8 @@ enum TaskIDs {
 	ADD_REDOP_ID,
 	MIN_REDOP_ID,
 };
+
+typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
 
 class Parallel {
 public:
