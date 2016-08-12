@@ -203,7 +203,7 @@ void Driver::run() {
 
     // do final mesh output
     mesh->write(probname, cycle, time,
-            hydro->zone_rho_, hydro->zone_energy_density_, hydro->zone_pres);
+            hydro->zone_rho_, hydro->zone_energy_density_, hydro->zone_pressure_);
 
 }
 

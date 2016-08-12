@@ -354,9 +354,9 @@ void Mesh::write(
         const string& probname,
         const int cycle,
         const double time,
-        const DoubleAccessor &zr,
-        const DoubleAccessor &ze,
-        const double* zp) {
+        const DoubleAccessor& zr,
+        const DoubleAccessor& ze,
+        const DoubleAccessor& zp) {
 
     if (write_xy_file_) {
         if (Parallel::mype() == 0)

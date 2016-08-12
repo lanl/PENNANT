@@ -35,7 +35,7 @@ void PolyGas::calcStateAtHalf(
         const double* zwrate,
         const double* zm,
         const double dt,
-        double* zp,
+        DoubleAccessor& zp,
         double* zss,
         const int zfirst,
         const int zlast) {
@@ -57,7 +57,8 @@ void PolyGas::calcStateAtHalf(
         double bulk = zr0.read(zone_ptr) * zss[z] * zss[z];
         double denom = 1. + 0.5 * z0per[z0] * dv;
         double src = zwrate[z] * dth * zminv;
-        zp[z] += (z0per[z0] * src - zr0.read(zone_ptr) * bulk * dv) / denom;
+        double value = zp.read(zone_ptr) + (z0per[z0] * src - zr0.read(zone_ptr) * bulk * dv) / denom;
+        zp.write(zone_ptr, value);
     }
 
     AbstractedMemory::free(z0per);
@@ -67,7 +68,7 @@ void PolyGas::calcStateAtHalf(
 void PolyGas::calcEOS(
         const DoubleAccessor& zr,
         const DoubleAccessor& ze,
-        double* zp,
+        DoubleAccessor& zp,
         double* z0per,
         double* zss,
         const int zfirst,
@@ -86,7 +87,7 @@ void PolyGas::calcEOS(
         double prex = gm1 * ex;
         double perx = gm1 * rx;
         double csqd = max(ss2, prex + perx * px / (rx * rx));
-        zp[z] = px;
+        zp.write(zone_ptr,  px);
         z0per[z0] = perx;
         zss[z] = sqrt(csqd);
     }
@@ -95,7 +96,7 @@ void PolyGas::calcEOS(
 
 
 void PolyGas::calcForce(
-        const double* zp,
+        const DoubleAccessor& zp,
         const double2* ssurfp,
         double2* sf,
         const int sfirst,
@@ -106,7 +107,8 @@ void PolyGas::calcForce(
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = mesh->map_side2zone_[s];
-        double2 sfx = -zp[z] * ssurfp[s];
+        ptr_t zone_ptr(z);
+        double2 sfx = -zp.read(zone_ptr) * ssurfp[s];
         sf[s] = sfx;
 
     }

@@ -33,9 +33,9 @@ void ExportGold::write(
         const string& basename,
         const int cycle,
         const double time,
-        const DoubleAccessor &zr,
-        const DoubleAccessor &ze,
-        const double* zp) {
+        const DoubleAccessor& zr,
+        const DoubleAccessor& ze,
+        const DoubleAccessor& zp) {
 
     writeCaseFile(basename);
 

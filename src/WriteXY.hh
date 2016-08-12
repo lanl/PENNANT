@@ -33,7 +33,7 @@ public:
             const std::string& basename,
             const DoubleAccessor& zr,
             const DoubleAccessor& ze,
-            const double* zp);
+            const DoubleAccessor& zp);
 
 };
 

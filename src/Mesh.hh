@@ -115,9 +115,9 @@ public:
             const std::string& probname,
             const int cycle,
             const double time,
-            const DoubleAccessor &zr,
-            const DoubleAccessor &ze,
-            const double* zp);
+            const DoubleAccessor& zr,
+            const DoubleAccessor& ze,
+            const DoubleAccessor& zp);
 
     // find plane with constant x, y value
     std::vector<int> getXPlane(const double c);

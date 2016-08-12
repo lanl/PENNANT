@@ -126,7 +126,7 @@ void Hydro::init() {
     zone_energy_tot = AbstractedMemory::alloc<double>(numz);
     zone_work = AbstractedMemory::alloc<double>(numz);
     zone_work_rate = AbstractedMemory::alloc<double>(numz);
-    zone_pres = AbstractedMemory::alloc<double>(numz);
+    //zone_pres = AbstractedMemory::alloc<double>(numz);
     zone_sound_speed = AbstractedMemory::alloc<double>(numz);
     zone_dvel = AbstractedMemory::alloc<double>(numz);
     side_force_pres = AbstractedMemory::alloc<double2>(nums);
@@ -252,10 +252,10 @@ void Hydro::doCycle(
 
         // 3. compute material state (half-advanced)
         pgas->calcStateAtHalf(zone_rho_, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density_, zone_work_rate, zone_mass, dt,
-                zone_pres, zone_sound_speed, zfirst, zlast);
+                zone_pressure_, zone_sound_speed, zfirst, zlast);
 
         // 4. compute forces
-        pgas->calcForce(zone_pres, mesh->side_surfp, side_force_pres, sfirst, slast);
+        pgas->calcForce(zone_pressure_, mesh->side_surfp, side_force_pres, sfirst, slast);
         tts->calcForce(mesh->zone_area_pred, zone_rho_pred_, zone_sound_speed, mesh->side_area_pred, mesh->side_mass_frac, mesh->side_surfp, side_force_tts,
                 sfirst, slast);
         qcs->calcForce(side_force_visc, sfirst, slast);
@@ -310,7 +310,7 @@ void Hydro::doCycle(
         int zlast = mesh->zone_chunk_last[zch];
 
         // 7a. compute work rate
-        calcWorkRate(mesh->zone_vol0, mesh->zone_vol_, zone_work, zone_pres, dt, zone_work_rate, zfirst, zlast);
+        calcWorkRate(mesh->zone_vol0, mesh->zone_vol_, zone_work, zone_pressure_, dt, zone_work_rate, zfirst, zlast);
 
         // 8. update state variables
         calcEnergy(zone_energy_tot, zone_mass, zone_energy_density_, zfirst, zlast);
@@ -472,7 +472,7 @@ void Hydro::calcWorkRate(
         const double* zvol0,
         const double* zvol,
         const double* zw,
-        const double* zp,
+        const DoubleAccessor& zp,
         const double dt,
         double* zwrate,
         const int zfirst,
@@ -480,8 +480,9 @@ void Hydro::calcWorkRate(
     double dtinv = 1. / dt;
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
+    		ptr_t zone_ptr(z);
         double dvol = zvol[z] - zvol0[z];
-        zwrate[z] = (zw[z] + zp[z] * dvol) * dtinv;
+        zwrate[z] = (zw[z] + zp.read(zone_ptr) * dvol) * dtinv;
     }
 
 }

@@ -42,7 +42,7 @@ public:
             const double* zwrate,
             const double* zm,
             const double dt,
-            double* zp,
+            DoubleAccessor& zp,
             double* zss,
             const int zfirst,
             const int zlast);
@@ -50,14 +50,14 @@ public:
     void calcEOS(
             const DoubleAccessor& zr,
             const DoubleAccessor& ze,
-            double* zp,
+            DoubleAccessor& zp,
             double* z0per,
             double* zss,
             const int zfirst,
             const int zlast);
 
     void calcForce(
-            const double* zp,
+            const DoubleAccessor& zp,
             const double2* ssurfp,
             double2* sf,
             const int sfirst,

@@ -69,7 +69,7 @@ public:
     double* zone_energy_tot;     // zone total internal energy
     double* zone_work;        // zone work done in cycle
     double* zone_work_rate;    // zone work rate
-    double* zone_pres;        // zone pressure
+    //double* zone_pres;        // zone pressure
     double* zone_sound_speed;       // zone sound speed
     double* zone_dvel;       // zone velocity difference
 
@@ -157,7 +157,7 @@ public:
             const double* zvol0,
             const double* zvol,
             const double* zw,
-            const double* zp,
+            const DoubleAccessor& zp,
             const double dt,
             double* zwrate,
             const int zfirst,

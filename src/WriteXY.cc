@@ -29,7 +29,7 @@ void WriteXY::write(
         const string& basename,
         const DoubleAccessor& zr,
         const DoubleAccessor& ze,
-        const double* zp) {
+        const DoubleAccessor& zp) {
 
     const int numz = mesh->num_zones_;
 
@@ -38,11 +38,6 @@ void WriteXY::write(
     gnumz = (Parallel::mype() == 0 ? gnumz : 0);
     vector<int> penumz(Parallel::mype() == 0 ? Parallel::num_subregions() : 0);
     Parallel::gather(numz, &penumz[0]);
-
-    vector<double> gzp(gnumz);
-    //Parallel::gatherv(&zr[0], numz, &gzr[0], &penumz[0]);
-    //Parallel::gatherv(&ze[0], numz, &gze[0], &penumz[0]);
-    Parallel::gatherv(&zp[0], numz, &gzp[0], &penumz[0]);
 
     if (Parallel::mype() == 0) {
         string xyname = basename + ".xy";
@@ -60,7 +55,8 @@ void WriteXY::write(
         }
         ofs << "#  zp" << endl;
         for (int z = 0; z < gnumz; ++z) {
-            ofs << setw(5) << (z + 1) << setw(18) << gzp[z] << endl;
+    		    ptr_t zone_ptr(z);
+            ofs << setw(5) << (z + 1) << setw(18) << zp.read(zone_ptr) << endl;
         }
         ofs.close();
 

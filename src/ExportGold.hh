@@ -48,7 +48,7 @@ public:
             const double time,
             const DoubleAccessor &zr,
             const DoubleAccessor &ze,
-            const double* zp);
+            const DoubleAccessor &zp);
 
     void writeCaseFile(
             const std::string& basename);
