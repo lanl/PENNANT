@@ -57,19 +57,12 @@ public:
     double2* pt_vel;       // point velocity
     double2* pt_vel0;      // point velocity, start of cycle
     double2* pt_accel;      // point acceleration
-    double2* pt_force;       // point force
-    double* pt_weighted_mass;    // point mass, weighted by 1/r
     double* crnr_weighted_mass;    // corner contribution to pmaswt
 
     double* zone_mass;        // zone mass
-    //double* zone_rho;        // zone density
-    //double* zone_rho_pred;       // zone density, middle of cycle
-    //double* zone_energy_density;        // zone specific internal energy
-                       // (energy per unit mass)
     double* zone_energy_tot;     // zone total internal energy
     double* zone_work;        // zone work done in cycle
     double* zone_work_rate;    // zone work rate
-    //double* zone_pres;        // zone pressure
     double* zone_sound_speed;       // zone sound speed
     double* zone_dvel;       // zone velocity difference
 
@@ -128,8 +121,8 @@ public:
             const int slast);
 
     void calcAccel(
-            const double2* pf,
-            const double* pmass,
+            const Double2Accessor& pf,
+            const DoubleAccessor& pmass,
             double2* pa,
             const int pfirst,
             const int plast);
@@ -217,15 +210,23 @@ public:
     void writeEnergyCheck();
 
 	DoubleAccessor zone_rho_;             // zone density // TODO make private
-    DoubleAccessor zone_rho_pred_;       // zone density, middle of cycle
+    DoubleAccessor zone_rho_pred_;        // zone density, middle of cycle
 	DoubleAccessor zone_energy_density_;  // zone specific internal energy
     // (energy per unit mass)  // TODO make private
 	DoubleAccessor zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void allocateZoneFields();
+	void allocatePtFields();
     void fillZoneAccessor(DoubleAccessor *acc, double value);
 
-	FieldSpace fspace_zones_;
+    Double2Accessor pt_force_;            // point force
+    DoubleAccessor pt_weighted_mass_;     // point mass, weighted by 1/r
+
+	IndexSpace ispace_local_pts_;
+    FieldSpace fspace_local_pts_;
+	LogicalRegion lregion_local_pts_;
+
+    FieldSpace fspace_zones_;
 	LogicalRegion lregion_local_zones_;
 
 	IndexSpace ispace_zones_;

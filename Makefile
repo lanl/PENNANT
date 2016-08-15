@@ -61,7 +61,8 @@ src/GlobalMesh.o: src/GlobalMesh.hh src/GenerateMesh.hh
 src/Hydro.o: src/Hydro.hh src/Parallel.hh src/Memory.hh src/Mesh.hh \
 	src/PolyGas.hh src/TTS.hh src/QCS.hh src/HydroBC.hh \
 	src/InputParameters.hh
-src/HydroBC.o: src/HydroBC.hh src/Memory.hh src/Mesh.hh src/Vec2.hh
+src/HydroBC.o: src/HydroBC.hh src/Memory.hh src/Mesh.hh src/Vec2.hh \
+	src/Parallel.hh
 src/InputFile.o: src/InputFile.hh
 src/Memory.o: src/Memory.hh
 src/Mesh.o: src/Mesh.hh src/Vec2.hh src/Memory.hh src/Parallel.hh \

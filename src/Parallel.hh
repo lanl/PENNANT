@@ -18,6 +18,7 @@
 
 #include "GlobalMesh.hh"
 #include "InputParameters.hh"
+#include "Vec2.hh"
 
 #include "legion.h"
 using namespace LegionRuntime::HighLevel;
@@ -31,6 +32,8 @@ enum ZoneFields {
 	FID_ZRP,
 	FID_ZE,
 	FID_ZP,
+	FID_PF,
+	FID_PMASWT,
 };
 
 struct RunStat {
@@ -80,6 +83,7 @@ enum TaskIDs {
 };
 
 typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
+typedef RegionAccessor<AccessorType::Generic, double2> Double2Accessor;
 
 class Parallel {
 public:

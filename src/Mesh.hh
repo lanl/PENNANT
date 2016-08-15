@@ -138,7 +138,7 @@ public:
     template <typename T>
     void sumToPoints(
             const T* cvar,
-            T* pvar);
+			RegionAccessor<AccessorType::Generic, T>& pvar);
 
 private:
 
@@ -196,10 +196,10 @@ private:
     template <typename T>
     void sumOnProc(
             const T* cvar,
-            T* pvar);
+			RegionAccessor<AccessorType::Generic, T>& pvar);
 
-    template <typename T>
-    void sumAcrossProcs(T* pvar);
+    //template <typename T>
+    //void sumAcrossProcs(T* pvar);
 
     template <typename T>
     void parallelGather(

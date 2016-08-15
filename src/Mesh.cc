@@ -700,7 +700,7 @@ void Mesh::parallelScatter(
 #endif
 }
 
-
+/*
 template <typename T>
 void Mesh::sumAcrossProcs(T* pvar) {
     if (Parallel::num_subregions() == 1) return;
@@ -711,22 +711,23 @@ void Mesh::sumAcrossProcs(T* pvar) {
     parallelScatter(pvar, &prxvar[0]);
     AbstractedMemory::free(prxvar);
 }
-
+*/
 
 template <typename T>
 void Mesh::sumOnProc(
         const T* cvar,
-        T* pvar) {
+	    RegionAccessor<AccessorType::Generic, T>& pvar) {
 
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];
         for (int p = pfirst; p < plast; ++p) {
+        		ptr_t pt_ptr(p);
             T x = T();
             for (int c = map_pt2crn_first[p]; c >= 0; c = map_crn2crn_next[c]) {
                 x += cvar[c];
             }
-            pvar[p] = x;
+            pvar.write(pt_ptr, x);
         }  // for p
     }  // for pch
 
@@ -736,11 +737,11 @@ void Mesh::sumOnProc(
 template <>
 void Mesh::sumToPoints(
         const double* cvar,
-        double* pvar) {
+        DoubleAccessor& pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::num_subregions() > 1)
-        sumAcrossProcs(pvar);
+    //if (Parallel::num_subregions() > 1)
+    //    sumAcrossProcs(pvar);
 
 }
 
@@ -748,11 +749,11 @@ void Mesh::sumToPoints(
 template <>
 void Mesh::sumToPoints(
         const double2* cvar,
-        double2* pvar) {
+        Double2Accessor& pvar) {
 
     sumOnProc(cvar, pvar);
-    if (Parallel::num_subregions() > 1)
-        sumAcrossProcs(pvar);
+    //if (Parallel::num_subregions() > 1)
+    //    sumAcrossProcs(pvar);
 
 }
 

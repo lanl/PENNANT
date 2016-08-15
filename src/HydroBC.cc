@@ -37,16 +37,18 @@ HydroBC::~HydroBC() {}
 
 void HydroBC::applyFixedBC(
         double2* pu,
-        double2* pf,
+        Double2Accessor& pf,
         const int bfirst,
         const int blast) {
 
     #pragma ivdep
     for (int b = bfirst; b < blast; ++b) {
         int p = mapbp[b];
+        ptr_t pt_ptr(p);
 
         pu[p] = project(pu[p], vfix);
-        pf[p] = project(pf[p], vfix);
+        double2 old_pf = pf.read(pt_ptr);
+        pf.write(pt_ptr, project(old_pf, vfix));
     }
 
 }

@@ -62,6 +62,7 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
     for (int i = 0; i < bcy.size(); ++i)
         bcs.push_back(new HydroBC(mesh, vfixy, mesh->getYPlane(bcy[i])));
 
+    // Legion Zones
     ispace_zones_ = zones.get_logical_region().get_index_space();
     zone_rho_ = zones.get_field_accessor(FID_ZR).typeify<double>();
     zone_energy_density_ = zones.get_field_accessor(FID_ZE).typeify<double>();
@@ -74,11 +75,36 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
 	lregion_local_zones_ = runtime_->create_logical_region(ctx_, ispace_zones_, fspace_zones_);
 	runtime_->attach_name(lregion_local_zones_, "Hydro::lregion_local_zones_");
 
-	RegionRequirement req(lregion_local_zones_, WRITE_DISCARD, EXCLUSIVE, lregion_local_zones_);
-	req.add_field(FID_ZRP);
-	InlineLauncher local_zone_launcher(req);
+	RegionRequirement zone_req(lregion_local_zones_, WRITE_DISCARD, EXCLUSIVE, lregion_local_zones_);
+	zone_req.add_field(FID_ZRP);
+	InlineLauncher local_zone_launcher(zone_req);
 	PhysicalRegion zone_region = runtime_->map_region(ctx_, local_zone_launcher);
 	zone_rho_pred_ = zone_region.get_field_accessor(FID_ZRP).typeify<double>();
+
+	// Legion Points
+	ispace_local_pts_ = runtime_->create_index_space(ctx_, mesh->num_pts_);
+	runtime_->attach_name(ispace_local_pts_, "Hydro::ispace_local_pts_");
+	{
+	    IndexAllocator allocator = runtime_->create_index_allocator(ctx_, ispace_local_pts_);
+	    ptr_t begin = allocator.alloc(mesh->num_pts_);
+	    assert(!begin.is_null());
+	}
+
+	fspace_local_pts_ = runtime_->create_field_space(ctx_);
+	runtime_->attach_name(fspace_local_pts_, "Hydro::fspace_local_pts_");
+	allocatePtFields();
+
+	lregion_local_pts_ = runtime_->create_logical_region(ctx_, ispace_local_pts_, fspace_local_pts_);
+	runtime_->attach_name(lregion_local_pts_, "Hydro::lregion_local_pts_");
+
+	RegionRequirement pt_req(lregion_local_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_local_pts_);
+	pt_req.add_field(FID_PF);
+	pt_req.add_field(FID_PMASWT);
+	InlineLauncher local_pt_launcher(pt_req);
+	PhysicalRegion pt_region = runtime_->map_region(ctx_, local_pt_launcher);
+	pt_force_ = pt_region.get_field_accessor(FID_PF).typeify<double2>();
+	pt_weighted_mass_ = pt_region.get_field_accessor(FID_PMASWT).typeify<double>();
+
     init();
 }
 
@@ -92,12 +118,21 @@ Hydro::~Hydro() {
     }
 	runtime_->destroy_logical_region(ctx_, lregion_local_zones_);
 	runtime_->destroy_field_space(ctx_, fspace_zones_);
+	runtime_->destroy_logical_region(ctx_, lregion_local_pts_);
+	runtime_->destroy_field_space(ctx_, fspace_local_pts_);
+	runtime_->destroy_index_space(ctx_, ispace_local_pts_);
 }
 
 
 void Hydro::allocateZoneFields() {
 	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_zones_);
 	allocator.allocate_field(sizeof(double), FID_ZRP);
+}
+
+void Hydro::allocatePtFields() {
+	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_local_pts_);
+	allocator.allocate_field(sizeof(double), FID_PMASWT);
+	allocator.allocate_field(sizeof(double2), FID_PF);
 }
 
 
@@ -116,17 +151,11 @@ void Hydro::init() {
     pt_vel = AbstractedMemory::alloc<double2>(nump);
     pt_vel0 = AbstractedMemory::alloc<double2>(nump);
     pt_accel = AbstractedMemory::alloc<double2>(nump);
-    pt_force = AbstractedMemory::alloc<double2>(nump);
-    pt_weighted_mass = AbstractedMemory::alloc<double>(nump);
     crnr_weighted_mass = AbstractedMemory::alloc<double>(nums);
     zone_mass = AbstractedMemory::alloc<double>(numz);
-    //zone_rho = AbstractedMemory::alloc<double>(numz);
-    //zone_rho_pred = AbstractedMemory::alloc<double>(numz);
-    //zone_energy_density = AbstractedMemory::alloc<double>(numz);
     zone_energy_tot = AbstractedMemory::alloc<double>(numz);
     zone_work = AbstractedMemory::alloc<double>(numz);
     zone_work_rate = AbstractedMemory::alloc<double>(numz);
-    //zone_pres = AbstractedMemory::alloc<double>(numz);
     zone_sound_speed = AbstractedMemory::alloc<double>(numz);
     zone_dvel = AbstractedMemory::alloc<double>(numz);
     side_force_pres = AbstractedMemory::alloc<double2>(nums);
@@ -264,8 +293,8 @@ void Hydro::doCycle(
     mesh->checkBadSides();
 
     // sum corner masses, forces to points
-    mesh->sumToPoints(crnr_weighted_mass, pt_weighted_mass);
-    mesh->sumToPoints(crnr_force_tot, pt_force);
+    mesh->sumToPoints(crnr_weighted_mass, pt_weighted_mass_);
+    mesh->sumToPoints(crnr_force_tot, pt_force_);
 
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = mesh->pt_chunks_first[pch];
@@ -275,11 +304,11 @@ void Hydro::doCycle(
         for (int i = 0; i < bcs.size(); ++i) {
             int bfirst = bcs[i]->pchbfirst[pch];
             int blast = bcs[i]->pchblast[pch];
-            bcs[i]->applyFixedBC(pt_vel0, pt_force, bfirst, blast);
+            bcs[i]->applyFixedBC(pt_vel0, pt_force_, bfirst, blast);
         }
 
         // 5. compute accelerations
-        calcAccel(pt_force, pt_weighted_mass, pt_accel, pfirst, plast);
+        calcAccel(pt_force_, pt_weighted_mass_, pt_accel, pfirst, plast);
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
@@ -399,8 +428,8 @@ void Hydro::sumCrnrForce(
 
 
 void Hydro::calcAccel(
-        const double2* pf,
-        const double* pmass,
+        const Double2Accessor& pf,
+        const DoubleAccessor& pmass,
         double2* pa,
         const int pfirst,
         const int plast) {
@@ -409,7 +438,8 @@ void Hydro::calcAccel(
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        pa[p] = pf[p] / max(pmass[p], fuzz);
+    		ptr_t pt_ptr(p);
+        pa[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
     }
 
 }

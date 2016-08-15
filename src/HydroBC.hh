@@ -15,6 +15,7 @@
 
 #include <vector>
 
+#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -42,7 +43,7 @@ public:
 
     void applyFixedBC(
             double2* pu,
-            double2* pf,
+            Double2Accessor& pf,
             const int bfirst,
             const int blast);
 
