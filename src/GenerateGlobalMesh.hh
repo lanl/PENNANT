@@ -24,13 +24,21 @@ public:
                                             // directions
 
     int numberOfZones() const;
-	void colorPartitions(Coloring *local_zones_map);
+	void colorPartitions(Coloring *local_zones_map,
+			Coloring *local_pts_map);
+    int numberOfPoints() const;
 
 private:
     void calcPartitions();
-    void colorPartitionsRect(Coloring *local_zones_map);
-	void colorPartitionsPie(Coloring *local_zones_map);
-	void colorPartitionsHex(Coloring *local_zones_map);
+    void colorPartitionsRect(Coloring *local_zones_map,
+			Coloring *local_pts_map);
+	void colorPartitionsPie(Coloring *local_zones_map,
+			Coloring *local_pts_map);
+	void colorPartitionsHex(Coloring *local_zones_map,
+			Coloring *local_pts_map);
+    int numberOfPointsRect() const;
+    int numberOfPointsPie() const;
+    int numberOfPointsHex() const;
 
 };
 

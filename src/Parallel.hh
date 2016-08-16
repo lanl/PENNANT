@@ -32,6 +32,7 @@ enum ZoneFields {
 	FID_ZRP,
 	FID_ZE,
 	FID_ZP,
+	FID_PX,
 	FID_PF,
 	FID_PMASWT,
 };
