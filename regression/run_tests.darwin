@@ -1,0 +1,10 @@
+#!/bin/bash
+
+rm -rf ${HOME}/local/regression/pennant
+
+sbatch ./leblanc
+sbatch ./noh
+sbatch ./nohsmall
+sbatch ./sedov
+sbatch ./sedovsmall
+
