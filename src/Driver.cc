@@ -25,12 +25,12 @@
 
 using namespace std;
 
-DriverTask::DriverTask(//LogicalRegion lregion_my_zones,
+DriverTask::DriverTask(LogicalRegion lregion_my_zones,
 		LogicalRegion lregion_global_zones,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
-	add_region_requirement(RegionRequirement(lregion_global_zones, WRITE_DISCARD, EXCLUSIVE, lregion_global_zones));
+	add_region_requirement(RegionRequirement(lregion_my_zones, WRITE_DISCARD, EXCLUSIVE, lregion_global_zones));
 	add_field(0/*idx*/, FID_ZR);
 	add_field(0/*idx*/, FID_ZE);
 	add_field(0/*idx*/, FID_ZP);

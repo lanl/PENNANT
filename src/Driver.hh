@@ -25,7 +25,7 @@ class Hydro;
 
 class DriverTask : public TaskLauncher {
 public:
-	DriverTask(//LogicalPartition lpart_zone,
+	DriverTask(LogicalRegion lpart_zone,
 			LogicalRegion lregion_zone,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;

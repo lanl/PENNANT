@@ -55,9 +55,11 @@ include $(LG_RT_DIR)/runtime.mk
 
 src/Driver.o: src/Driver.hh src/Parallel.hh src/Mesh.hh src/Hydro.hh
 src/ExportGold.o: src/ExportGold.hh src/Parallel.hh src/Vec2.hh src/Mesh.hh
-src/GenerateMesh.o: src/GenerateMesh.hh src/Parallel.hh src/Vec2.hh \
+src/GenerateGlobalMesh.o: src/GenerateGlobalMesh.hh src/Vec2.hh \
 	src/InputParameters.hh src/Parallel.hh
-src/GlobalMesh.o: src/GlobalMesh.hh src/GenerateMesh.hh
+src/GenerateMesh.o: src/GenerateMesh.hh src/Parallel.hh src/Vec2.hh \
+	src/InputParameters.hh
+src/GlobalMesh.o: src/GlobalMesh.hh src/GenerateGlobalMesh.hh
 src/Hydro.o: src/Hydro.hh src/Parallel.hh src/Memory.hh src/Mesh.hh \
 	src/PolyGas.hh src/TTS.hh src/QCS.hh src/HydroBC.hh \
 	src/InputParameters.hh

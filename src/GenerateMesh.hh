@@ -90,14 +90,8 @@ public:
             std::vector<int>& masterslvcounts,
             std::vector<int>& masterpoints);
 
-    int numberOfZones() const;
-	void colorPartitions(Coloring *local_zones_map);
-
 private:
     void calcPartitions();
-    void colorPartitionsRect(Coloring *local_zones_map);
-	void colorPartitionsPie(Coloring *local_zones_map);
-	void colorPartitionsHex(Coloring *local_zones_map);
 
 }; // class GenMesh
 
