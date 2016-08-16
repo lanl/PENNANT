@@ -27,6 +27,8 @@ using namespace std;
 
 DriverTask::DriverTask(LogicalRegion lregion_my_zones,
 		LogicalRegion lregion_global_zones,
+		LogicalRegion lregion_my_pts,
+		LogicalRegion lregion_global_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
@@ -34,6 +36,8 @@ DriverTask::DriverTask(LogicalRegion lregion_my_zones,
 	add_field(0/*idx*/, FID_ZR);
 	add_field(0/*idx*/, FID_ZE);
 	add_field(0/*idx*/, FID_ZP);
+	add_region_requirement(RegionRequirement(lregion_my_pts, READ_ONLY, EXCLUSIVE, lregion_global_pts));
+	add_field(1/*idx*/, FID_PX);
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -43,9 +47,10 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* rt)
 {
-	assert(regions.size() == 1);
-	assert(task->regions.size() == 1);
+	assert(regions.size() == 2);
+	assert(task->regions.size() == 2);
 	assert(task->regions[0].privilege_fields.size() == 3);
+	assert(task->regions[1].privilege_fields.size() == 1);
 
 	// Legion cannot handle data structures with indirections in them
     unsigned char *serialized_args = (unsigned char *) task->args;
@@ -89,7 +94,7 @@ RunStat DriverTask::cpu_run(const Task *task,
     }
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
-    		regions[0],
+    		regions[0], regions[1],
 		ctx, rt);
     RunStat value=drv.run();
     return value;
@@ -99,6 +104,7 @@ Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
 		const PhysicalRegion &zones,
+		const PhysicalRegion &pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -114,7 +120,7 @@ Driver::Driver(const InputParameters& params,
 {
 
     // initialize mesh, hydro
-    mesh = new Mesh(params);
+    mesh = new Mesh(params, pts, ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, zones, ctx_, runtime_);
 
 }

@@ -25,16 +25,24 @@
 using namespace std;
 
 
-Mesh::Mesh(const InputParameters& params) :
+Mesh::Mesh(const InputParameters& params,
+		const PhysicalRegion &pts,
+		Context ctx, HighLevelRuntime* rt) :
 			chunk_size_(params.directs_.chunk_size_),
 			subregion_xmin_(params.directs_.subregion_xmin_),
 			subregion_xmax_(params.directs_.subregion_xmax_),
 			subregion_ymin_(params.directs_.subregion_ymin_),
 			subregion_ymax_(params.directs_.subregion_ymax_),
-			gmesh_(NULL)
+			gmesh_(NULL),
+			ctx_(ctx),
+			runtime_(rt)
 	{
 
     gmesh_ = new GenerateMesh(params);
+
+    // Legion Pts
+    ispace_local_pts_ = pts.get_logical_region().get_index_space();
+    pt_x_init_ = pts.get_field_accessor(FID_PX).typeify<double2>();
 
     init();
 }

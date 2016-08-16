@@ -82,19 +82,11 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
 	zone_rho_pred_ = zone_region.get_field_accessor(FID_ZRP).typeify<double>();
 
 	// Legion Points
-	ispace_local_pts_ = runtime_->create_index_space(ctx_, mesh->num_pts_);
-	runtime_->attach_name(ispace_local_pts_, "Hydro::ispace_local_pts_");
-	{
-	    IndexAllocator allocator = runtime_->create_index_allocator(ctx_, ispace_local_pts_);
-	    ptr_t begin = allocator.alloc(mesh->num_pts_);
-	    assert(!begin.is_null());
-	}
-
 	fspace_local_pts_ = runtime_->create_field_space(ctx_);
 	runtime_->attach_name(fspace_local_pts_, "Hydro::fspace_local_pts_");
 	allocatePtFields();
 
-	lregion_local_pts_ = runtime_->create_logical_region(ctx_, ispace_local_pts_, fspace_local_pts_);
+	lregion_local_pts_ = runtime_->create_logical_region(ctx_, mesh->ispace_local_pts_, fspace_local_pts_);
 	runtime_->attach_name(lregion_local_pts_, "Hydro::lregion_local_pts_");
 
 	RegionRequirement pt_req(lregion_local_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_local_pts_);
@@ -120,7 +112,6 @@ Hydro::~Hydro() {
 	runtime_->destroy_field_space(ctx_, fspace_zones_);
 	runtime_->destroy_logical_region(ctx_, lregion_local_pts_);
 	runtime_->destroy_field_space(ctx_, fspace_local_pts_);
-	runtime_->destroy_index_space(ctx_, ispace_local_pts_);
 }
 
 

@@ -222,7 +222,6 @@ private:
     Double2Accessor pt_force_;            // point force
     DoubleAccessor pt_weighted_mass_;     // point mass, weighted by 1/r
 
-	IndexSpace ispace_local_pts_;
     FieldSpace fspace_local_pts_;
 	LogicalRegion lregion_local_pts_;
 

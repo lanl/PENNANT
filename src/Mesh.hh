@@ -103,7 +103,9 @@ public:
     std::vector<int> zone_chunk_first;    // start/stop index for zone chunks
     std::vector<int> zone_chunk_last;
 
-    Mesh(const InputParameters& params);
+    Mesh(const InputParameters& params,
+    		const PhysicalRegion &pts,
+        Context ctx, HighLevelRuntime* rt);
     ~Mesh();
 
 
@@ -139,10 +141,13 @@ public:
     void sumToPoints(
             const T* cvar,
 			RegionAccessor<AccessorType::Generic, T>& pvar);
+	IndexSpace ispace_local_pts_;
 
 private:
 
-    // children
+	Double2Accessor pt_x_init_;  // TODO make private
+
+	// children
     GenerateMesh* gmesh_;
 
     // point-to-corner inverse map is stored as a linked list...
@@ -167,6 +172,9 @@ private:
     double* side_area_;
     double* side_vol_;
     double* side_vol_pred;     // side volume, middle of cycle
+
+    Context ctx_;
+    HighLevelRuntime* runtime_;
 
     void init();
 
