@@ -73,7 +73,11 @@ public:
 
     Hydro(const InputParameters& params, Mesh* m,
     		DynamicCollective add_reduction,
-		const PhysicalRegion &zones,
+			IndexSpace* ispace_zones,
+			DoubleAccessor* zone_rho,
+			DoubleAccessor* zone_energy_density,
+			DoubleAccessor* zone_pressure,
+			DoubleAccessor* zone_rho_pred,
         Context ctx, HighLevelRuntime* rt);
     ~Hydro();
 
@@ -105,7 +109,7 @@ public:
             const int plast);
 
     void calcCrnrMass(
-            const DoubleAccessor& zr,
+            const DoubleAccessor* zr,
             const double* zarea,
             const double* smf,
             double* cmaswt,
@@ -130,7 +134,7 @@ public:
     void calcRho(
             const double* zm,
             const double* zvol,
-            DoubleAccessor& zr,
+            DoubleAccessor* zr,
             const int zfirst,
             const int zlast);
 
@@ -150,7 +154,7 @@ public:
             const double* zvol0,
             const double* zvol,
             const double* zw,
-            const DoubleAccessor& zp,
+            const DoubleAccessor* zp,
             const double dt,
             double* zwrate,
             const int zfirst,
@@ -159,7 +163,7 @@ public:
     void calcEnergy(
             const double* zetot,
             const double* zm,
-			const DoubleAccessor& ze,
+			const DoubleAccessor* ze,
             const int zfirst,
             const int zlast);
 
@@ -209,11 +213,11 @@ public:
 
     void writeEnergyCheck();
 
-	DoubleAccessor zone_rho_;             // zone density // TODO make private
-    DoubleAccessor zone_rho_pred_;        // zone density, middle of cycle
-	DoubleAccessor zone_energy_density_;  // zone specific internal energy
+	DoubleAccessor* zone_rho_;             // zone density // TODO make private
+    DoubleAccessor* zone_rho_pred_;        // zone density, middle of cycle
+	DoubleAccessor* zone_energy_density_;  // zone specific internal energy
     // (energy per unit mass)  // TODO make private
-	DoubleAccessor zone_pressure_;        // zone pressure  // TODO make private
+	DoubleAccessor* zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void allocateZoneFields();
 	void allocatePtFields();
@@ -228,7 +232,7 @@ private:
     FieldSpace fspace_zones_;
 	LogicalRegion lregion_local_zones_;
 
-	IndexSpace ispace_zones_;
+	IndexSpace* ispace_zones_;
     DynamicCollective add_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;

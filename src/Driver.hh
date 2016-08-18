@@ -62,7 +62,11 @@ public:
     Driver(const InputParameters &params,
     		DynamicCollective add_reduction,
     		DynamicCollective min_reduction,
-			const PhysicalRegion &zones,
+			IndexSpace* ispace_zones,
+			DoubleAccessor* zone_rho,
+			DoubleAccessor* zone_energy_density,
+			DoubleAccessor* zone_pressure,
+			DoubleAccessor* zone_rho_pred,
 			const PhysicalRegion &pts,
         Context ctx, HighLevelRuntime* rt);
     ~Driver();

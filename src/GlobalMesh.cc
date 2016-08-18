@@ -97,5 +97,5 @@ void GlobalMesh::allocateZoneFields() {
 
 void GlobalMesh::allocatePointFields() {
 	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_pts_);
-	allocator.allocate_field(sizeof(double2), FID_PX);
+	allocator.allocate_field(sizeof(double2), FID_PX_INIT);
 }

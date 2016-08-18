@@ -36,7 +36,7 @@ public:
 
 void calcForce(
         const double* zarea,
-        const DoubleAccessor& zr,
+        const DoubleAccessor* zr,
         const double* zss,
         const double* sarea,
         const double* smf,

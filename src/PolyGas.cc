@@ -28,14 +28,14 @@ PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
 
 
 void PolyGas::calcStateAtHalf(
-        const DoubleAccessor& zr0,
+        const DoubleAccessor* zr0,
         const double* zvolp,
         const double* zvol0,
-        const DoubleAccessor& ze,
+        const DoubleAccessor* ze,
         const double* zwrate,
         const double* zm,
         const double dt,
-        DoubleAccessor& zp,
+        DoubleAccessor* zp,
         double* zss,
         const int zfirst,
         const int zlast) {
@@ -54,11 +54,11 @@ void PolyGas::calcStateAtHalf(
         double zminv = 1. / zm[z];
         double dv = (zvolp[z] - zvol0[z]) * zminv;
         ptr_t zone_ptr(z);
-        double bulk = zr0.read(zone_ptr) * zss[z] * zss[z];
+        double bulk = zr0->read(zone_ptr) * zss[z] * zss[z];
         double denom = 1. + 0.5 * z0per[z0] * dv;
         double src = zwrate[z] * dth * zminv;
-        double value = zp.read(zone_ptr) + (z0per[z0] * src - zr0.read(zone_ptr) * bulk * dv) / denom;
-        zp.write(zone_ptr, value);
+        double value = zp->read(zone_ptr) + (z0per[z0] * src - zr0->read(zone_ptr) * bulk * dv) / denom;
+        zp->write(zone_ptr, value);
     }
 
     AbstractedMemory::free(z0per);
@@ -66,9 +66,9 @@ void PolyGas::calcStateAtHalf(
 
 
 void PolyGas::calcEOS(
-        const DoubleAccessor& zr,
-        const DoubleAccessor& ze,
-        DoubleAccessor& zp,
+        const DoubleAccessor* zr,
+        const DoubleAccessor* ze,
+        DoubleAccessor* zp,
         double* z0per,
         double* zss,
         const int zfirst,
@@ -81,13 +81,13 @@ void PolyGas::calcEOS(
     for (int z = zfirst; z < zlast; ++z) {
     		ptr_t zone_ptr(z);
         int z0 = z - zfirst;
-        double rx = zr.read(zone_ptr);
-        double ex = max(ze.read(zone_ptr), 0.0);
+        double rx = zr->read(zone_ptr);
+        double ex = max(ze->read(zone_ptr), 0.0);
         double px = gm1 * rx * ex;
         double prex = gm1 * ex;
         double perx = gm1 * rx;
         double csqd = max(ss2, prex + perx * px / (rx * rx));
-        zp.write(zone_ptr,  px);
+        zp->write(zone_ptr,  px);
         z0per[z0] = perx;
         zss[z] = sqrt(csqd);
     }
@@ -96,7 +96,7 @@ void PolyGas::calcEOS(
 
 
 void PolyGas::calcForce(
-        const DoubleAccessor& zp,
+        const DoubleAccessor* zp,
         const double2* ssurfp,
         double2* sf,
         const int sfirst,
@@ -108,7 +108,7 @@ void PolyGas::calcForce(
     for (int s = sfirst; s < slast; ++s) {
         int z = mesh->map_side2zone_[s];
         ptr_t zone_ptr(z);
-        double2 sfx = -zp.read(zone_ptr) * ssurfp[s];
+        double2 sfx = -zp->read(zone_ptr) * ssurfp[s];
         sf[s] = sfx;
 
     }

@@ -32,7 +32,12 @@ enum ZoneFields {
 	FID_ZRP,
 	FID_ZE,
 	FID_ZP,
+};
+
+enum PointFields {
+	FID_PX_INIT,
 	FID_PX,
+	FID_PXP,
 	FID_PF,
 	FID_PMASWT,
 };

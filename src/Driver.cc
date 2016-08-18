@@ -25,19 +25,19 @@
 
 using namespace std;
 
-DriverTask::DriverTask(LogicalRegion lregion_my_zones,
-		LogicalRegion lregion_global_zones,
-		LogicalRegion lregion_my_pts,
-		LogicalRegion lregion_global_pts,
+DriverTask::DriverTask(LogicalRegion my_zones,
+		LogicalRegion all_zones,
+		LogicalRegion my_pts,
+		LogicalRegion all_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
-	add_region_requirement(RegionRequirement(lregion_my_zones, WRITE_DISCARD, EXCLUSIVE, lregion_global_zones));
+	add_region_requirement(RegionRequirement(my_zones, WRITE_DISCARD, EXCLUSIVE, all_zones));
 	add_field(0/*idx*/, FID_ZR);
 	add_field(0/*idx*/, FID_ZE);
 	add_field(0/*idx*/, FID_ZP);
-	add_region_requirement(RegionRequirement(lregion_my_pts, READ_ONLY, EXCLUSIVE, lregion_global_pts));
-	add_field(1/*idx*/, FID_PX);
+	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
+	add_field(1/*idx*/, FID_PX_INIT);
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -51,6 +51,30 @@ RunStat DriverTask::cpu_run(const Task *task,
 	assert(task->regions.size() == 2);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
+
+    // Legion Zones
+
+	// For some reason Legion explodes if I do this in the Hydro object
+    IndexSpace ispace_zones = regions[0].get_logical_region().get_index_space();
+    DoubleAccessor zone_rho = regions[0].get_field_accessor(FID_ZR).typeify<double>();
+    DoubleAccessor zone_energy_density = regions[0].get_field_accessor(FID_ZE).typeify<double>();
+    DoubleAccessor zone_pressure = regions[0].get_field_accessor(FID_ZP).typeify<double>();
+
+	FieldSpace fspace_zones = rt->create_field_space(ctx);
+	rt->attach_name(fspace_zones, "DriverTask::cpu_run::fspace_zones");
+	{
+		FieldAllocator allocator = rt->create_field_allocator(ctx, fspace_zones);
+		allocator.allocate_field(sizeof(double), FID_ZRP);
+	}
+
+	LogicalRegion lregion_local_zones = rt->create_logical_region(ctx, ispace_zones, fspace_zones);
+	rt->attach_name(lregion_local_zones, "DriverTask:cpu_run::lregion_local_zones_");
+
+	RegionRequirement zone_req(lregion_local_zones, WRITE_DISCARD, EXCLUSIVE, lregion_local_zones);
+	zone_req.add_field(FID_ZRP);
+	InlineLauncher local_zone_launcher(zone_req);
+	PhysicalRegion zone_region = rt->map_region(ctx, local_zone_launcher);
+	DoubleAccessor zone_rho_pred = zone_region.get_field_accessor(FID_ZRP).typeify<double>();
 
 	// Legion cannot handle data structures with indirections in them
     unsigned char *serialized_args = (unsigned char *) task->args;
@@ -94,16 +118,22 @@ RunStat DriverTask::cpu_run(const Task *task,
     }
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
-    		regions[0], regions[1],
+    		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred, regions[1],
 		ctx, rt);
     RunStat value=drv.run();
+	rt->destroy_logical_region(ctx, lregion_local_zones);
+	rt->destroy_field_space(ctx, fspace_zones);
     return value;
 }
 
 Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
-		const PhysicalRegion &zones,
+		IndexSpace* ispace_zones,
+		DoubleAccessor* zone_rho,
+		DoubleAccessor* zone_energy_density,
+		DoubleAccessor* zone_pressure,
+		DoubleAccessor* zone_rho_pred,
 		const PhysicalRegion &pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
@@ -121,7 +151,8 @@ Driver::Driver(const InputParameters& params,
 
     // initialize mesh, hydro
     mesh = new Mesh(params, pts, ctx_, runtime_);
-    hydro = new Hydro(params, mesh, add_reduction_, zones, ctx_, runtime_);
+    hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
+    		zone_pressure, zone_rho_pred, ctx_, runtime_);
 
 }
 

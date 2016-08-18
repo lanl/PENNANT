@@ -143,6 +143,9 @@ public:
 			RegionAccessor<AccessorType::Generic, T>& pvar);
 	IndexSpace ispace_local_pts_;
 
+	Double2Accessor pt_x_t;          // point coordinates
+	Double2Accessor pt_x_pred_;      // point coords, middle of cycle
+
 private:
 
 	Double2Accessor pt_x_init_;  // TODO make private
@@ -175,6 +178,9 @@ private:
 
     Context ctx_;
     HighLevelRuntime* runtime_;
+
+    FieldSpace fspace_all_pts_;
+    LogicalRegion lregion_all_pts_;
 
     void init();
 
@@ -223,6 +229,8 @@ private:
     void parallelScatter(
             T* pvar,
             const T* prxvar);
+
+    void allocatePtFields();
 }; // class Mesh
 
 

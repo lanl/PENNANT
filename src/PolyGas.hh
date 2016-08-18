@@ -35,29 +35,29 @@ public:
     ~PolyGas();
 
     void calcStateAtHalf(
-            const DoubleAccessor& zr0,
+            const DoubleAccessor* zr0,
             const double* zvolp,
             const double* zvol0,
-            const DoubleAccessor& ze,
+            const DoubleAccessor* ze,
             const double* zwrate,
             const double* zm,
             const double dt,
-            DoubleAccessor& zp,
+            DoubleAccessor* zp,
             double* zss,
             const int zfirst,
             const int zlast);
 
     void calcEOS(
-            const DoubleAccessor& zr,
-            const DoubleAccessor& ze,
-            DoubleAccessor& zp,
+            const DoubleAccessor* zr,
+            const DoubleAccessor* ze,
+            DoubleAccessor* zp,
             double* z0per,
             double* zss,
             const int zfirst,
             const int zlast);
 
     void calcForce(
-            const DoubleAccessor& zp,
+            const DoubleAccessor* zp,
             const double2* ssurfp,
             double2* sf,
             const int sfirst,

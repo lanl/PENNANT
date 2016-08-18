@@ -42,17 +42,29 @@ Mesh::Mesh(const InputParameters& params,
 
     // Legion Pts
     ispace_local_pts_ = pts.get_logical_region().get_index_space();
-    pt_x_init_ = pts.get_field_accessor(FID_PX).typeify<double2>();
+    pt_x_init_ = pts.get_field_accessor(FID_PX_INIT).typeify<double2>();
 
+    fspace_all_pts_ = runtime_->create_field_space(ctx_);
+    runtime_->attach_name(fspace_all_pts_, "Mesh::fspace_local_pts_");
+    allocatePtFields();
+
+    lregion_all_pts_ = runtime_->create_logical_region(ctx_, ispace_local_pts_, fspace_all_pts_);
+    runtime_->attach_name(lregion_all_pts_, "Mesh::lregion_local_pts_");
     init();
 }
 
 
 Mesh::~Mesh() {
     delete gmesh_;
+    runtime_->destroy_logical_region(ctx_, lregion_all_pts_);
+    runtime_->destroy_field_space(ctx_, fspace_all_pts_);
 }
 
-
+void Mesh::allocatePtFields() {
+	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_all_pts_);
+	allocator.allocate_field(sizeof(double2), FID_PX);
+	allocator.allocate_field(sizeof(double2), FID_PXP);
+}
 void Mesh::init() {
 
     // generate mesh

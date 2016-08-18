@@ -35,7 +35,11 @@ using namespace std;
 // JPG TODO: declare const initialized in all constructors as const
 Hydro::Hydro(const InputParameters& params, Mesh* m,
 		DynamicCollective add_reduction,
-		const PhysicalRegion &zones,
+		IndexSpace* ispace_zones,
+		DoubleAccessor* zone_rho,
+		DoubleAccessor* zone_energy_density,
+		DoubleAccessor* zone_pressure,
+		DoubleAccessor* zone_rho_pred,
         Context ctx, HighLevelRuntime* rt) :
 		mesh(m),
 		cfl(params.directs_.cfl_),
@@ -47,6 +51,11 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
 		vel_init_radial(params.directs_.vel_init_radial_),
 		bcx(params.bcx_),
 		bcy(params.bcy_),
+		zone_rho_(zone_rho),
+		zone_rho_pred_(zone_rho_pred),
+		zone_energy_density_(zone_energy_density),
+		zone_pressure_(zone_pressure),
+		ispace_zones_(ispace_zones),
 		add_reduction_(add_reduction),
 		ctx_(ctx),
 		runtime_(rt)
@@ -61,25 +70,6 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
         bcs.push_back(new HydroBC(mesh, vfixx, mesh->getXPlane(bcx[i])));
     for (int i = 0; i < bcy.size(); ++i)
         bcs.push_back(new HydroBC(mesh, vfixy, mesh->getYPlane(bcy[i])));
-
-    // Legion Zones
-    ispace_zones_ = zones.get_logical_region().get_index_space();
-    zone_rho_ = zones.get_field_accessor(FID_ZR).typeify<double>();
-    zone_energy_density_ = zones.get_field_accessor(FID_ZE).typeify<double>();
-    zone_pressure_ = zones.get_field_accessor(FID_ZP).typeify<double>();
-
-	fspace_zones_ = runtime_->create_field_space(ctx_);
-	runtime_->attach_name(fspace_zones_, "Hydro::fspace_zones_");
-	allocateZoneFields();
-
-	lregion_local_zones_ = runtime_->create_logical_region(ctx_, ispace_zones_, fspace_zones_);
-	runtime_->attach_name(lregion_local_zones_, "Hydro::lregion_local_zones_");
-
-	RegionRequirement zone_req(lregion_local_zones_, WRITE_DISCARD, EXCLUSIVE, lregion_local_zones_);
-	zone_req.add_field(FID_ZRP);
-	InlineLauncher local_zone_launcher(zone_req);
-	PhysicalRegion zone_region = runtime_->map_region(ctx_, local_zone_launcher);
-	zone_rho_pred_ = zone_region.get_field_accessor(FID_ZRP).typeify<double>();
 
 	// Legion Points
 	fspace_local_pts_ = runtime_->create_field_space(ctx_);
@@ -108,17 +98,10 @@ Hydro::~Hydro() {
     for (int i = 0; i < bcs.size(); ++i) {
         delete bcs[i];
     }
-	runtime_->destroy_logical_region(ctx_, lregion_local_zones_);
-	runtime_->destroy_field_space(ctx_, fspace_zones_);
 	runtime_->destroy_logical_region(ctx_, lregion_local_pts_);
 	runtime_->destroy_field_space(ctx_, fspace_local_pts_);
 }
 
-
-void Hydro::allocateZoneFields() {
-	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_zones_);
-	allocator.allocate_field(sizeof(double), FID_ZRP);
-}
 
 void Hydro::allocatePtFields() {
 	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_local_pts_);
@@ -155,8 +138,8 @@ void Hydro::init() {
     crnr_force_tot = AbstractedMemory::alloc<double2>(nums);
 
     // initialize hydro vars
-    fillZoneAccessor(&zone_rho_, rho_init);
-    fillZoneAccessor(&zone_energy_density_, energy_init);
+    fillZoneAccessor(zone_rho_, rho_init);
+    fillZoneAccessor(zone_energy_density_, energy_init);
     for (int zch = 0; zch < numzch; ++zch) {
         int zfirst = mesh->zone_chunk_first[zch];
         int zlast = mesh->zone_chunk_last[zch];
@@ -176,8 +159,8 @@ void Hydro::init() {
                     zx[z].x < (subrgn_xmax + eps) &&
                     zx[z].y > (subrgn_ymin - eps) &&
                     zx[z].y < (subrgn_ymax + eps)) {
-                    zone_rho_.write(zone_ptr,rho_init_sub);
-                    zone_energy_density_.write(zone_ptr,energy_init_sub);
+                    zone_rho_->write(zone_ptr,rho_init_sub);
+                    zone_energy_density_->write(zone_ptr,energy_init_sub);
                 }
             }
         }
@@ -185,8 +168,8 @@ void Hydro::init() {
         #pragma ivdep
         for (int z = zfirst; z < zlast; ++z) {
         		ptr_t zone_ptr(z);
-            zone_mass[z] = zone_rho_.read(zone_ptr) * zvol[z];
-            zone_energy_tot[z] = zone_energy_density_.read(zone_ptr) * zone_mass[z];
+        		zone_mass[z] = zone_rho_->read(zone_ptr) * zvol[z];
+        		zone_energy_tot[z] = zone_energy_density_->read(zone_ptr) * zone_mass[z];
         }
     }  // for sch
 
@@ -205,7 +188,7 @@ void Hydro::init() {
 
 void Hydro::fillZoneAccessor(DoubleAccessor* acc, double value)
 {
-	IndexIterator itr(runtime_, ctx_, ispace_zones_);
+	IndexIterator itr(runtime_, ctx_, *ispace_zones_);
 	while (itr.has_next()) {
 		ptr_t zone_ptr = itr.next();
 		acc->write(zone_ptr, value);
@@ -380,7 +363,7 @@ void Hydro::advPosFull(
 
 
 void Hydro::calcCrnrMass(
-        const DoubleAccessor& zr,
+        const DoubleAccessor* zr,
         const double* zarea,
         const double* side_mass_frac,
         double* cmaswt,
@@ -393,7 +376,7 @@ void Hydro::calcCrnrMass(
         int z = mesh->map_side2zone_[s];
 
         	ptr_t zone_ptr(z);
-        double m = zr.read(zone_ptr) * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
+        double m = zr->read(zone_ptr) * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         cmaswt[s] = m;
     }
 }
@@ -439,14 +422,14 @@ void Hydro::calcAccel(
 void Hydro::calcRho(
         const double* zm,
         const double* zvol,
-        DoubleAccessor& zr,
+        DoubleAccessor* zr,
         const int zfirst,
         const int zlast) {
 
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
     		ptr_t zone_ptr(z);
-        zr.write(zone_ptr, zm[z] / zvol[z]);
+        zr->write(zone_ptr, zm[z] / zvol[z]);
     }
 
 }
@@ -493,7 +476,7 @@ void Hydro::calcWorkRate(
         const double* zvol0,
         const double* zvol,
         const double* zw,
-        const DoubleAccessor& zp,
+        const DoubleAccessor* zp,
         const double dt,
         double* zwrate,
         const int zfirst,
@@ -503,7 +486,7 @@ void Hydro::calcWorkRate(
     for (int z = zfirst; z < zlast; ++z) {
     		ptr_t zone_ptr(z);
         double dvol = zvol[z] - zvol0[z];
-        zwrate[z] = (zw[z] + zp.read(zone_ptr) * dvol) * dtinv;
+        zwrate[z] = (zw[z] + zp->read(zone_ptr) * dvol) * dtinv;
     }
 
 }
@@ -512,7 +495,7 @@ void Hydro::calcWorkRate(
 void Hydro::calcEnergy(
         const double* zetot,
         const double* zm,
-		const DoubleAccessor& ze,
+		const DoubleAccessor* ze,
         const int zfirst,
         const int zlast) {
 
@@ -520,7 +503,7 @@ void Hydro::calcEnergy(
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
     		ptr_t zone_ptr(z);
-        ze.write(zone_ptr, zetot[z] / (zm[z] + fuzz));
+        ze->write(zone_ptr, zetot[z] / (zm[z] + fuzz));
     }
 
 }
