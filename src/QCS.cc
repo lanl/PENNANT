@@ -104,7 +104,6 @@ void QCS::setCornerDiv(
     const int numz = mesh->num_zones_;
 
     const double2* pu = hydro->pt_vel;
-    const double2* px = mesh->pt_x_pred;
     const double2* ex = mesh->edge_x_pred;
     const double2* zx = mesh->zone_x_pred;
     const double* elen = mesh->edge_len;
@@ -152,7 +151,8 @@ void QCS::setCornerDiv(
         // Velocities and positions
         // 0 = point p
         up0 = pu[p];
-        xp0 = px[p];
+        ptr_t pt_ptr(p);
+        xp0 = mesh->pt_x_pred_.read(pt_ptr);
         // 1 = edge e2
         up1 = 0.5 * (pu[p] + pu[p2]);
         xp1 = ex[e2];
@@ -335,7 +335,6 @@ void QCS::setVelDiff(
     const int numz = mesh->num_zones_;
     int zfirst = mesh->map_side2zone_[sfirst];
     int zlast = (slast < nums ? mesh->map_side2zone_[slast] : numz);
-    const double2* px = mesh->pt_x_pred;
     const double2* pu = hydro->pt_vel;
     const double* zss = hydro->zone_sound_speed;
     double* zdu = hydro->zone_dvel;
@@ -346,12 +345,14 @@ void QCS::setVelDiff(
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
+        ptr_t pt_ptr1(p1);
         int p2 = mesh->mapSideToPt2(s);
+        ptr_t pt_ptr2(p2);
         int z = mesh->map_side2zone_[s];
         int e = mesh->map_side2edge_[s];
         int z0 = z - zfirst;
 
-        double2 dx = px[p2] - px[p1];
+        double2 dx = mesh->pt_x_pred_.read(pt_ptr2) - mesh->pt_x_pred_.read(pt_ptr1);
         double2 du = pu[p2] - pu[p1];
         double lenx = elen[e];
         double dux = dot(du, dx);

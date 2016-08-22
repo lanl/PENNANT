@@ -199,14 +199,14 @@ void Hydro::initRadialVel(
         const double vel,
         const int pfirst,
         const int plast) {
-    const double2* px = mesh->pt_x_;
     const double eps = 1.e-12;
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        double pmag = length(px[p]);
+    		ptr_t pt_ptr(p);
+        double pmag = length(mesh->pt_x_t.read(pt_ptr));
         if (pmag > eps)
-            pt_vel[p] = vel * px[p] / pmag;
+            pt_vel[p] = vel * mesh->pt_x_t.read(pt_ptr) / pmag;
         else
             pt_vel[p] = double2(0., 0.);
     }
@@ -225,12 +225,15 @@ void Hydro::doCycle(
         int pt_last = mesh->pt_chunks_last[pt_chunk];
 
         // save off point variable values from previous cycle
-        copy(&mesh->pt_x_[pt_first], &mesh->pt_x_[pt_last], &mesh->pt_x0[pt_first]);
+        for (int p = pt_first; p < pt_last; ++p) {
+        		ptr_t pt_ptr(p);
+        		mesh->pt_x0[p] = mesh->pt_x_t.read(pt_ptr); // TODO no reason this shouldn't be in Mesh
+        }
         copy(&pt_vel[pt_first], &pt_vel[pt_last], &pt_vel0[pt_first]);
 
         // ===== Predictor step =====
         // 1. advance mesh to center of time step
-        advPosHalf(mesh->pt_x0, pt_vel0, dt, mesh->pt_x_pred, pt_first, pt_last);
+        advPosHalf(mesh->pt_x0, pt_vel0, dt, mesh->pt_x_pred_, pt_first, pt_last);
     } // for pch
 
     for (int sch = 0; sch < num_side_chunks; ++sch) {
@@ -286,7 +289,7 @@ void Hydro::doCycle(
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_, pt_vel, pfirst, plast);
+        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_t, pt_vel, pfirst, plast);
     }  // for pch
 
     resetDtHydro();
@@ -303,7 +306,7 @@ void Hydro::doCycle(
 
         // 7. compute work
         fill(&zone_work[zfirst], &zone_work[zlast], 0.);
-        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, mesh->pt_x_pred, dt, zone_work, zone_energy_tot,
+        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, mesh->pt_x_pred_, dt, zone_work, zone_energy_tot,
                 sfirst, slast);
     }  // for sch
     mesh->checkBadSides();
@@ -330,7 +333,7 @@ void Hydro::advPosHalf(
         const double2* px0,
         const double2* pu0,
         const double dt,
-        double2* pxp,
+        Double2Accessor& pxp,
         const int pfirst,
         const int plast) {
 
@@ -338,7 +341,8 @@ void Hydro::advPosHalf(
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        pxp[p] = px0[p] + pu0[p] * dth;
+    		ptr_t pt_ptr(p);
+        pxp.write(pt_ptr, px0[p] + pu0[p] * dth);
     }
 }
 
@@ -348,15 +352,16 @@ void Hydro::advPosFull(
         const double2* pu0,
         const double2* pa,
         const double dt,
-        double2* px,
+        Double2Accessor& px,
         double2* pu,
         const int pfirst,
         const int plast) {
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
+    		ptr_t pt_ptr(p);
         pu[p] = pu0[p] + pa[p] * dt;
-        px[p] = px0[p] + 0.5 * (pu[p] + pu0[p]) * dt;
+        px.write(pt_ptr, px0[p] + 0.5 * (pu[p] + pu0[p]) * dt);
     }
 
 }
@@ -440,7 +445,7 @@ void Hydro::calcWork(
         const double2* sf2,
         const double2* pu0,
         const double2* pu,
-        const double2* px,
+        const Double2Accessor& px,
         const double dt,
         double* zw,
         double* zetot,
@@ -457,12 +462,14 @@ void Hydro::calcWork(
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
         int p2 = mesh->mapSideToPt2(s);
+        ptr_t pt_ptr1(p1);
+        ptr_t pt_ptr2(p2);
         int z = mesh->map_side2zone_[s];
 
         double2 sftot = sf[s] + sf2[s];
         double sd1 = dot( sftot, (pu0[p1] + pu[p1]));
         double sd2 = dot(-sftot, (pu0[p2] + pu[p2]));
-        double dwork = -dth * (sd1 * px[p1].x + sd2 * px[p2].x);
+        double dwork = -dth * (sd1 * px.read(pt_ptr1).x + sd2 * px.read(pt_ptr2).x);
 
         zetot[z] += dwork;
         zw[z] += dwork;
@@ -515,7 +522,7 @@ void Hydro::sumEnergy(
         const double* zvol,
         const double* zm,
         const double* side_mass_frac,
-        const double2* px,
+       const Double2Accessor& px,
         const double2* pu,
         double& ei,
         double& ek,
@@ -541,9 +548,10 @@ void Hydro::sumEnergy(
     for (int s = sfirst; s < slast; ++s) {
         int s3 = mesh->mapSideToSidePrev(s);
         int p1 = mesh->map_side2pt1_[s];
+        ptr_t pt_ptr(p1);
         int z = mesh->map_side2zone_[s];
 
-        double cvol = zarea[z] * px[p1].x * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
+        double cvol = zarea[z] * px.read(pt_ptr).x * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);
         sumk += cke;
     }
@@ -662,7 +670,7 @@ void Hydro::writeEnergyCheck() {
         double eichunk = 0.;
         double ekchunk = 0.;
         sumEnergy(zone_energy_tot, mesh->zone_area_, mesh->zone_vol_, zone_mass, mesh->side_mass_frac,
-                mesh->pt_x_, pt_vel, eichunk, ekchunk,
+                mesh->pt_x_t, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
             ei += eichunk;

@@ -50,7 +50,16 @@ Mesh::Mesh(const InputParameters& params,
 
     lregion_all_pts_ = runtime_->create_logical_region(ctx_, ispace_local_pts_, fspace_all_pts_);
     runtime_->attach_name(lregion_all_pts_, "Mesh::lregion_local_pts_");
-    init();
+
+    RegionRequirement pt_req(lregion_all_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_all_pts_);
+	pt_req.add_field(FID_PX);
+	pt_req.add_field(FID_PXP);
+	InlineLauncher local_pt_launcher(pt_req);
+	PhysicalRegion pt_region = rt->map_region(ctx, local_pt_launcher);
+	pt_x_t = pt_region.get_field_accessor(FID_PX).typeify<double2>();
+	pt_x_pred_ = pt_region.get_field_accessor(FID_PXP).typeify<double2>();
+
+	init();
 }
 
 
@@ -120,11 +129,9 @@ void Mesh::init() {
     writeMeshStats();
 
     // allocate remaining arrays
-    pt_x_ = AbstractedMemory::alloc<double2>(num_pts_);
     edge_x = AbstractedMemory::alloc<double2>(num_edges_);
     zone_x_ = AbstractedMemory::alloc<double2>(num_zones_);
     pt_x0 = AbstractedMemory::alloc<double2>(num_pts_);
-    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts_);
     edge_x_pred = AbstractedMemory::alloc<double2>(num_edges_);
     zone_x_pred = AbstractedMemory::alloc<double2>(num_zones_);
     side_area_ = AbstractedMemory::alloc<double>(num_sides_);
@@ -141,13 +148,15 @@ void Mesh::init() {
     zone_dl = AbstractedMemory::alloc<double>(num_zones_);
     side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
-    // do a few initial calculations
+    // do a few initial calculations TODO JPG move temporarily to global mesh
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];
         // copy nodepos into px, distributed across threads
-        for (int p = pfirst; p < plast; ++p)
-            pt_x_[p] = nodepos[p];
+        for (int p = pfirst; p < plast; ++p) {
+        		ptr_t pt_ptr(p);
+            pt_x_t.write(pt_ptr, nodepos[p]);
+        }
 
     }
 
@@ -370,7 +379,8 @@ vector<int> Mesh::getXPlane(const double c) {
     const double eps = 1.e-12;
 
     for (int p = 0; p < num_pts_; ++p) {
-        if (fabs(pt_x_[p].x - c) < eps) {
+    		ptr_t pt_ptr(p);
+    		if (fabs(pt_x_t.read(pt_ptr).x - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -385,7 +395,8 @@ vector<int> Mesh::getYPlane(const double c) {
     const double eps = 1.e-12;
 
     for (int p = 0; p < num_pts_; ++p) {
-        if (fabs(pt_x_[p].y - c) < eps) {
+		ptr_t pt_ptr(p);
+        if (fabs(pt_x_t.read(pt_ptr).y - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -418,16 +429,16 @@ void Mesh::getPlaneChunks(
 
 
 void Mesh::calcCtrs(const int side_chunk, const bool pred) {
-    double2* px;
+    const Double2Accessor* px;
     double2* ex;
     double2* zx;
 
     if (pred) {
-        px = pt_x_pred;
+        px = &pt_x_pred_;
         ex = edge_x_pred;
         zx = zone_x_pred;
     } else {
-        px = pt_x_;
+        px = &pt_x_t;
         ex = edge_x;
         zx = zone_x_;
     }
@@ -440,11 +451,13 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
+        ptr_t pt_ptr1(p1);
         int p2 = mapSideToPt2(s);
+        ptr_t pt_ptr2(p2);
         int e = map_side2edge_[s];
         int z = map_side2zone_[s];
-        ex[e] = 0.5 * (px[p1] + px[p2]);
-        zx[z] += px[p1];
+        ex[e] = 0.5 * (px->read(pt_ptr1) + px->read(pt_ptr2));
+        zx[z] += px->read(pt_ptr1);
     }
 
     for (int z = zfirst; z < zlast; ++z) {
@@ -455,7 +468,7 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
 
 
 void Mesh::calcVols(const int side_chunk, const bool pred) {
-    const double2* px;
+    const Double2Accessor* px;
     const double2* zx;
     double* sarea;
     double* svol;
@@ -463,14 +476,14 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
     double* zvol;
 
     if (pred) {
-        px = pt_x_pred;
+        px = &pt_x_pred_;
         zx = zone_x_pred;
         sarea = side_area_pred;
         svol = side_vol_pred;
         zarea = zone_area_pred;
         zvol = zone_vol_pred;
     } else {
-        px = pt_x_;
+        px = &pt_x_t;
         zx = zone_x_;
         sarea = side_area_;
         svol = side_vol_;
@@ -489,12 +502,14 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
     int count = 0;
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
+        ptr_t pt_ptr1(p1);
         int p2 = mapSideToPt2(s);
+        ptr_t pt_ptr2(p2);
         int z = map_side2zone_[s];
 
         // compute side volumes, sum to zone
-        double sa = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
-        double sv = third * sa * (px[p1].x + px[p2].x + zx[z].x);
+        double sa = 0.5 * cross(px->read(pt_ptr2) - px->read(pt_ptr1), zx[z] - px->read(pt_ptr1));
+        double sv = third * sa * (px->read(pt_ptr1).x + px->read(pt_ptr2).x + zx[z].x);
         sarea[s] = sa;
         svol[s] = sv;
         zarea[z] += sa;
@@ -556,11 +571,11 @@ void Mesh::calcEdgeLen(const int side_chunk) {
 	int slast = side_chunks_last[side_chunk];
 
 	for (int s = sfirst; s < slast; ++s) {
-        const int p1 = map_side2pt1_[s];
-        const int p2 = mapSideToPt2(s);
+        const ptr_t p1(map_side2pt1_[s]);
+        const ptr_t p2(mapSideToPt2(s));
         const int e = map_side2edge_[s];
 
-        edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
+        edge_len[e] = length(pt_x_pred_.read(p2) - pt_x_pred_.read(p1));
 
     }
 }

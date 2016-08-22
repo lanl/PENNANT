@@ -72,9 +72,7 @@ public:
     int* zone_pts_val_;		// := map_side2pt1_
     int* zone_pts_ptr_;
 
-    double2* pt_x_;       // point coordinates
     double2* zone_x_;       // zone center coordinates
-    double2* pt_x_pred;      // point coords, middle of cycle
     double2* edge_x_pred;      // edge ctr coords, middle of cycle
     double2* zone_x_pred;      // zone ctr coords, middle of cycle
     double2* pt_x0;      // point coords, start of cycle

@@ -94,7 +94,7 @@ public:
             const double2* px0,
             const double2* pu0,
             const double dt,
-            double2* pxp,
+            Double2Accessor& pxp,
             const int pfirst,
             const int plast);
 
@@ -103,7 +103,7 @@ public:
             const double2* pu0,
             const double2* pa,
             const double dt,
-            double2* px,
+            Double2Accessor& px,
             double2* pu,
             const int pfirst,
             const int plast);
@@ -143,7 +143,7 @@ public:
             const double2* sf2,
             const double2* pu0,
             const double2* pu,
-            const double2* px0,
+            const Double2Accessor& px0,
             const double dt,
             double* zw,
             double* zetot,
@@ -173,7 +173,7 @@ public:
             const double* zvol,
             const double* zm,
             const double* smf,
-            const double2* px,
+            const Double2Accessor& px,
             const double2* pu,
             double& ei,
             double& ek,
