@@ -27,6 +27,12 @@ class GenerateMesh;
 class Mesh {
 public:
 
+    Mesh(const InputParameters& params,
+    		const PhysicalRegion &sides,
+    		const PhysicalRegion &pts,
+        Context ctx, HighLevelRuntime* rt);
+    ~Mesh();
+
     // parameters
     int chunk_size_;                 // max size for processing chunks
     double subregion_xmin_; 		   // bounding box for a subregion
@@ -101,11 +107,6 @@ public:
     std::vector<int> zone_chunk_first;    // start/stop index for zone chunks
     std::vector<int> zone_chunk_last;
 
-    Mesh(const InputParameters& params,
-    		const PhysicalRegion &pts,
-        Context ctx, HighLevelRuntime* rt);
-    ~Mesh();
-
 
     // find plane with constant x, y value
     std::vector<int> getXPlane(const double c);
@@ -139,6 +140,8 @@ public:
     void sumToPoints(
             const T* cvar,
 			RegionAccessor<AccessorType::Generic, T>& pvar);
+
+    IndexSpace ispace_sides_;
 	IndexSpace ispace_local_pts_;
 
 	Double2Accessor pt_x_;          // point coordinates
@@ -146,7 +149,8 @@ public:
 
 private:
 
-	Double2Accessor pt_x_init_;  // TODO make private
+	Double2Accessor pt_x_init_;
+	IntAccessor zone_pts_;
 
 	// children
     GenerateMesh* gmesh_;
@@ -183,8 +187,7 @@ private:
     void init();
 
     void initSideMappingArrays(
-            const std::vector<int>& cellstart,
-            const std::vector<int>& cellnodes);
+            const std::vector<int>& cellstart);
 
     void initEdgeMappingArrays();
 

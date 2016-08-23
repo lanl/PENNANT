@@ -27,6 +27,8 @@ using namespace std;
 
 DriverTask::DriverTask(LogicalRegion my_zones,
 		LogicalRegion all_zones,
+		LogicalRegion my_sides,
+		LogicalRegion all_sides,
 		LogicalRegion my_pts,
 		LogicalRegion all_pts,
 		void *args, const size_t &size)
@@ -38,6 +40,8 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 	add_field(0/*idx*/, FID_ZP);
 	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
 	add_field(1/*idx*/, FID_PX_INIT);
+	add_region_requirement(RegionRequirement(my_sides, READ_ONLY, EXCLUSIVE, all_sides));
+	add_field(2/*idx*/, FID_ZONE_PTS);
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -47,10 +51,11 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* rt)
 {
-	assert(regions.size() == 2);
-	assert(task->regions.size() == 2);
+	assert(regions.size() == 3);
+	assert(task->regions.size() == 3);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
+	assert(task->regions[2].privilege_fields.size() == 1);
 
     // Legion Zones
 
@@ -118,7 +123,8 @@ RunStat DriverTask::cpu_run(const Task *task,
     }
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
-    		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred, regions[1],
+    		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred,
+		regions[2], regions[1],
 		ctx, rt);
     RunStat value=drv.run();
 	rt->destroy_logical_region(ctx, lregion_local_zones);
@@ -134,6 +140,7 @@ Driver::Driver(const InputParameters& params,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
 		DoubleAccessor* zone_rho_pred,
+		const PhysicalRegion &sides,
 		const PhysicalRegion &pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
@@ -150,7 +157,7 @@ Driver::Driver(const InputParameters& params,
 {
 
     // initialize mesh, hydro
-    mesh = new Mesh(params, pts, ctx_, runtime_);
+    mesh = new Mesh(params, sides, pts, ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
     		zone_pressure, zone_rho_pred, ctx_, runtime_);
 

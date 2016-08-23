@@ -22,30 +22,53 @@ public:
                                             // directions
     int num_proc_x_, num_proc_y_;           // number of PEs to use, in x and y
                                             // directions
-    void generate(std::vector<double2>& pointpos) const;
+    void generate(std::vector<double2>& pointpos,
+            std::vector<int>& zonestart,
+            std::vector<int>& zonepoints) const;
 
     int numberOfZones() const;
-	void colorPartitions(Coloring *local_zones_map,
-			Coloring *local_pts_map) const;
     int numberOfPoints() const;
+    int numberOfSides() const;
+	void colorPartitions(const std::vector<int>& zone_pts_ptr,
+			Coloring *local_zones_map,
+			Coloring *local_sides_map,
+			Coloring *local_pts_map) const;
 
 private:
     void calcPartitions();
-    void colorPartitionsRect(Coloring *local_zones_map,
+    void colorPartitionsRect(const std::vector<int>& zone_pts_ptr,
+			Coloring *local_zones_map,
+			Coloring *local_sides_map,
 			Coloring *local_pts_map) const;
-	void colorPartitionsPie(Coloring *local_zones_map,
+	void colorPartitionsPie(const std::vector<int>& zone_pts_ptr,
+			Coloring *local_zones_map,
+			Coloring *local_sides_map,
 			Coloring *local_pts_map) const;
-	void colorPartitionsHex(Coloring *local_zones_map,
+	void colorPartitionsHex(const std::vector<int>& zone_pts_ptr,
+			Coloring *local_zones_map,
+			Coloring *local_sides_map,
 			Coloring *local_pts_map) const;
     int numberOfPointsRect() const;
     int numberOfPointsPie() const;
     int numberOfPointsHex() const;
+    int numberOfCornersRect() const;
+    int numberOfCornersPie() const;
+    int numberOfCornersHex() const;
     void generateRect(
-            std::vector<double2>& pointpos) const;
+            std::vector<double2>& pointpos,
+	        std::vector<int>& zonestart,
+	        std::vector<int>& zonesize,
+	        std::vector<int>& zonepoints) const;
     void generatePie(
-            std::vector<double2>& pointpos) const;
+            std::vector<double2>& pointpos,
+	        std::vector<int>& zonestart,
+	        std::vector<int>& zonesize,
+	        std::vector<int>& zonepoints) const;
     void generateHex(
-            std::vector<double2>& pointpos) const;
+            std::vector<double2>& pointpos,
+	        std::vector<int>& zonestart,
+	        std::vector<int>& zonesize,
+	        std::vector<int>& zonepoints) const;
 
 };
 

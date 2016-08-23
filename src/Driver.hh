@@ -29,6 +29,8 @@ public:
 			LogicalRegion all_zones,
 			LogicalRegion my_pts,
 			LogicalRegion all_pts,
+			LogicalRegion my_sides,
+			LogicalRegion all_sides,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = DRIVER_TASK_ID;
@@ -67,6 +69,7 @@ public:
 			DoubleAccessor* zone_energy_density,
 			DoubleAccessor* zone_pressure,
 			DoubleAccessor* zone_rho_pred,
+			const PhysicalRegion &sides,
 			const PhysicalRegion &pts,
         Context ctx, HighLevelRuntime* rt);
     ~Driver();

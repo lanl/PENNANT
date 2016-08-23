@@ -26,6 +26,7 @@ using namespace std;
 
 
 Mesh::Mesh(const InputParameters& params,
+		const PhysicalRegion &sides,
 		const PhysicalRegion &pts,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size_(params.directs_.chunk_size_),
@@ -39,6 +40,10 @@ Mesh::Mesh(const InputParameters& params,
 	{
 
     gmesh_ = new GenerateMesh(params);
+
+    // Legion Sides & Corners
+    ispace_sides_ = sides.get_logical_region().get_index_space();
+    zone_pts_ = sides.get_field_accessor(FID_ZONE_PTS).typeify<int>();
 
     // Legion Pts
     ispace_local_pts_ = pts.get_logical_region().get_index_space();
@@ -101,7 +106,7 @@ void Mesh::init() {
 
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSideMappingArrays(cellstart, cellnodes);
+    initSideMappingArrays(cellstart);
     // release memory from cell* arrays
     cellstart.resize(0);
     cellnodes.resize(0);
@@ -168,8 +173,7 @@ void Mesh::init() {
 
 
 void Mesh::initSideMappingArrays(
-        const vector<int>& cellstart,
-        const vector<int>& cellnodes) {
+        const vector<int>& cellstart) {
 
     map_side2pt1_ = AbstractedMemory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
@@ -181,7 +185,8 @@ void Mesh::initSideMappingArrays(
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
             map_side2zone_[s] = z;
-            map_side2pt1_[s] = cellnodes[s];
+            ptr_t side_ptr(s);
+            map_side2pt1_[s] = zone_pts_.read(side_ptr);
         } // for n
     } // for z
 

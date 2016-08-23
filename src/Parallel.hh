@@ -34,6 +34,10 @@ enum ZoneFields {
 	FID_ZP,
 };
 
+enum SideAndCornerFields {
+	FID_ZONE_PTS,
+};
+
 enum PointFields {
 	FID_PX_INIT,
 	FID_PX,
@@ -90,6 +94,7 @@ enum TaskIDs {
 
 typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
 typedef RegionAccessor<AccessorType::Generic, double2> Double2Accessor;
+typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
 
 class Parallel {
 public:
