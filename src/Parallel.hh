@@ -46,6 +46,10 @@ enum PointFields {
 	FID_PMASWT,
 };
 
+enum ZonePtsCRSFields {
+	FID_ZONE_PTS_PTR,
+};
+
 struct RunStat {
 	int cycle;
 	double time;

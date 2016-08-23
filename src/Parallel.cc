@@ -106,9 +106,13 @@ Parallel::Parallel(InputParameters input_params,
 				  global_mesh_.lpart_sides_, color);
 		  LogicalRegion my_pts = runtime_->get_logical_subregion_by_color(ctx_,
 				  global_mesh_.lpart_pts_, color);
+		  LogicalRegion my_zone_pts_ptr = runtime_->get_logical_subregion_by_color(ctx_,
+				  global_mesh_.lpart_zone_pts_crs_, color);
+
 		  DriverTask driver_launcher(my_zones, global_mesh_.lregion_global_zones_,
 				  my_sides, global_mesh_.lregion_global_sides_,
 				  my_pts, global_mesh_.lregion_global_pts_,
+				  my_zone_pts_ptr, global_mesh_.lregion_zone_pts_crs_,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }

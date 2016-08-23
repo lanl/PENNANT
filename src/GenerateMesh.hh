@@ -44,9 +44,6 @@ public:
     ~GenerateMesh();
 
     void generate(
-            std::vector<double2>& pointpos,
-            std::vector<int>& zonestart,
-            std::vector<int>& zonepoints,
             std::vector<int>& slavemstrpes,
             std::vector<int>& slavemstrcounts,
             std::vector<int>& slavepoints,

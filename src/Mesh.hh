@@ -28,8 +28,10 @@ class Mesh {
 public:
 
     Mesh(const InputParameters& params,
+		IndexSpace* ispace_zones,
     		const PhysicalRegion &sides,
     		const PhysicalRegion &pts,
+    		const PhysicalRegion &zone_pts_crs,
         Context ctx, HighLevelRuntime* rt);
     ~Mesh();
 
@@ -151,6 +153,7 @@ private:
 
 	Double2Accessor pt_x_init_;
 	IntAccessor zone_pts_;
+	IntAccessor zone_pts_ptr_legion;
 
 	// children
     GenerateMesh* gmesh_;
@@ -183,11 +186,11 @@ private:
 
     FieldSpace fspace_all_pts_;
     LogicalRegion lregion_all_pts_;
+    IndexSpace* ispace_zones_;
 
     void init();
 
-    void initSideMappingArrays(
-            const std::vector<int>& cellstart);
+    void initSideMappingArrays();
 
     void initEdgeMappingArrays();
 

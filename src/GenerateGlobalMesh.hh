@@ -32,22 +32,27 @@ public:
 	void colorPartitions(const std::vector<int>& zone_pts_ptr,
 			Coloring *local_zones_map,
 			Coloring *local_sides_map,
-			Coloring *local_pts_map) const;
+			Coloring *local_pts_map,
+			Coloring *crs_map) const;
 
 private:
     void calcPartitions();
+    void colorZonesAndSides(const std::vector<int>& zone_pts_ptr,
+			Coloring *local_zones_map,
+			Coloring *local_sides_map,
+			Coloring *crs_map) const;
     void colorPartitionsRect(const std::vector<int>& zone_pts_ptr,
 			Coloring *local_zones_map,
 			Coloring *local_sides_map,
-			Coloring *local_pts_map) const;
+			Coloring *local_pts_map, Coloring *crs_map) const;
 	void colorPartitionsPie(const std::vector<int>& zone_pts_ptr,
 			Coloring *local_zones_map,
 			Coloring *local_sides_map,
-			Coloring *local_pts_map) const;
+			Coloring *local_pts_map, Coloring *crs_map) const;
 	void colorPartitionsHex(const std::vector<int>& zone_pts_ptr,
 			Coloring *local_zones_map,
 			Coloring *local_sides_map,
-			Coloring *local_pts_map) const;
+			Coloring *local_pts_map, Coloring *crs_map) const;
     int numberOfPointsRect() const;
     int numberOfPointsPie() const;
     int numberOfPointsHex() const;

@@ -26,8 +26,10 @@ using namespace std;
 
 
 Mesh::Mesh(const InputParameters& params,
+		IndexSpace* ispace_zones,
 		const PhysicalRegion &sides,
 		const PhysicalRegion &pts,
+		const PhysicalRegion &zone_pts_crs,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size_(params.directs_.chunk_size_),
 			subregion_xmin_(params.directs_.subregion_xmin_),
@@ -36,7 +38,8 @@ Mesh::Mesh(const InputParameters& params,
 			subregion_ymax_(params.directs_.subregion_ymax_),
 			gmesh_(NULL),
 			ctx_(ctx),
-			runtime_(rt)
+			runtime_(rt),
+			ispace_zones_(ispace_zones)
 	{
 
     gmesh_ = new GenerateMesh(params);
@@ -44,6 +47,9 @@ Mesh::Mesh(const InputParameters& params,
     // Legion Sides & Corners
     ispace_sides_ = sides.get_logical_region().get_index_space();
     zone_pts_ = sides.get_field_accessor(FID_ZONE_PTS).typeify<int>();
+
+    // Zone Points Compressed Row Storage
+    zone_pts_ptr_legion = zone_pts_crs.get_field_accessor(FID_ZONE_PTS_PTR).typeify<int>();
 
     // Legion Pts
     ispace_local_pts_ = pts.get_logical_region().get_index_space();
@@ -82,19 +88,28 @@ void Mesh::allocatePtFields() {
 void Mesh::init() {
 
     // generate mesh
-    vector<double2> nodepos;
-    vector<int> cellstart, cellnodes;
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
-    gmesh_->generate(nodepos, cellstart, cellnodes,
-            slavemstrpes, slavemstrcounts, slavepoints,
+    gmesh_->generate(slavemstrpes, slavemstrcounts, slavepoints,
             masterslvpes, masterslvcounts, masterpoints);
 
-    num_pts_ = nodepos.size();
-    num_zones_ = cellstart.size() - 1;
-    num_sides_ = cellnodes.size();
-    num_corners_ = num_sides_;
+    {
+		IndexIterator pt_itr(runtime_,ctx_, ispace_local_pts_);
+		size_t npts;
+		pt_itr.next_span(npts);
+		num_pts_ = (int) npts;
 
+		IndexIterator side_itr(runtime_,ctx_, ispace_sides_);
+		size_t nsides;
+		side_itr.next_span(nsides);
+		num_sides_ = (int) nsides;
+	    num_corners_ = num_sides_;
+
+		IndexIterator zone_itr(runtime_,ctx_, *ispace_zones_);
+		size_t nzones;
+		zone_itr.next_span(nzones);
+		num_zones_ = (int) nzones;
+    }
 
     // copy cell sizes to mesh
 
@@ -102,14 +117,13 @@ void Mesh::init() {
 //    copy(cellsize.begin(), cellsize.end(), zone_npts_);
 
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
-    copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
-
+    for (int z=0; z < num_zones_+1; ++z) {
+    		ptr_t zone_ptr(z);
+    		zone_pts_ptr_[z] = zone_pts_ptr_legion.read(zone_ptr);
+    }
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSideMappingArrays(cellstart);
-    // release memory from cell* arrays
-    cellstart.resize(0);
-    cellnodes.resize(0);
+    initSideMappingArrays();
     // now populate edge maps using side maps
     initEdgeMappingArrays();
 
@@ -172,16 +186,17 @@ void Mesh::init() {
 }
 
 
-void Mesh::initSideMappingArrays(
-        const vector<int>& cellstart) {
+void Mesh::initSideMappingArrays() {
 
     map_side2pt1_ = AbstractedMemory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
     map_side2zone_  = AbstractedMemory::alloc<int>(num_sides_);
 
     for (int z = 0; z < num_zones_; ++z) {
-        int sbase = cellstart[z];
-        int size = cellstart[z+1] - cellstart[z];
+		ptr_t zone_ptr(z);
+		ptr_t zone_ptr_plus1(z+1);
+        int sbase = zone_pts_ptr_legion.read(zone_ptr);
+        int size = zone_pts_ptr_legion.read(zone_ptr_plus1) - zone_pts_ptr_legion.read(zone_ptr);
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
             map_side2zone_[s] = z;

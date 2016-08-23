@@ -277,36 +277,78 @@ int GenerateGlobalMesh::numberOfZones() const {
 
 void GenerateGlobalMesh::colorPartitions(const std::vector<int>& zone_pts_ptr,
 		Coloring *zone_map, Coloring *side_map,
-		Coloring *pt_map) const
+		Coloring *pt_map, Coloring *crs_map) const
 {
     if (meshtype_ == "pie")
-    		colorPartitionsPie(zone_pts_ptr, zone_map, side_map, pt_map);
+    		colorPartitionsPie(zone_pts_ptr, zone_map, side_map, pt_map, crs_map);
     else if (meshtype_ == "rect")
-    		colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map);
+    		colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map, crs_map);
     else if (meshtype_ == "hex")
-    		colorPartitionsHex(zone_pts_ptr, zone_map, side_map, pt_map);
+    		colorPartitionsHex(zone_pts_ptr, zone_map, side_map, pt_map, crs_map);
 }
 
 
 void GenerateGlobalMesh::colorPartitionsPie(const std::vector<int>& zone_pts_ptr,
 		Coloring *zone_map, Coloring *side_map,
-		Coloring *pt_map) const
+		Coloring *pt_map, Coloring *crs_map) const
 {
-	colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map);
+	colorZonesAndSides(zone_pts_ptr, zone_map, side_map, crs_map);
+	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
+		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
+		const int zone_y_stop = (proc_index_y + 1) * global_nzones_y_ / num_proc_y_;
+		for (int proc_index_x = 0; proc_index_x < num_proc_x_; proc_index_x++) {
+			const int color = proc_index_y * num_proc_x_ + proc_index_x;
+			const int zone_x_start = proc_index_x * global_nzones_x_ / num_proc_x_;
+			const int zone_x_stop = (proc_index_x + 1) * global_nzones_x_ / num_proc_x_;
+			for (int j = zone_y_start; j <= zone_y_stop; j++) {
+				if (j == 0) {
+					(*pt_map)[color].points.insert(0);
+					continue;
+				}
+				for (int i = zone_x_start; i <= zone_x_stop; i++) {
+					int pt = 1 + (j - 1) * (global_nzones_x_ + 1) + i;
+					(*pt_map)[color].points.insert(pt);
+				}
+			}
+		}
+	}
 }
 
 
 void GenerateGlobalMesh::colorPartitionsHex(const std::vector<int>& zone_pts_ptr,
 		Coloring *zone_map, Coloring *side_map,
-		Coloring *pt_map) const
+		Coloring *pt_map, Coloring *crs_map) const
 {
-	colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map);
+	colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map, crs_map);
 }
 
 
 void GenerateGlobalMesh::colorPartitionsRect(const std::vector<int>& zone_pts_ptr,
 		Coloring *zone_map, Coloring *side_map,
-		Coloring *local_pt_map) const
+		Coloring *local_pt_map, Coloring *crs_map) const
+{
+	colorZonesAndSides(zone_pts_ptr, zone_map, side_map, crs_map);
+	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
+		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
+		const int zone_y_stop = (proc_index_y + 1) * global_nzones_y_ / num_proc_y_;
+		for (int proc_index_x = 0; proc_index_x < num_proc_x_; proc_index_x++) {
+			const int color = proc_index_y * num_proc_x_ + proc_index_x;
+			const int zone_x_start = proc_index_x * global_nzones_x_ / num_proc_x_;
+			const int zone_x_stop = (proc_index_x + 1) * global_nzones_x_ / num_proc_x_;
+			for (int j = zone_y_start; j <= zone_y_stop; j++) {
+				for (int i = zone_x_start; i <= zone_x_stop; i++) {
+					int pt = j * (global_nzones_x_ + 1) + i;
+					(*local_pt_map)[color].points.insert(pt);
+				}
+			}
+		}
+	}
+}
+
+
+void GenerateGlobalMesh::colorZonesAndSides(const std::vector<int>& zone_pts_ptr,
+		Coloring *zone_map, Coloring *side_map,
+		Coloring *crs_map) const
 {
 	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
 		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
@@ -320,12 +362,8 @@ void GenerateGlobalMesh::colorPartitionsRect(const std::vector<int>& zone_pts_pt
 					int zone = j * (global_nzones_x_) + i;
 					(*zone_map)[color].points.insert(zone);
 					(*side_map)[color].ranges.insert(pair<int, int>(zone_pts_ptr[zone], zone_pts_ptr[zone+1] - 1));
-				}
-			}
-			for (int j = zone_y_start; j <= zone_y_stop; j++) {
-				for (int i = zone_x_start; i <= zone_x_stop; i++) {
-					int pt = j * (global_nzones_x_ + 1) + i;
-					(*local_pt_map)[color].points.insert(pt);
+					(*crs_map)[color].points.insert(zone);
+					(*crs_map)[color].points.insert(zone + 1);
 				}
 			}
 		}

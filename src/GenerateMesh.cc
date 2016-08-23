@@ -38,9 +38,6 @@ GenerateMesh::~GenerateMesh() {}
 
 
 void GenerateMesh::generate(
-        std::vector<double2>& pointpos,
-        std::vector<int>& zonestart,
-        std::vector<int>& zonepoints,
         std::vector<int>& slavemstrpes,
         std::vector<int>& slavemstrcounts,
         std::vector<int>& slavepoints,
@@ -48,7 +45,11 @@ void GenerateMesh::generate(
         std::vector<int>& masterslvcounts,
         std::vector<int>& masterpoints){
 
-    // do calculations common to all mesh types
+    std::vector<double2> pointpos;
+    std::vector<int> zonestart;
+    std::vector<int> zonepoints;
+
+	// do calculations common to all mesh types
     zone_x_offset_ = proc_index_x_ * global_nzones_x_ / num_proc_x_;
     const int zxstop = (proc_index_x_ + 1) * global_nzones_x_ / num_proc_x_;
     nzones_x_ = zxstop - zone_x_offset_;

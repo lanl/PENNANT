@@ -28,12 +28,16 @@ public:
 	LogicalRegion lregion_global_pts_;
 	LogicalPartition lpart_pts_;
 
+	LogicalRegion lregion_zone_pts_crs_;
+	LogicalPartition lpart_zone_pts_crs_;
+
 private:
 	void init();
 	void clear();
 	void allocateZoneFields();
 	void allocateSideFields();
 	void allocatePointFields();
+	void allocateZonePtsCRSFields();
 
 	IndexSpace ispace_zones_;
 	FieldSpace fspace_zones_;
@@ -44,10 +48,14 @@ private:
 	IndexSpace ispace_pts_;
 	FieldSpace fspace_pts_;
 
+	IndexSpace ispace_zone_pts_crs_;
+	FieldSpace fspace_zone_pts_crs_;
+
 	const InputParameters input_params_;
 	int num_zones_;
 	int num_sides_;
 	int num_pts_;
+	int num_zone_pts_crs_;
 	Context ctx_;
 	HighLevelRuntime *runtime_;
 };

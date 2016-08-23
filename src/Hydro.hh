@@ -32,6 +32,16 @@ class HydroBC;
 class Hydro {
 public:
 
+    Hydro(const InputParameters& params, Mesh* m,
+    		DynamicCollective add_reduction,
+			IndexSpace* ispace_zones,
+			DoubleAccessor* zone_rho,
+			DoubleAccessor* zone_energy_density,
+			DoubleAccessor* zone_pressure,
+			DoubleAccessor* zone_rho_pred,
+        Context ctx, HighLevelRuntime* rt);
+    ~Hydro();
+
     // associated mesh object
     Mesh* mesh;
 
@@ -70,16 +80,6 @@ public:
     double2* side_force_visc;      // side force from artificial visc.
     double2* side_force_tts;      // side force from tts
     double2* crnr_force_tot;    // corner force, total from all sources
-
-    Hydro(const InputParameters& params, Mesh* m,
-    		DynamicCollective add_reduction,
-			IndexSpace* ispace_zones,
-			DoubleAccessor* zone_rho,
-			DoubleAccessor* zone_energy_density,
-			DoubleAccessor* zone_pressure,
-			DoubleAccessor* zone_rho_pred,
-        Context ctx, HighLevelRuntime* rt);
-    ~Hydro();
 
     void init();
 
