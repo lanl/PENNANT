@@ -56,7 +56,7 @@ Mesh::Mesh(const InputParameters& params,
 	pt_req.add_field(FID_PXP);
 	InlineLauncher local_pt_launcher(pt_req);
 	PhysicalRegion pt_region = rt->map_region(ctx, local_pt_launcher);
-	pt_x_t = pt_region.get_field_accessor(FID_PX).typeify<double2>();
+	pt_x_ = pt_region.get_field_accessor(FID_PX).typeify<double2>();
 	pt_x_pred_ = pt_region.get_field_accessor(FID_PXP).typeify<double2>();
 
 	init();
@@ -148,16 +148,10 @@ void Mesh::init() {
     zone_dl = AbstractedMemory::alloc<double>(num_zones_);
     side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
-    // do a few initial calculations TODO JPG move temporarily to global mesh
-    for (int pch = 0; pch < num_pt_chunks; ++pch) {
-        int pfirst = pt_chunks_first[pch];
-        int plast = pt_chunks_last[pch];
-        // copy nodepos into px, distributed across threads
-        for (int p = pfirst; p < plast; ++p) {
-        		ptr_t pt_ptr(p);
-            pt_x_t.write(pt_ptr, nodepos[p]);
-        }
-
+    IndexIterator itr(runtime_, ctx_, ispace_local_pts_);
+    while (itr.has_next()) {
+    		ptr_t pt_ptr = itr.next();
+        pt_x_.write(pt_ptr, pt_x_init_.read(pt_ptr));
     }
 
     num_bad_sides = 0;
@@ -380,7 +374,7 @@ vector<int> Mesh::getXPlane(const double c) {
 
     for (int p = 0; p < num_pts_; ++p) {
     		ptr_t pt_ptr(p);
-    		if (fabs(pt_x_t.read(pt_ptr).x - c) < eps) {
+    		if (fabs(pt_x_.read(pt_ptr).x - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -396,7 +390,7 @@ vector<int> Mesh::getYPlane(const double c) {
 
     for (int p = 0; p < num_pts_; ++p) {
 		ptr_t pt_ptr(p);
-        if (fabs(pt_x_t.read(pt_ptr).y - c) < eps) {
+        if (fabs(pt_x_.read(pt_ptr).y - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -438,7 +432,7 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
         ex = edge_x_pred;
         zx = zone_x_pred;
     } else {
-        px = &pt_x_t;
+        px = &pt_x_;
         ex = edge_x;
         zx = zone_x_;
     }
@@ -483,7 +477,7 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
         zarea = zone_area_pred;
         zvol = zone_vol_pred;
     } else {
-        px = &pt_x_t;
+        px = &pt_x_;
         zx = zone_x_;
         sarea = side_area_;
         svol = side_vol_;

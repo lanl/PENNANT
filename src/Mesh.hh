@@ -141,7 +141,7 @@ public:
 			RegionAccessor<AccessorType::Generic, T>& pvar);
 	IndexSpace ispace_local_pts_;
 
-	Double2Accessor pt_x_t;          // point coordinates
+	Double2Accessor pt_x_;          // point coordinates
 	Double2Accessor pt_x_pred_;      // point coords, middle of cycle
 
 private:

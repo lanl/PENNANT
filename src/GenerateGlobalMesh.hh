@@ -22,23 +22,30 @@ public:
                                             // directions
     int num_proc_x_, num_proc_y_;           // number of PEs to use, in x and y
                                             // directions
+    void generate(std::vector<double2>& pointpos) const;
 
     int numberOfZones() const;
 	void colorPartitions(Coloring *local_zones_map,
-			Coloring *local_pts_map);
+			Coloring *local_pts_map) const;
     int numberOfPoints() const;
 
 private:
     void calcPartitions();
     void colorPartitionsRect(Coloring *local_zones_map,
-			Coloring *local_pts_map);
+			Coloring *local_pts_map) const;
 	void colorPartitionsPie(Coloring *local_zones_map,
-			Coloring *local_pts_map);
+			Coloring *local_pts_map) const;
 	void colorPartitionsHex(Coloring *local_zones_map,
-			Coloring *local_pts_map);
+			Coloring *local_pts_map) const;
     int numberOfPointsRect() const;
     int numberOfPointsPie() const;
     int numberOfPointsHex() const;
+    void generateRect(
+            std::vector<double2>& pointpos) const;
+    void generatePie(
+            std::vector<double2>& pointpos) const;
+    void generateHex(
+            std::vector<double2>& pointpos) const;
 
 };
 

@@ -63,6 +63,27 @@ void GlobalMesh::init() {
 	lregion_global_pts_ = runtime_->create_logical_region(ctx_, ispace_pts_, fspace_pts_);
 	runtime_->attach_name(lregion_global_pts_, "GlobalMesh::lregion_global_pts_");
 
+    RegionRequirement pt_req(lregion_global_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_global_pts_);
+	pt_req.add_field(FID_PX_INIT);
+	InlineLauncher local_pt_launcher(pt_req);
+	PhysicalRegion pt_region = runtime_->map_region(ctx_, local_pt_launcher);
+	Double2Accessor pt_x = pt_region.get_field_accessor(FID_PX_INIT).typeify<double2>();
+
+	// generate mesh
+    std::vector<double2> nodepos;
+    gmesh.generate(nodepos);
+
+    // do a few initial calculations TODO JPG move back to local mesh
+//    for (int pch = 0; pch < num_pt_chunks; ++pch) {
+//        int pfirst = pt_chunks_first[pch];
+ //       int plast = pt_chunks_last[pch];
+        // copy nodepos into px, distributed across threads
+        for (int p = 0; p < num_pts_; ++p) {
+        		ptr_t pt_ptr(p);
+            pt_x.write(pt_ptr, nodepos[p]);
+        }
+//    }
+
 	// partitions
 	Coloring local_zones_map;
 	Coloring local_pts_map;

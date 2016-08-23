@@ -72,6 +72,10 @@ void GenerateMesh::generate(
                 masterslvpes, masterslvcounts, masterpoints);
 
     zonestart.push_back(zonestart.back()+zonesize.back());  // compressed row storage
+
+    //assert(point_position.size() == numberOfPoints());
+	//assert((zone_points_ptr.size() - 1) == numberOfZones());
+	//assert(zone_points_val.size() == numberOfSides());
 }
 
 

@@ -204,9 +204,9 @@ void Hydro::initRadialVel(
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
     		ptr_t pt_ptr(p);
-        double pmag = length(mesh->pt_x_t.read(pt_ptr));
+        double pmag = length(mesh->pt_x_.read(pt_ptr));
         if (pmag > eps)
-            pt_vel[p] = vel * mesh->pt_x_t.read(pt_ptr) / pmag;
+            pt_vel[p] = vel * mesh->pt_x_.read(pt_ptr) / pmag;
         else
             pt_vel[p] = double2(0., 0.);
     }
@@ -227,7 +227,7 @@ void Hydro::doCycle(
         // save off point variable values from previous cycle
         for (int p = pt_first; p < pt_last; ++p) {
         		ptr_t pt_ptr(p);
-        		mesh->pt_x0[p] = mesh->pt_x_t.read(pt_ptr); // TODO no reason this shouldn't be in Mesh
+        		mesh->pt_x0[p] = mesh->pt_x_.read(pt_ptr); // TODO no reason this shouldn't be in Mesh
         }
         copy(&pt_vel[pt_first], &pt_vel[pt_last], &pt_vel0[pt_first]);
 
@@ -289,7 +289,7 @@ void Hydro::doCycle(
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_t, pt_vel, pfirst, plast);
+        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_, pt_vel, pfirst, plast);
     }  // for pch
 
     resetDtHydro();
@@ -670,7 +670,7 @@ void Hydro::writeEnergyCheck() {
         double eichunk = 0.;
         double ekchunk = 0.;
         sumEnergy(zone_energy_tot, mesh->zone_area_, mesh->zone_vol_, zone_mass, mesh->side_mass_frac,
-                mesh->pt_x_t, pt_vel, eichunk, ekchunk,
+                mesh->pt_x_, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
             ei += eichunk;
