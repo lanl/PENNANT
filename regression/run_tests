@@ -4,6 +4,7 @@ rm -rf ${HOME}/local/regression/pennant
 
 ./leblanc.mac
 ./noh.mac
+./nohpoly.mac
 ./nohsmall.mac
 ./sedov.mac
 ./sedovsmall.mac

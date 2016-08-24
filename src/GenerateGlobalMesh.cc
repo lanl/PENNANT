@@ -293,6 +293,7 @@ void GenerateGlobalMesh::colorPartitionsPie(const std::vector<int>& zone_pts_ptr
 		Coloring *pt_map, Coloring *crs_map) const
 {
 	colorZonesAndSides(zone_pts_ptr, zone_map, side_map, crs_map);
+
 	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
 		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
 		const int zone_y_stop = (proc_index_y + 1) * global_nzones_y_ / num_proc_y_;
@@ -319,7 +320,43 @@ void GenerateGlobalMesh::colorPartitionsHex(const std::vector<int>& zone_pts_ptr
 		Coloring *zone_map, Coloring *side_map,
 		Coloring *pt_map, Coloring *crs_map) const
 {
-	colorPartitionsRect(zone_pts_ptr, zone_map, side_map, pt_map, crs_map);
+	colorZonesAndSides(zone_pts_ptr, zone_map, side_map, crs_map);
+
+	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
+		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
+		const int zone_y_stop = (proc_index_y + 1) * global_nzones_y_ / num_proc_y_;
+		for (int proc_index_x = 0; proc_index_x < num_proc_x_; proc_index_x++) {
+			const int color = proc_index_y * num_proc_x_ + proc_index_x;
+			const int zone_x_start = proc_index_x * global_nzones_x_ / num_proc_x_;
+			const int zone_x_stop = (proc_index_x + 1) * global_nzones_x_ / num_proc_x_;
+			for (int gj = zone_y_start; gj <= zone_y_stop; gj++) {
+				for (int gi = zone_x_start; gi <= zone_x_stop; gi++) {
+
+					if (gj == 0) {
+						(*pt_map)[color].points.insert(gi);
+					} else {
+						int pt = (2 * gj - 1) * global_nzones_x_ + 1;
+						if (gi == 0 || gj == global_nzones_y_) {
+							pt += gi;
+							(*pt_map)[color].points.insert(pt);
+						} else {
+							pt += 2 * gi - 1;
+							if (gi == global_nzones_x_)
+								(*pt_map)[color].points.insert(pt);
+							else if (gi == zone_x_stop && gj == zone_y_start)
+								(*pt_map)[color].points.insert(pt);
+					        else if (gi == zone_x_start && gj == zone_y_stop)
+								(*pt_map)[color].points.insert(pt+1);
+				            else {
+								(*pt_map)[color].points.insert(pt);
+								(*pt_map)[color].points.insert(pt+1);
+				            }
+						}
+					} // gj != 0
+				} // gi
+			} // gy
+		} // proc_index_x
+	} // proc_index_y
 }
 
 
@@ -328,6 +365,7 @@ void GenerateGlobalMesh::colorPartitionsRect(const std::vector<int>& zone_pts_pt
 		Coloring *local_pt_map, Coloring *crs_map) const
 {
 	colorZonesAndSides(zone_pts_ptr, zone_map, side_map, crs_map);
+
 	for (int proc_index_y = 0; proc_index_y < num_proc_y_; proc_index_y++) {
 		const int zone_y_start = proc_index_y * global_nzones_y_ / num_proc_y_;
 		const int zone_y_stop = (proc_index_y + 1) * global_nzones_y_ / num_proc_y_;

@@ -1,4 +1,4 @@
-tstop   0.6
+tstop   2.e-3
 meshtype  hex
 meshparams 251
 uinitradial -1.0
@@ -9,5 +9,6 @@ cfl     0.2
 q1      0.1
 q2      1.0
 dtinit  5.e-6
-dtreport 100
+dtreport 10
+writexy 1
 chunksize 512

@@ -4,6 +4,7 @@ rm -rf ${HOME}/local/regression/pennant
 
 sbatch ./leblanc
 sbatch ./noh
+sbatch ./nohpoly
 sbatch ./nohsmall
 sbatch ./sedov
 sbatch ./sedovsmall

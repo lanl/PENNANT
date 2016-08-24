@@ -8,6 +8,9 @@ system("./pennant_regression.py ~/github/PENNANT/test/leblanc/leblanc.xy.std ~/l
 system("./pennant_regression.py ~/github/PENNANT/test/noh/noh.xy.std ~/local/regression/pennant/noh/noh.xy") == 0
 	or $fails = $fails + 1;
 
+system("./pennant_regression.py ~/github/PENNANT/test/nohpoly/nohpoly.xy.std ~/local/regression/pennant/nohpoly/nohpoly.xy") == 0
+	or $fails = $fails + 1;
+
 system("./pennant_regression.py ~/github/PENNANT/test/nohsmall/nohsmall.xy.std ~/local/regression/pennant/nohsmall/nohsmall.xy") == 0
 	or $fails = $fails + 1;
 
