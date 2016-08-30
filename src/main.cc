@@ -76,7 +76,7 @@ int main(int argc, char **argv)
 			AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
 
 	HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(DRIVER_TASK_ID,
-			Processor::LOC_PROC, false/*single*/, true/*index*/,
+			Processor::LOC_PROC, true/*single*/, false/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
 
 	TaskHelper::register_cpu_variants<WriteTask>();

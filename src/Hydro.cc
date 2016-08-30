@@ -58,7 +58,8 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
 		ispace_zones_(ispace_zones),
 		add_reduction_(add_reduction),
 		ctx_(ctx),
-		runtime_(rt)
+		runtime_(rt),
+		mype_(params.directs_.task_id_)
 {
     pgas = new PolyGas(params, this);
     tts = new TTS(params, this);
@@ -71,22 +72,6 @@ Hydro::Hydro(const InputParameters& params, Mesh* m,
     for (int i = 0; i < bcy.size(); ++i)
         bcs.push_back(new HydroBC(mesh, vfixy, mesh->getYPlane(bcy[i])));
 
-	// Legion Points
-	fspace_local_pts_ = runtime_->create_field_space(ctx_);
-	runtime_->attach_name(fspace_local_pts_, "Hydro::fspace_local_pts_");
-	allocatePtFields();
-
-	lregion_local_pts_ = runtime_->create_logical_region(ctx_, mesh->ispace_local_pts_, fspace_local_pts_);
-	runtime_->attach_name(lregion_local_pts_, "Hydro::lregion_local_pts_");
-
-	RegionRequirement pt_req(lregion_local_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_local_pts_);
-	pt_req.add_field(FID_PF);
-	pt_req.add_field(FID_PMASWT);
-	InlineLauncher local_pt_launcher(pt_req);
-	PhysicalRegion pt_region = runtime_->map_region(ctx_, local_pt_launcher);
-	pt_force_ = pt_region.get_field_accessor(FID_PF).typeify<double2>();
-	pt_weighted_mass_ = pt_region.get_field_accessor(FID_PMASWT).typeify<double>();
-
     init();
 }
 
@@ -98,15 +83,6 @@ Hydro::~Hydro() {
     for (int i = 0; i < bcs.size(); ++i) {
         delete bcs[i];
     }
-	runtime_->destroy_logical_region(ctx_, lregion_local_pts_);
-	runtime_->destroy_field_space(ctx_, fspace_local_pts_);
-}
-
-
-void Hydro::allocatePtFields() {
-	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_local_pts_);
-	allocator.allocate_field(sizeof(double), FID_PMASWT);
-	allocator.allocate_field(sizeof(double2), FID_PF);
 }
 
 
@@ -270,8 +246,7 @@ void Hydro::doCycle(
     mesh->checkBadSides();
 
     // sum corner masses, forces to points
-    mesh->sumToPoints(crnr_weighted_mass, pt_weighted_mass_);
-    mesh->sumToPoints(crnr_force_tot, pt_force_);
+    mesh->sumToPoints(crnr_weighted_mass, crnr_force_tot);
 
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = mesh->pt_chunks_first[pch];
@@ -281,11 +256,11 @@ void Hydro::doCycle(
         for (int i = 0; i < bcs.size(); ++i) {
             int bfirst = bcs[i]->pchbfirst[pch];
             int blast = bcs[i]->pchblast[pch];
-            bcs[i]->applyFixedBC(pt_vel0, pt_force_, bfirst, blast);
+            bcs[i]->applyFixedBC(pt_vel0, mesh->pt_force_, bfirst, blast);
         }
 
         // 5. compute accelerations
-        calcAccel(pt_force_, pt_weighted_mass_, pt_accel, pfirst, plast);
+        calcAccel(mesh->pt_force_, mesh->pt_weighted_mass_, pt_accel, pfirst, plast);
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
@@ -685,7 +660,7 @@ void Hydro::writeEnergyCheck() {
 	future_sum = Parallel::globalSum(ek, add_reduction_, runtime_, ctx_);
 	ek = future_sum.get_result<double>();
 
-    if (Parallel::mype() == 0) {
+    if (mype_ == 0) {
         cout << scientific << setprecision(6);
         cout << "Energy check:  "
              << "total energy  = " << setw(14) << ei + ek << endl;

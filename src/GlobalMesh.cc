@@ -165,6 +165,38 @@ void GlobalMesh::init() {
 			ispace_zone_pts_crs_, crs_map, false/*disjoint*/);
 	runtime_->attach_name(zone_pts_crs_part, "GlobalMesh::zone_pts_crs_part");
 	lpart_zone_pts_crs_ = runtime_->get_logical_partition(ctx_, lregion_zone_pts_crs_, zone_pts_crs_part);
+
+	// ghost communication
+	Coloring ghost_pts_map;
+	ghost_pts_map[0].points = std::set<ptr_t>(); // empty set
+
+	for (int color=0; color < input_params_.directs_.ntasks_; ++color) {
+		std::vector<int> partners;
+		gen_mesh.sharePoints(color, &partners, &ghost_pts_map);
+		neighbors.push_back(partners);
+		ready_barriers.push_back(runtime_->create_phase_barrier(ctx_, 1));
+		empty_barriers.push_back(runtime_->create_phase_barrier(ctx_, partners.size() - 1));
+	}
+
+
+	fspace_ghost_pts = runtime_->create_field_space(ctx_);
+	runtime_->attach_name(fspace_ghost_pts, "GlobalMesh::fspace_ghost_pts");
+	allocateGhostPointFields();
+
+	IndexPartition ghost_pts_part = runtime_->create_index_partition(ctx_,
+			ispace_pts_, ghost_pts_map, false/*disjoint*/);
+	runtime_->attach_name(ghost_pts_part, "GlobalMesh::ghost_pts_part");
+	for (int color=0; color < input_params_.directs_.ntasks_; ++color) {
+		IndexSpace ispace_ghost_pts = runtime_->get_index_subspace(ctx_, ghost_pts_part, color);
+		char buf[32];
+		sprintf(buf, "ispace_ghost_pts %d", color);
+		runtime_->attach_name(ispace_ghost_pts, buf);
+	    LogicalRegion lregion_ghost_pts = runtime_->create_logical_region(ctx_, ispace_ghost_pts,
+	    		fspace_ghost_pts);
+		sprintf(buf, "lregion_ghost_pts %d", color);
+		runtime_->attach_name(lregion_ghost_pts, buf);
+		lregions_ghost.push_back(lregion_ghost_pts);
+	}
 }
 
 void GlobalMesh::clear() {
@@ -191,6 +223,12 @@ void GlobalMesh::allocateSideFields() {
 void GlobalMesh::allocatePointFields() {
 	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_pts_);
 	allocator.allocate_field(sizeof(double2), FID_PX_INIT);
+}
+
+void GlobalMesh::allocateGhostPointFields() {
+	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_ghost_pts);
+	allocator.allocate_field(sizeof(double), FID_GHOST_PMASWT);
+	allocator.allocate_field(sizeof(double2), FID_GHOST_PF);
 }
 
 void GlobalMesh::allocateZonePtsCRSFields() {

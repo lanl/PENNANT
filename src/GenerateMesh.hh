@@ -89,6 +89,8 @@ public:
 
 private:
     void calcPartitions();
+    const int num_subregions_;
+    const int mype_;
 
 }; // class GenMesh
 

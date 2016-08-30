@@ -24,6 +24,8 @@
 using namespace LegionRuntime::HighLevel;
 using namespace LegionRuntime::Accessor;
 
+// TODO remove circular dependencies by breaking this class up
+
 // Parallel provides helper functions and variables for
 // running in distributed parallel mode using Legion.
 
@@ -44,6 +46,8 @@ enum PointFields {
 	FID_PXP,
 	FID_PF,
 	FID_PMASWT,
+	FID_GHOST_PF,
+	FID_GHOST_PMASWT,
 };
 
 enum ZonePtsCRSFields {
@@ -103,9 +107,9 @@ typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
 class Parallel {
 public:
 	// TODO fix these
-    static int num_subregions() {return 1;}           // number of MPI PEs in use
+    //static int num_subregions() {return 1;}           // number of MPI PEs in use
                                 // (1 if not using MPI)
-    static int mype() { return 0; }            // PE number for my rank
+    //static int mype() { return 0; }            // PE number for my rank
                                 // (0 if not using MPI)
 
     Parallel(InputParameters input_params,
@@ -156,18 +160,22 @@ private:
 	MustEpochLauncher must_epoch_launcher;
 	Context ctx_;
 	HighLevelRuntime *runtime_;
+	const int num_subregions_;
 };  // class Parallel
 
 struct SPMDArgs {
 	DynamicCollective add_reduction_;
 	DynamicCollective min_reduction_;
-	int shard_id_;
 	DirectInputParameters direct_input_params_;
     // Legion cannot handle data structures with indirections in them
     int n_meshtype_;
     int n_probname_;
     int n_bcx_;
     int n_bcy_;
+	PhaseBarrier i_am_ready_;
+	PhaseBarrier i_am_empty_;
+	std::vector<PhaseBarrier> neighbors_ready_;  // TODO Serialize
+	std::vector<PhaseBarrier> neighbors_empty_;
 };
 
 enum Variants {

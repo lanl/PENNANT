@@ -27,8 +27,8 @@ Parallel::Parallel(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime) :
 		global_mesh_(input_params, ctx, runtime),
 		ctx_(ctx),
-		runtime_(runtime)
-//num_subregions = input_params.ntasks_;
+		runtime_(runtime),
+		num_subregions_(input_params.directs_.ntasks_)
 {
 	  // we're going to use a must epoch launcher, so we need at least as many
 	  //  processors in our system as we have subregions - check that now
@@ -41,35 +41,37 @@ Parallel::Parallel(InputParameters input_params,
 	    if((*it).kind() == Processor::LOC_PROC)
 	      num_loc_procs++;
 
-	  if(num_loc_procs < num_subregions()) {
+	  if(num_loc_procs < num_subregions_) {
 	    printf("FATAL ERROR: This test uses a must epoch launcher, which requires\n");
 	    printf("  a separate Realm processor for each subregion.  %d of the necessary\n",
 		   num_loc_procs);
 	    printf("  %d are available.  Please rerun with '-ll:cpu %d'.\n",
-		   num_subregions(), num_subregions());
+		   num_subregions_, num_subregions_);
 	    exit(1);
 	  }
 
-	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions()-1));
+	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions_-1));
 
 	  double zero = 0.0;
 	  DynamicCollective add_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions(), AddReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions_, AddReductionOp::redop_id,
 						   &zero, sizeof(zero));
 
 	  TimeStep max;
 	  DynamicCollective min_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions(), MinReductionOp::redop_id,
+		runtime_->create_dynamic_collective(ctx_, num_subregions_, MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
-	  std::vector<SPMDArgs> args(num_subregions());
-	  serializer.resize(num_subregions());
+	  std::vector<SPMDArgs> args(num_subregions_);
+	  serializer.resize(num_subregions_);
 
-	  for (int color = 0; color < num_subregions(); color++) {
+	  for (int color = 0; color < num_subregions_; color++) {
+		  args[color].i_am_ready_ = global_mesh_.ready_barriers[color];
+		  args[color].i_am_empty_ = global_mesh_.empty_barriers[color];
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
-		  args[color].shard_id_ = color;
 		  args[color].direct_input_params_ = input_params.directs_;
+		  args[color].direct_input_params_.task_id_ = color;
 		  // Legion cannot handle data structures with indirections in them
 		  args[color].n_meshtype_ = input_params.meshtype_.length();
 		  args[color].n_probname_ = input_params.probname_.length();
@@ -108,15 +110,21 @@ Parallel::Parallel(InputParameters input_params,
 				  global_mesh_.lpart_pts_, color);
 		  LogicalRegion my_zone_pts_ptr = runtime_->get_logical_subregion_by_color(ctx_,
 				  global_mesh_.lpart_zone_pts_crs_, color);
+		  std::vector<LogicalRegion> lregions_ghost;
+		  for (int i=0; i < global_mesh_.neighbors[color].size(); i++) {
+			  lregions_ghost.push_back(global_mesh_.lregions_ghost[(global_mesh_.neighbors[color])[i]]);
+			  args[color].neighbors_ready_.push_back(global_mesh_.ready_barriers[i]);
+			  args[color].neighbors_empty_.push_back(global_mesh_.empty_barriers[i]);
+		  }
 
 		  DriverTask driver_launcher(my_zones, global_mesh_.lregion_global_zones_,
 				  my_sides, global_mesh_.lregion_global_sides_,
 				  my_pts, global_mesh_.lregion_global_pts_,
 				  my_zone_pts_ptr, global_mesh_.lregion_zone_pts_crs_,
+				  lregions_ghost,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
-
 }  // init
 
 Parallel::~Parallel() {
@@ -157,7 +165,8 @@ void Parallel::run(InputParameters input_params) {
 }
 
 void Parallel::globalSum(int& x) {
-    if (num_subregions() == 1) return;
+    //if (num_subregions_ == 1)
+	return;
 #ifdef USE_MPI
     int y;
     MPI_Allreduce(&x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
@@ -167,7 +176,8 @@ void Parallel::globalSum(int& x) {
 
 
 void Parallel::globalSum(int64_t& x) {
-    if (num_subregions() == 1) return;
+    //if (num_subregions_ == 1)
+	return;
 #ifdef USE_MPI
     int64_t y;
     MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
@@ -177,7 +187,8 @@ void Parallel::globalSum(int64_t& x) {
 
 
 void Parallel::globalSum(double& x) {
-    if (num_subregions() == 1) return;
+    //if (num_subregions_ == 1)
+	return;
 #ifdef USE_MPI
     double y;
     MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -187,7 +198,8 @@ void Parallel::globalSum(double& x) {
 
 
 void Parallel::gather(int x, int* y) {
-    if (num_subregions() == 1) {
+    //if (num_subregions_ == 1)
+	{
         y[0] = x;
         return;
     }
@@ -198,7 +210,8 @@ void Parallel::gather(int x, int* y) {
 
 
 void Parallel::scatter(const int* x, int& y) {
-    if (num_subregions() == 1) {
+    //if (num_subregions_ == 1)
+	{
         y = x[0];
         return;
     }
@@ -213,7 +226,8 @@ void Parallel::gathervImpl(
         const T *x, const int numx,
         T* y, const int* numy) {
 
-    if (num_subregions() == 1) {
+    //if (num_subregions_ == 1)
+	{
         std::copy(x, x + numx, y);
         return;
     }

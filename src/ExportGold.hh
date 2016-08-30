@@ -69,6 +69,9 @@ public:
             const DoubleAccessor& var);
 
     void sortZones();
+private:
+    const int num_subregions_;
+    const int mype_;
 };
 
 

@@ -34,8 +34,13 @@ public:
 			Coloring *local_sides_map,
 			Coloring *local_pts_map,
 			Coloring *crs_map) const;
+	void sharePoints(int color,
+			std::vector<int>* neighbors,
+			Coloring *shared_pts) const;
 
 private:
+	const int num_subregions_;
+
     void calcPartitions();
     void colorZonesAndSides(const std::vector<int>& zone_pts_ptr,
 			Coloring *local_zones_map,
@@ -53,6 +58,15 @@ private:
 			Coloring *local_zones_map,
 			Coloring *local_sides_map,
 			Coloring *local_pts_map, Coloring *crs_map) const;
+	void sharePointsRect(int color,
+			std::vector<int>* neighbors,
+			Coloring *shared_pts) const;
+	void sharePointsPie(int color,
+			std::vector<int>* neighbors,
+			Coloring *shared_pts) const;
+	void sharePointsHex(int color,
+			std::vector<int>* neighbors,
+			Coloring *shared_pts) const;
     int numberOfPointsRect() const;
     int numberOfPointsPie() const;
     int numberOfPointsHex() const;
@@ -74,6 +88,12 @@ private:
 	        std::vector<int>& zonestart,
 	        std::vector<int>& zonesize,
 	        std::vector<int>& zonepoints) const;
+
+    inline int y_start(int proc_index_y) const
+    { return proc_index_y * global_nzones_y_ / num_proc_y_; }
+
+    inline int x_start(int proc_index_x) const
+    { return proc_index_x * global_nzones_x_ / num_proc_x_; }
 
 };
 

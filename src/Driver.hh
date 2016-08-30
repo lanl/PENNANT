@@ -33,6 +33,7 @@ public:
 			LogicalRegion all_sides,
 			LogicalRegion my_zone_pts_ptr,
 			LogicalRegion all_zone_pts_ptr,
+			std::vector<LogicalRegion> ghost_pts,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = DRIVER_TASK_ID;
@@ -45,10 +46,6 @@ public:
 
 class Driver {
 public:
-
-    // children of this object
-    Mesh *mesh;
-    Hydro *hydro;
 
     std::string probname;          // problem name
     RunStat run_stat;              // simulation time & cycle number
@@ -64,27 +61,31 @@ public:
     std::string msgdtlast;         // previous dt limiter message
 
     Driver(const InputParameters &params,
-    		DynamicCollective add_reduction,
-    		DynamicCollective min_reduction,
-			IndexSpace* ispace_zones,
-			DoubleAccessor* zone_rho,
-			DoubleAccessor* zone_energy_density,
-			DoubleAccessor* zone_pressure,
-			DoubleAccessor* zone_rho_pred,
-			const PhysicalRegion &sides,
-			const PhysicalRegion &pts,
-			const PhysicalRegion &zone_pts_crs,
-        Context ctx, HighLevelRuntime* rt);
-    ~Driver();
+            DynamicCollective add_reduction,
+            DynamicCollective min_reduction,
+            IndexSpace* ispace_zones,
+            DoubleAccessor* zone_rho,
+            DoubleAccessor* zone_energy_density,
+            DoubleAccessor* zone_pressure,
+            DoubleAccessor* zone_rho_pred,
+            const PhysicalRegion& sides,
+            const PhysicalRegion& pts,
+            const PhysicalRegion& zone_pts_crs,
+            const PhysicalRegion& ghost_pts,
+            Context ctx, HighLevelRuntime* rt);
 
     RunStat run();
     void calcGlobalDt();
 
 private:
+    Mesh *mesh;
+    Hydro *hydro;
+
     DynamicCollective add_reduction_;
     DynamicCollective min_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;
+    const int mype_;
 };  // class Driver
 
 

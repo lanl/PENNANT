@@ -220,14 +220,7 @@ public:
 	DoubleAccessor* zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void allocateZoneFields();
-	void allocatePtFields();
-    void fillZoneAccessor(DoubleAccessor *acc, double value);
-
-    Double2Accessor pt_force_;            // point force
-    DoubleAccessor pt_weighted_mass_;     // point mass, weighted by 1/r
-
-    FieldSpace fspace_local_pts_;
-	LogicalRegion lregion_local_pts_;
+    void fillZoneAccessor(DoubleAccessor* acc, double value);
 
     FieldSpace fspace_zones_;
 	LogicalRegion lregion_local_zones_;
@@ -236,6 +229,7 @@ private:
     DynamicCollective add_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;
+    const int mype_;
 
 }; // class Hydro
 

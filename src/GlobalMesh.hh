@@ -31,12 +31,18 @@ public:
 	LogicalRegion lregion_zone_pts_crs_;
 	LogicalPartition lpart_zone_pts_crs_;
 
+	std::vector<PhaseBarrier> ready_barriers;
+	std::vector<PhaseBarrier> empty_barriers;
+	std::vector<LogicalRegion> lregions_ghost;
+	std::vector<std::vector<int>> neighbors;
+
 private:
 	void init();
 	void clear();
 	void allocateZoneFields();
 	void allocateSideFields();
 	void allocatePointFields();
+	void allocateGhostPointFields();
 	void allocateZonePtsCRSFields();
 
 	IndexSpace ispace_zones_;
@@ -47,6 +53,7 @@ private:
 
 	IndexSpace ispace_pts_;
 	FieldSpace fspace_pts_;
+	FieldSpace fspace_ghost_pts;
 
 	IndexSpace ispace_zone_pts_crs_;
 	FieldSpace fspace_zone_pts_crs_;

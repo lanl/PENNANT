@@ -27,9 +27,10 @@ using namespace std;
 
 Mesh::Mesh(const InputParameters& params,
 		IndexSpace* ispace_zones,
-		const PhysicalRegion &sides,
-		const PhysicalRegion &pts,
-		const PhysicalRegion &zone_pts_crs,
+		const PhysicalRegion& sides,
+		const PhysicalRegion& pts,
+		const PhysicalRegion& zone_pts_crs,
+		const PhysicalRegion& ghost_pts,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size_(params.directs_.chunk_size_),
 			subregion_xmin_(params.directs_.subregion_xmin_),
@@ -39,7 +40,10 @@ Mesh::Mesh(const InputParameters& params,
 			gmesh_(NULL),
 			ctx_(ctx),
 			runtime_(rt),
-			ispace_zones_(ispace_zones)
+			ispace_zones_(ispace_zones),
+			ghost_pts_(ghost_pts),
+			num_subregions_(params.directs_.ntasks_),
+			mype_(params.directs_.task_id_)
 	{
 
     gmesh_ = new GenerateMesh(params);
@@ -65,10 +69,14 @@ Mesh::Mesh(const InputParameters& params,
     RegionRequirement pt_req(lregion_all_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_all_pts_);
 	pt_req.add_field(FID_PX);
 	pt_req.add_field(FID_PXP);
+	pt_req.add_field(FID_PF);
+	pt_req.add_field(FID_PMASWT);
 	InlineLauncher local_pt_launcher(pt_req);
 	PhysicalRegion pt_region = rt->map_region(ctx, local_pt_launcher);
 	pt_x_ = pt_region.get_field_accessor(FID_PX).typeify<double2>();
 	pt_x_pred_ = pt_region.get_field_accessor(FID_PXP).typeify<double2>();
+	pt_force_ = pt_region.get_field_accessor(FID_PF).typeify<double2>();
+	pt_weighted_mass_ = pt_region.get_field_accessor(FID_PMASWT).typeify<double>();
 
 	init();
 }
@@ -80,11 +88,16 @@ Mesh::~Mesh() {
     runtime_->destroy_field_space(ctx_, fspace_all_pts_);
 }
 
+
 void Mesh::allocatePtFields() {
 	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_all_pts_);
 	allocator.allocate_field(sizeof(double2), FID_PX);
 	allocator.allocate_field(sizeof(double2), FID_PXP);
+	allocator.allocate_field(sizeof(double), FID_PMASWT);
+	allocator.allocate_field(sizeof(double2), FID_PF);
 }
+
+
 void Mesh::init() {
 
     // generate mesh
@@ -113,14 +126,15 @@ void Mesh::init() {
 
     // copy cell sizes to mesh
 
-//    zone_npts_ = AbstractedMemory::alloc<int>(num_zones_);
-//    copy(cellsize.begin(), cellsize.end(), zone_npts_);
 
+    std::cout << "Task: " << mype_ << " zones: " << num_zones_ << std::endl;
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
-    for (int z=0; z < num_zones_+1; ++z) {
+
+	for (int z=0; z < num_zones_+1; ++z) {
     		ptr_t zone_ptr(z);
     		zone_pts_ptr_[z] = zone_pts_ptr_legion.read(zone_ptr);
     }
+
     // populate maps:
     // use the cell* arrays to populate the side maps
     initSideMappingArrays();
@@ -312,7 +326,7 @@ void Mesh::initParallel(
         const vector<int>& masterslvpes,
         const vector<int>& masterslvcounts,
         const vector<int>& masterpoints) {
-    if (Parallel::num_subregions() == 1) return;
+    if (num_subregions_ == 1) return;
 
     num_mesg_send2master = slavemstrpes.size();
     map_master_pe2globale_pe = AbstractedMemory::alloc<int>(num_mesg_send2master);
@@ -352,7 +366,7 @@ void Mesh::writeMeshStats() {
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
-    if (Parallel::num_subregions() > 1) gnump -= num_slaves;
+    if (num_subregions_ > 1) gnump -= num_slaves;
     int64_t gnumz = num_zones_;
     int64_t gnums = num_sides_;
     int64_t gnume = num_edges_;
@@ -369,7 +383,7 @@ void Mesh::writeMeshStats() {
     Parallel::globalSum(gnumzch);
     Parallel::globalSum(gnumsch);
 
-    if (Parallel::mype() > 0) return;
+    if (mype_ > 0) return;
 
     cout << "--- Mesh Information ---" << endl;
     cout << "Points:  " << gnump << endl;
@@ -660,7 +674,7 @@ void Mesh::parallelGather(
     int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
-                " on PE " << Parallel::mype() << endl;
+                " on PE " << mype_ << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -732,7 +746,7 @@ void Mesh::parallelScatter(
     int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
-                " on PE " << Parallel::mype() << endl;
+                " on PE " << mype_ << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -752,7 +766,7 @@ void Mesh::parallelScatter(
 /*
 template <typename T>
 void Mesh::sumAcrossProcs(T* pvar) {
-    if (Parallel::num_subregions() == 1) return;
+    if (num_subregions_ == 1) return;
 //    std::vector<T> prxvar(numprx);
     T* prxvar = AbstractedMemory::alloc<T>(num_proxies);
     parallelGather(pvar, &prxvar[0]);
@@ -783,26 +797,24 @@ void Mesh::sumOnProc(
 }
 
 
-template <>
 void Mesh::sumToPoints(
-        const double* cvar,
-        DoubleAccessor& pvar) {
+        const double* corner_mass,
+        const double2* corner_force) {
 
-    sumOnProc(cvar, pvar);
-    //if (Parallel::num_subregions() > 1)
-    //    sumAcrossProcs(pvar);
-
-}
+    sumOnProc(corner_mass, pt_weighted_mass_);
+    sumOnProc(corner_force, pt_force_);
 
 
-template <>
-void Mesh::sumToPoints(
-        const double2* cvar,
-        Double2Accessor& pvar) {
+    // TODO this should be in Parallel::
 
-    sumOnProc(cvar, pvar);
-    //if (Parallel::num_subregions() > 1)
-    //    sumAcrossProcs(pvar);
-
+    // slaves send to masters
+ /*   CopyLauncher copy_launcher;
+    copy_launcher.add_copy_requirements(
+    		RegionRequirement(lregion_all_pts_, READ_ONLY, EXCLUSIVE, lregion_all_pts_),
+    		RegionRequirement(ghost_pts_.get_logical_region(), WRITE_DISCARD, EXCLUSIVE,
+    				ghost_pts_.get_logical_region()));
+    copy_launcher.add_src_field(0, FID_PF);
+    copy_launcher.add_dst_field(0, FID_GHOST_PF);
+    runtime_->issue_copy_operation(ctx_, copy_launcher);*/
 }
 

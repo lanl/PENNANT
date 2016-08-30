@@ -30,8 +30,9 @@ public:
     Mesh(const InputParameters& params,
 		IndexSpace* ispace_zones,
     		const PhysicalRegion &sides,
-    		const PhysicalRegion &pts,
+   		const PhysicalRegion &pts,
     		const PhysicalRegion &zone_pts_crs,
+    		const PhysicalRegion &ghost_pts,
         Context ctx, HighLevelRuntime* rt);
     ~Mesh();
 
@@ -138,16 +139,18 @@ public:
     void calcCharacteristicLen(const int side_chunk);
 
     // sum corner variables to points (double or double2)
-    template <typename T>
     void sumToPoints(
-            const T* cvar,
-			RegionAccessor<AccessorType::Generic, T>& pvar);
+            const double* corner_mass,
+            const double2* corner_force);
 
     IndexSpace ispace_sides_;
 	IndexSpace ispace_local_pts_;
 
 	Double2Accessor pt_x_;          // point coordinates
 	Double2Accessor pt_x_pred_;      // point coords, middle of cycle
+
+    Double2Accessor pt_force_;            // point force
+    DoubleAccessor pt_weighted_mass_;     // point mass, weighted by 1/r
 
 private:
 
@@ -187,6 +190,11 @@ private:
     FieldSpace fspace_all_pts_;
     LogicalRegion lregion_all_pts_;
     IndexSpace* ispace_zones_;
+
+    const PhysicalRegion& ghost_pts_;
+
+    const int num_subregions_;
+    const int mype_;
 
     void init();
 

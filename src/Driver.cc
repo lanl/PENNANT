@@ -33,6 +33,7 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 		LogicalRegion all_pts,
 		LogicalRegion my_zone_pts_ptr,
 		LogicalRegion all_zone_pts_ptr,
+		std::vector<LogicalRegion> ghost_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
@@ -46,6 +47,12 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 	add_field(2/*idx*/, FID_ZONE_PTS);
 	add_region_requirement(RegionRequirement(my_zone_pts_ptr, READ_ONLY, EXCLUSIVE, all_zone_pts_ptr));
 	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
+	for (int color=0; color < ghost_pts.size(); ++color) {
+		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
+		region_requirements[4+color].flags |= NO_ACCESS_FLAG;
+		add_field(4+color/*idx*/, FID_GHOST_PF);
+		add_field(4+color/*idx*/, FID_GHOST_PMASWT);
+	}
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -55,14 +62,15 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* rt)
 {
-	assert(regions.size() == 4);
-	assert(task->regions.size() == 4);
+	assert(regions.size() > 4);
+	assert(task->regions.size() > 4);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
 	assert(task->regions[2].privilege_fields.size() == 1);
 	assert(task->regions[3].privilege_fields.size() == 1);
+	assert(task->regions[4].privilege_fields.size() == 2);
 
-    // Legion Zones
+	// Legion Zones
 
 	// For some reason Legion explodes if I do this in the Hydro object
     IndexSpace ispace_zones = regions[0].get_logical_region().get_index_space();
@@ -129,8 +137,9 @@ RunStat DriverTask::cpu_run(const Task *task,
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
     		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred,
-		regions[2], regions[1], regions[3],
+		regions[2], regions[1], regions[3], regions[4],
 		ctx, rt);
+
     RunStat value=drv.run();
 	rt->destroy_logical_region(ctx, lregion_local_zones);
 	rt->destroy_field_space(ctx, fspace_zones);
@@ -145,9 +154,10 @@ Driver::Driver(const InputParameters& params,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
 		DoubleAccessor* zone_rho_pred,
-		const PhysicalRegion &sides,
-		const PhysicalRegion &pts,
-		const PhysicalRegion &zone_pts_crs,
+		const PhysicalRegion& sides,
+		const PhysicalRegion& pts,
+		const PhysicalRegion& zone_pts_crs,
+		const PhysicalRegion& ghost_pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -159,20 +169,12 @@ Driver::Driver(const InputParameters& params,
 		  add_reduction_(add_reduction),
 		  min_reduction_(min_reduction),
 		  ctx_(ctx),
-		  runtime_(rt)
+		  runtime_(rt),
+		  mype_(params.directs_.task_id_)
 {
-
-    // initialize mesh, hydro
-    mesh = new Mesh(params, ispace_zones, sides, pts, zone_pts_crs, ctx_, runtime_);
+    mesh = new Mesh(params, ispace_zones, sides, pts, zone_pts_crs, ghost_pts, ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
     		zone_pressure, zone_rho_pred, ctx_, runtime_);
-
-}
-
-Driver::~Driver() {
-
-    delete hydro;
-    delete mesh;
 
 }
 
@@ -184,7 +186,7 @@ RunStat Driver::run() {
     hydro->writeEnergyCheck();
 
     double tbegin, tlast;
-    if (Parallel::mype() == 0) {
+    if (mype_ == 0) {
         // get starting timestamp
         struct timeval sbegin;
         gettimeofday(&sbegin, NULL);
@@ -205,7 +207,7 @@ RunStat Driver::run() {
 
         run_stat.time += dt;
 
-        if (Parallel::mype() == 0 &&
+        if (mype_ == 0 &&
                 (run_stat.cycle == 1 || run_stat.cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
@@ -220,11 +222,11 @@ RunStat Driver::run() {
             cout << "dt limiter: " << msgdt << endl;
 
             tlast = tcurr;
-        } // if Parallel::mype()...
+        } // if mype_...
 
     } // while cycle...
 
-    if (Parallel::mype() == 0) {
+    if (mype_ == 0) {
 
         // get stopping timestamp
         struct timeval send;
@@ -246,7 +248,7 @@ RunStat Driver::run() {
         cout << "hydro cycle run time= " << setw(14) << runtime << endl;
         cout << "************************************" << endl;
 
-    } // if Parallel::mype()
+    } // if mype_
 
     // do energy check
     hydro->writeEnergyCheck();
