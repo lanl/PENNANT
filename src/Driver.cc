@@ -60,7 +60,7 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 /*static*/
 RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
-        Context ctx, HighLevelRuntime* rt)
+        Context ctx, HighLevelRuntime* runtime)
 {
 	assert(regions.size() > 4);
 	assert(task->regions.size() > 4);
@@ -71,28 +71,11 @@ RunStat DriverTask::cpu_run(const Task *task,
 	assert(task->regions[4].privilege_fields.size() == 2);
 
 	// Legion Zones
+	LogicalUnstructured zones(ctx, runtime, regions[0]);
 
-	// For some reason Legion explodes if I do this in the Hydro object
-    IndexSpace ispace_zones = regions[0].get_logical_region().get_index_space();
-    DoubleAccessor zone_rho = regions[0].get_field_accessor(FID_ZR).typeify<double>();
-    DoubleAccessor zone_energy_density = regions[0].get_field_accessor(FID_ZE).typeify<double>();
-    DoubleAccessor zone_pressure = regions[0].get_field_accessor(FID_ZP).typeify<double>();
-
-	FieldSpace fspace_zones = rt->create_field_space(ctx);
-	rt->attach_name(fspace_zones, "DriverTask::cpu_run::fspace_zones");
-	{
-		FieldAllocator allocator = rt->create_field_allocator(ctx, fspace_zones);
-		allocator.allocate_field(sizeof(double), FID_ZRP);
-	}
-
-	LogicalRegion lregion_local_zones = rt->create_logical_region(ctx, ispace_zones, fspace_zones);
-	rt->attach_name(lregion_local_zones, "DriverTask:cpu_run::lregion_local_zones_");
-
-	RegionRequirement zone_req(lregion_local_zones, WRITE_DISCARD, EXCLUSIVE, lregion_local_zones);
-	zone_req.add_field(FID_ZRP);
-	InlineLauncher local_zone_launcher(zone_req);
-	PhysicalRegion zone_region = rt->map_region(ctx, local_zone_launcher);
-	DoubleAccessor zone_rho_pred = zone_region.get_field_accessor(FID_ZRP).typeify<double>();
+    LogicalUnstructured local_zones(ctx, runtime, regions[0].get_logical_region().get_index_space());
+    local_zones.addField<double>(FID_ZRP);
+    local_zones.allocate();
 
 	// Legion cannot handle data structures with indirections in them
     unsigned char *serialized_args = (unsigned char *) task->args;
@@ -135,14 +118,21 @@ RunStat DriverTask::cpu_run(const Task *task,
 	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
     }
 
+    DoubleAccessor zone_rho_pred = local_zones.getRegionAccessor<double>(FID_ZRP);
+
+    // For some reason Legion explodes if I do this in the Hydro object or use LogicalUnstructured
+    IndexSpace ispace_zones = zones.getISpace(); //regions[0].get_logical_region().get_index_space();
+    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR);//regions[0].get_field_accessor(FID_ZR).typeify<double>();
+    DoubleAccessor zone_energy_density = zones.getRegionAccessor<double>(FID_ZE);//regions[0].get_field_accessor(FID_ZE).typeify<double>();
+    DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);//regions[0].get_field_accessor(FID_ZP).typeify<double>();
+
     Driver drv(params, args.add_reduction_, args.min_reduction_,
     		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred,
-		regions[2], regions[1], regions[3], regions[4],
-		ctx, rt);
+    		zones, local_zones,
+        regions[2], regions[1], regions[3], regions[4],
+		ctx, runtime);
 
     RunStat value=drv.run();
-	rt->destroy_logical_region(ctx, lregion_local_zones);
-	rt->destroy_field_space(ctx, fspace_zones);
     return value;
 }
 
@@ -154,6 +144,8 @@ Driver::Driver(const InputParameters& params,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
 		DoubleAccessor* zone_rho_pred,
+        LogicalUnstructured& global_comm_zones,
+        LogicalUnstructured& local_zones,
 		const PhysicalRegion& sides,
 		const PhysicalRegion& pts,
 		const PhysicalRegion& zone_pts_crs,
@@ -170,11 +162,17 @@ Driver::Driver(const InputParameters& params,
 		  min_reduction_(min_reduction),
 		  ctx_(ctx),
 		  runtime_(rt),
-		  mype_(params.directs_.task_id_)
+		  mype_(params.directs_.task_id_),
+          points(ctx, rt, pts),
+          zone_points_CRS(ctx, rt, zone_pts_crs),
+          zone_points(ctx, rt, sides),
+          space_zones(ctx, rt, *ispace_zones)
 {
-    mesh = new Mesh(params, ispace_zones, sides, pts, zone_pts_crs, ghost_pts, ctx_, runtime_);
+    DoubleAccessor zrp = local_zones.getRegionAccessor<double>(FID_ZRP);
+
+    mesh = new Mesh(params, space_zones, zone_points, points, zone_points_CRS, ghost_pts, ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
-    		zone_pressure, zone_rho_pred, ctx_, runtime_);
+          zone_pressure, zone_rho_pred, ctx_, runtime_);
 
 }
 

@@ -13,6 +13,7 @@
 #ifndef DRIVER_HH_
 #define DRIVER_HH_
 
+#include "LogicalUnstructured.hh"
 #include "Parallel.hh"
 
 #include <string>
@@ -68,6 +69,8 @@ public:
             DoubleAccessor* zone_energy_density,
             DoubleAccessor* zone_pressure,
             DoubleAccessor* zone_rho_pred,
+            LogicalUnstructured& global_comm_zones,
+            LogicalUnstructured& local_zones,
             const PhysicalRegion& sides,
             const PhysicalRegion& pts,
             const PhysicalRegion& zone_pts_crs,
@@ -86,6 +89,10 @@ private:
     Context ctx_;
     HighLevelRuntime* runtime_;
     const int mype_;
+    LogicalUnstructured points;
+    LogicalUnstructured zone_points_CRS;
+    LogicalUnstructured zone_points;
+    LogicalUnstructured space_zones;
 };  // class Driver
 
 

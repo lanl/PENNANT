@@ -103,6 +103,7 @@ typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
 typedef RegionAccessor<AccessorType::Generic, double2> Double2Accessor;
 typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
 
+
 class Parallel {
 public:
 	// TODO fix these

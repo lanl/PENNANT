@@ -24,11 +24,11 @@
 #include "Vec2.hh"
 #include "WriteTask.hh"
 
+
 void Parallel::run(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime)
 {
-
-    GlobalMesh global_mesh_(input_params, ctx, runtime);
+    GlobalMesh global_mesh(input_params, ctx, runtime);
     std::vector<void*> serializer;
     MustEpochLauncher must_epoch_launcher;
     const int num_subregions_ = input_params.directs_.ntasks_;
@@ -69,8 +69,8 @@ void Parallel::run(InputParameters input_params,
 	  serializer.resize(num_subregions_);
 
 	  for (int color = 0; color < num_subregions_; color++) {
-		  args[color].i_am_ready_ = global_mesh_.ready_barriers[color];
-		  args[color].i_am_empty_ = global_mesh_.empty_barriers[color];
+		  args[color].i_am_ready_ = global_mesh.readyBarriers[color];
+		  args[color].i_am_empty_ = global_mesh.emptyBarriers[color];
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].direct_input_params_ = input_params.directs_;
@@ -106,24 +106,24 @@ void Parallel::run(InputParameters input_params,
 
 		  DomainPoint point(color);
 		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh_.lpart_zones_, color);
+				  global_mesh.zones.getLPart(), color);
 		  LogicalRegion my_sides = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh_.lpart_sides_, color);
+				  global_mesh.sides.getLPart(), color);
 		  LogicalRegion my_pts = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh_.lpart_pts_, color);
+				  global_mesh.points.getLPart(), color);
 		  LogicalRegion my_zone_pts_ptr = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh_.lpart_zone_pts_crs_, color);
+				  global_mesh.zonePointsCRS.getLPart(), color);
 		  std::vector<LogicalRegion> lregions_ghost;
-		  for (int i=0; i < global_mesh_.neighbors[color].size(); i++) {
-			  lregions_ghost.push_back(global_mesh_.lregions_ghost[(global_mesh_.neighbors[color])[i]]);
-			  args[color].neighbors_ready_.push_back(global_mesh_.ready_barriers[i]);
-			  args[color].neighbors_empty_.push_back(global_mesh_.empty_barriers[i]);
+		  for (int i=0; i < global_mesh.neighbors[color].size(); i++) {
+			  lregions_ghost.push_back(global_mesh.lRegionsGhost[(global_mesh.neighbors[color])[i]]);
+			  args[color].neighbors_ready_.push_back(global_mesh.readyBarriers[i]);
+			  args[color].neighbors_empty_.push_back(global_mesh.emptyBarriers[i]);
 		  }
 
-		  DriverTask driver_launcher(my_zones, global_mesh_.lregion_global_zones_,
-				  my_sides, global_mesh_.lregion_global_sides_,
-				  my_pts, global_mesh_.lregion_global_pts_,
-				  my_zone_pts_ptr, global_mesh_.lregion_zone_pts_crs_,
+		  DriverTask driver_launcher(my_zones, global_mesh.zones.getLRegion(),
+				  my_sides, global_mesh.sides.getLRegion(),
+				  my_pts, global_mesh.points.getLRegion(),
+				  my_zone_pts_ptr, global_mesh.zonePointsCRS.getLRegion(),
 				  lregions_ghost,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
@@ -155,7 +155,7 @@ void Parallel::run(InputParameters input_params,
 	  next_size = sizeof(char) * n_probname;
 	  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
 
-	  WriteTask write_launcher(global_mesh_.lregion_global_zones_, serial, size);
+	  WriteTask write_launcher(global_mesh.zones.getLRegion(), serial, size);
       runtime->execute_task(ctx, write_launcher);
 
 }

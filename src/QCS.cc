@@ -14,10 +14,10 @@
 
 #include <cassert>
 #include <cmath>
-#include "Memory.hh"
-#include "Vec2.hh"
-#include "Mesh.hh"
 #include "Hydro.hh"
+#include "Memory.hh"
+#include "Mesh.hh"
+#include "Vec2.hh"
 
 using namespace std;
 
@@ -99,7 +99,7 @@ void QCS::setCornerDiv(
             const int sfirst,
             const int slast) {
 
-    const Mesh* mesh = hydro->mesh;
+    Mesh* mesh = hydro->mesh;
     const int nums = mesh->num_sides_;
     const int numz = mesh->num_zones_;
 
@@ -132,6 +132,7 @@ void QCS::setCornerDiv(
     }
 
     // [2] Divergence at the corner
+    Double2Accessor pt_x_pred_ = mesh->local_points.getRegionAccessor<double2>(FID_PXP);
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s2 = c;
@@ -152,7 +153,7 @@ void QCS::setCornerDiv(
         // 0 = point p
         up0 = pu[p];
         ptr_t pt_ptr(p);
-        xp0 = mesh->pt_x_pred_.read(pt_ptr);
+        xp0 = pt_x_pred_.read(pt_ptr);
         // 1 = edge e2
         up1 = 0.5 * (pu[p] + pu[p2]);
         xp1 = ex[e2];
@@ -330,7 +331,7 @@ void QCS::setVelDiff(
         const int sfirst,
         const int slast) {
 
-    const Mesh* mesh = hydro->mesh;
+    Mesh* mesh = hydro->mesh;
     const int nums = mesh->num_sides_;
     const int numz = mesh->num_zones_;
     int zfirst = mesh->map_side2zone_[sfirst];
@@ -342,6 +343,7 @@ void QCS::setVelDiff(
 
     double* z0tmp = AbstractedMemory::alloc<double>(zlast - zfirst);
 
+    Double2Accessor pt_x_pred_ = mesh->local_points.getRegionAccessor<double2>(FID_PXP);
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
@@ -352,7 +354,7 @@ void QCS::setVelDiff(
         int e = mesh->map_side2edge_[s];
         int z0 = z - zfirst;
 
-        double2 dx = mesh->pt_x_pred_.read(pt_ptr2) - mesh->pt_x_pred_.read(pt_ptr1);
+        double2 dx = pt_x_pred_.read(pt_ptr2) - pt_x_pred_.read(pt_ptr1);
         double2 du = pu[p2] - pu[p1];
         double lenx = elen[e];
         double dux = dot(du, dx);

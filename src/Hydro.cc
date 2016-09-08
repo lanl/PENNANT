@@ -122,10 +122,10 @@ void Hydro::init() {
 
         fill(&zone_work_rate[zfirst], &zone_work_rate[zlast], 0.);
 
-        const double& subrgn_xmin = mesh->subregion_xmin_;
-        const double& subrgn_xmax = mesh->subregion_xmax_;
-        const double& subrgn_ymin = mesh->subregion_ymin_;
-        const double& subrgn_ymax = mesh->subregion_ymax_;
+        const double& subrgn_xmin = mesh->subregion_xmin;
+        const double& subrgn_xmax = mesh->subregion_xmax;
+        const double& subrgn_ymin = mesh->subregion_ymin;
+        const double& subrgn_ymax = mesh->subregion_ymax;
         if (subrgn_xmin != std::numeric_limits<double>::max()) {
             const double eps = 1.e-12;
             #pragma ivdep
@@ -177,12 +177,13 @@ void Hydro::initRadialVel(
         const int plast) {
     const double eps = 1.e-12;
 
+    Double2Accessor pt_x_ = mesh->local_points.getRegionAccessor<double2>(FID_PX);
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
     		ptr_t pt_ptr(p);
-        double pmag = length(mesh->pt_x_.read(pt_ptr));
+        double pmag = length(pt_x_.read(pt_ptr));
         if (pmag > eps)
-            pt_vel[p] = vel * mesh->pt_x_.read(pt_ptr) / pmag;
+            pt_vel[p] = vel * pt_x_.read(pt_ptr) / pmag;
         else
             pt_vel[p] = double2(0., 0.);
     }
@@ -196,6 +197,10 @@ void Hydro::doCycle(
     const int num_side_chunks = mesh->num_side_chunks;
 
     // Begin hydro cycle
+    Double2Accessor pt_x_ = mesh->local_points.getRegionAccessor<double2>(FID_PX);
+    Double2Accessor pt_x_pred_ = mesh->local_points.getRegionAccessor<double2>(FID_PXP);
+    Double2Accessor pt_force_ = mesh->local_points.getRegionAccessor<double2>(FID_PF);
+    DoubleAccessor pt_weighted_mass_ = mesh->local_points.getRegionAccessor<double>(FID_PMASWT);
     for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
         int pt_first = mesh->pt_chunks_first[pt_chunk];
         int pt_last = mesh->pt_chunks_last[pt_chunk];
@@ -203,13 +208,13 @@ void Hydro::doCycle(
         // save off point variable values from previous cycle
         for (int p = pt_first; p < pt_last; ++p) {
         		ptr_t pt_ptr(p);
-        		mesh->pt_x0[p] = mesh->pt_x_.read(pt_ptr); // TODO no reason this shouldn't be in Mesh
+        		mesh->pt_x0[p] = pt_x_.read(pt_ptr); // TODO no reason this shouldn't be in Mesh
         }
         copy(&pt_vel[pt_first], &pt_vel[pt_last], &pt_vel0[pt_first]);
 
         // ===== Predictor step =====
         // 1. advance mesh to center of time step
-        advPosHalf(mesh->pt_x0, pt_vel0, dt, mesh->pt_x_pred_, pt_first, pt_last);
+        advPosHalf(mesh->pt_x0, pt_vel0, dt, pt_x_pred_, pt_first, pt_last);
     } // for pch
 
     for (int sch = 0; sch < num_side_chunks; ++sch) {
@@ -256,15 +261,15 @@ void Hydro::doCycle(
         for (int i = 0; i < bcs.size(); ++i) {
             int bfirst = bcs[i]->pchbfirst[pch];
             int blast = bcs[i]->pchblast[pch];
-            bcs[i]->applyFixedBC(pt_vel0, mesh->pt_force_, bfirst, blast);
+            bcs[i]->applyFixedBC(pt_vel0, pt_force_, bfirst, blast);
         }
 
         // 5. compute accelerations
-        calcAccel(mesh->pt_force_, mesh->pt_weighted_mass_, pt_accel, pfirst, plast);
+        calcAccel(pt_force_, pt_weighted_mass_, pt_accel, pfirst, plast);
 
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, mesh->pt_x_, pt_vel, pfirst, plast);
+        advPosFull(mesh->pt_x0, pt_vel0, pt_accel, dt, pt_x_, pt_vel, pfirst, plast);
     }  // for pch
 
     resetDtHydro();
@@ -281,7 +286,7 @@ void Hydro::doCycle(
 
         // 7. compute work
         fill(&zone_work[zfirst], &zone_work[zlast], 0.);
-        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, mesh->pt_x_pred_, dt, zone_work, zone_energy_tot,
+        calcWork(side_force_pres, side_force_visc, pt_vel0, pt_vel, pt_x_pred_, dt, zone_work, zone_energy_tot,
                 sfirst, slast);
     }  // for sch
     mesh->checkBadSides();
@@ -644,8 +649,9 @@ void Hydro::writeEnergyCheck() {
 
         double eichunk = 0.;
         double ekchunk = 0.;
+        Double2Accessor pt_x_ = mesh->local_points.getRegionAccessor<double2>(FID_PX);
         sumEnergy(zone_energy_tot, mesh->zone_area_, mesh->zone_vol_, zone_mass, mesh->side_mass_frac,
-                mesh->pt_x_, pt_vel, eichunk, ekchunk,
+                pt_x_, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
             ei += eichunk;

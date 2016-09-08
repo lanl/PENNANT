@@ -9,9 +9,8 @@
 #define GLOBALMESH_HH_
 
 #include "InputParameters.hh"
-
-#include "legion.h"
-using namespace LegionRuntime::HighLevel;
+#include "LogicalUnstructured.hh"
+#include "Parallel.hh"
 
 class GlobalMesh {
 public:
@@ -19,52 +18,29 @@ public:
 			Context ctx, HighLevelRuntime *runtime);
 	virtual ~GlobalMesh();
 
-	LogicalRegion lregion_global_zones_;
-	LogicalPartition lpart_zones_;
-
-	LogicalRegion lregion_global_sides_;
-	LogicalPartition lpart_sides_;
-
-	LogicalRegion lregion_global_pts_;
-	LogicalPartition lpart_pts_;
-
-	LogicalRegion lregion_zone_pts_crs_;
-	LogicalPartition lpart_zone_pts_crs_;
-
-	std::vector<PhaseBarrier> ready_barriers;
-	std::vector<PhaseBarrier> empty_barriers;
-	std::vector<LogicalRegion> lregions_ghost;
+	std::vector<PhaseBarrier> readyBarriers;
+	std::vector<PhaseBarrier> emptyBarriers;
+	std::vector<LogicalRegion> lRegionsGhost;
 	std::vector<std::vector<int>> neighbors;
+
+    LogicalUnstructured zones;
+    LogicalUnstructured sides;
+    LogicalUnstructured points;
+    LogicalUnstructured zonePointsCRS;
 
 private:
 	void init();
-	void clear();
-	void allocateZoneFields();
-	void allocateSideFields();
-	void allocatePointFields();
 	void allocateGhostPointFields();
-	void allocateZonePtsCRSFields();
 
-	IndexSpace ispace_zones_;
-	FieldSpace fspace_zones_;
+	FieldSpace fSpaceGhostPoints;
 
-	IndexSpace ispace_sides_;
-	FieldSpace fspace_sides_;
-
-	IndexSpace ispace_pts_;
-	FieldSpace fspace_pts_;
-	FieldSpace fspace_ghost_pts;
-
-	IndexSpace ispace_zone_pts_crs_;
-	FieldSpace fspace_zone_pts_crs_;
-
-	const InputParameters input_params_;
-	int num_zones_;
-	int num_sides_;
-	int num_pts_;
-	int num_zone_pts_crs_;
-	Context ctx_;
-	HighLevelRuntime *runtime_;
+	const InputParameters inputParams;
+	int numZones;
+	int numSides;
+	int numPoints;
+	int numZonePointsCRS;
+	Context ctx;
+	HighLevelRuntime *runtime;
 };
 
 #endif /* GLOBALMESH_HH_ */

@@ -26,75 +26,44 @@ using namespace std;
 
 
 Mesh::Mesh(const InputParameters& params,
-		IndexSpace* ispace_zones,
-		const PhysicalRegion& sides,
-		const PhysicalRegion& pts,
-		const PhysicalRegion& zone_pts_crs,
+		LogicalUnstructured& ispace_zones,
+		LogicalUnstructured& sides,
+		LogicalUnstructured& points,
+		LogicalUnstructured& zone_pts_crs,
 		const PhysicalRegion& ghost_pts,
 		Context ctx, HighLevelRuntime* rt) :
-			chunk_size_(params.directs_.chunk_size_),
-			subregion_xmin_(params.directs_.subregion_xmin_),
-			subregion_xmax_(params.directs_.subregion_xmax_),
-			subregion_ymin_(params.directs_.subregion_ymin_),
-			subregion_ymax_(params.directs_.subregion_ymax_),
-			gmesh_(NULL),
-			ctx_(ctx),
-			runtime_(rt),
-			ispace_zones_(ispace_zones),
-			ghost_pts_(ghost_pts),
-			num_subregions_(params.directs_.ntasks_),
-			mype_(params.directs_.task_id_)
+			chunk_size(params.directs_.chunk_size_),
+			subregion_xmin(params.directs_.subregion_xmin_),
+			subregion_xmax(params.directs_.subregion_xmax_),
+			subregion_ymin(params.directs_.subregion_ymin_),
+			subregion_ymax(params.directs_.subregion_ymax_),
+            zone_points(sides),
+            local_points(ctx, rt, points.getISpace()),
+            pt_x_init(points),
+            zone_pts_ptr_CRS(zone_pts_crs),
+			generate_mesh(NULL),
+			ctx(ctx),
+			runtime(rt),
+			zones(ispace_zones),
+			ghost_points(ghost_pts),
+			num_subregions(params.directs_.ntasks_),
+			my_PE(params.directs_.task_id_)
 	{
 
-    gmesh_ = new GenerateMesh(params);
+    generate_mesh = new GenerateMesh(params);
 
-    // Legion Sides & Corners
-    ispace_sides_ = sides.get_logical_region().get_index_space();
-    zone_pts_ = sides.get_field_accessor(FID_ZONE_PTS).typeify<int>();
-
-    // Zone Points Compressed Row Storage
-    zone_pts_ptr_legion = zone_pts_crs.get_field_accessor(FID_ZONE_PTS_PTR).typeify<int>();
-
-    // Legion Pts
-    ispace_local_pts_ = pts.get_logical_region().get_index_space();
-    pt_x_init_ = pts.get_field_accessor(FID_PX_INIT).typeify<double2>();
-
-    fspace_all_pts_ = runtime_->create_field_space(ctx_);
-    runtime_->attach_name(fspace_all_pts_, "Mesh::fspace_local_pts_");
-    allocatePtFields();
-
-    lregion_all_pts_ = runtime_->create_logical_region(ctx_, ispace_local_pts_, fspace_all_pts_);
-    runtime_->attach_name(lregion_all_pts_, "Mesh::lregion_local_pts_");
-
-    RegionRequirement pt_req(lregion_all_pts_, WRITE_DISCARD, EXCLUSIVE, lregion_all_pts_);
-	pt_req.add_field(FID_PX);
-	pt_req.add_field(FID_PXP);
-	pt_req.add_field(FID_PF);
-	pt_req.add_field(FID_PMASWT);
-	InlineLauncher local_pt_launcher(pt_req);
-	PhysicalRegion pt_region = rt->map_region(ctx, local_pt_launcher);
-	pt_x_ = pt_region.get_field_accessor(FID_PX).typeify<double2>();
-	pt_x_pred_ = pt_region.get_field_accessor(FID_PXP).typeify<double2>();
-	pt_force_ = pt_region.get_field_accessor(FID_PF).typeify<double2>();
-	pt_weighted_mass_ = pt_region.get_field_accessor(FID_PMASWT).typeify<double>();
+    local_points.addField<double2>(FID_PX);
+    local_points.addField<double2>(FID_PXP);
+    local_points.addField<double>(FID_PMASWT);
+    local_points.addField<double2>(FID_PF);
+    local_points.allocate();
 
 	init();
 }
 
 
 Mesh::~Mesh() {
-    delete gmesh_;
-    runtime_->destroy_logical_region(ctx_, lregion_all_pts_);
-    runtime_->destroy_field_space(ctx_, fspace_all_pts_);
-}
-
-
-void Mesh::allocatePtFields() {
-	FieldAllocator allocator = runtime_->create_field_allocator(ctx_, fspace_all_pts_);
-	allocator.allocate_field(sizeof(double2), FID_PX);
-	allocator.allocate_field(sizeof(double2), FID_PXP);
-	allocator.allocate_field(sizeof(double), FID_PMASWT);
-	allocator.allocate_field(sizeof(double2), FID_PF);
+    delete generate_mesh;
 }
 
 
@@ -103,22 +72,22 @@ void Mesh::init() {
     // generate mesh
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
-    gmesh_->generate(slavemstrpes, slavemstrcounts, slavepoints,
+    generate_mesh->generate(slavemstrpes, slavemstrcounts, slavepoints,
             masterslvpes, masterslvcounts, masterpoints);
 
     {
-		IndexIterator pt_itr(runtime_,ctx_, ispace_local_pts_);
+		IndexIterator pt_itr = pt_x_init.getIterator();
 		size_t npts;
 		pt_itr.next_span(npts);
 		num_pts_ = (int) npts;
 
-		IndexIterator side_itr(runtime_,ctx_, ispace_sides_);
+		IndexIterator side_itr = zone_points.getIterator();
 		size_t nsides;
 		side_itr.next_span(nsides);
 		num_sides_ = (int) nsides;
 	    num_corners_ = num_sides_;
 
-		IndexIterator zone_itr(runtime_,ctx_, *ispace_zones_);
+		IndexIterator zone_itr = zones.getIterator();
 		size_t nzones;
 		zone_itr.next_span(nzones);
 		num_zones_ = (int) nzones;
@@ -127,12 +96,13 @@ void Mesh::init() {
     // copy cell sizes to mesh
 
 
-    std::cout << "Task: " << mype_ << " zones: " << num_zones_ << std::endl;
+    std::cout << "Task: " << my_PE << " zones: " << num_zones_ << std::endl;
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
+    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
 
 	for (int z=0; z < num_zones_+1; ++z) {
     		ptr_t zone_ptr(z);
-    		zone_pts_ptr_[z] = zone_pts_ptr_legion.read(zone_ptr);
+    		zone_pts_ptr_[z] = pts_ptr_acc.read(zone_ptr);
     }
 
     // populate maps:
@@ -181,10 +151,12 @@ void Mesh::init() {
     zone_dl = AbstractedMemory::alloc<double>(num_zones_);
     side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
-    IndexIterator itr(runtime_, ctx_, ispace_local_pts_);
+    IndexIterator itr = pt_x_init.getIterator();
+    Double2Accessor x_init_acc = pt_x_init.getRegionAccessor<double2>(FID_PX_INIT);
+    Double2Accessor x_acc = local_points.getRegionAccessor<double2>(FID_PX);
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
-        pt_x_.write(pt_ptr, pt_x_init_.read(pt_ptr));
+        x_acc.write(pt_ptr, x_init_acc.read(pt_ptr));
     }
 
     num_bad_sides = 0;
@@ -206,16 +178,18 @@ void Mesh::initSideMappingArrays() {
     zone_pts_val_ = map_side2pt1_;
     map_side2zone_  = AbstractedMemory::alloc<int>(num_sides_);
 
+    IntAccessor zone_pts_acc = zone_points.getRegionAccessor<int>(FID_ZONE_PTS);
+    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
     for (int z = 0; z < num_zones_; ++z) {
 		ptr_t zone_ptr(z);
 		ptr_t zone_ptr_plus1(z+1);
-        int sbase = zone_pts_ptr_legion.read(zone_ptr);
-        int size = zone_pts_ptr_legion.read(zone_ptr_plus1) - zone_pts_ptr_legion.read(zone_ptr);
+        int sbase = pts_ptr_acc.read(zone_ptr);
+        int size = pts_ptr_acc.read(zone_ptr_plus1) - pts_ptr_acc.read(zone_ptr);
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
             map_side2zone_[s] = z;
             ptr_t side_ptr(s);
-            map_side2pt1_[s] = zone_pts_.read(side_ptr);
+            map_side2pt1_[s] = zone_pts_acc.read(side_ptr);
         } // for n
     } // for z
 
@@ -252,7 +226,7 @@ void Mesh::initEdgeMappingArrays() {
 
 void Mesh::populateChunks() {
 
-    if (chunk_size_ == 0) chunk_size_ = max(num_pts_, num_sides_);
+    if (chunk_size == 0) chunk_size = max(num_pts_, num_sides_);
 
     // compute side chunks
     // use 'chunksize' for maximum chunksize; decrease as needed
@@ -261,7 +235,7 @@ void Mesh::populateChunks() {
     int s1, s2 = 0;
     while (s2 < num_sides_) {
         s1 = s2;
-        s2 = min(s2 + chunk_size_, num_sides_);
+        s2 = min(s2 + chunk_size, num_sides_);
         while (s2 < num_sides_ && map_side2zone_[s2] == map_side2zone_[s2-1])
             --s2;
         side_chunks_first.push_back(s1);
@@ -275,7 +249,7 @@ void Mesh::populateChunks() {
     int p1, p2 = 0;
     while (p2 < num_pts_) {
         p1 = p2;
-        p2 = min(p2 + chunk_size_, num_pts_);
+        p2 = min(p2 + chunk_size, num_pts_);
         pt_chunks_first.push_back(p1);
         pt_chunks_last.push_back(p2);
     }
@@ -285,7 +259,7 @@ void Mesh::populateChunks() {
     int z1, z2 = 0;
     while (z2 < num_zones_) {
         z1 = z2;
-        z2 = min(z2 + chunk_size_, num_zones_);
+        z2 = min(z2 + chunk_size, num_zones_);
         zone_chunk_first.push_back(z1);
         zone_chunk_last.push_back(z2);
     }
@@ -326,7 +300,7 @@ void Mesh::initParallel(
         const vector<int>& masterslvpes,
         const vector<int>& masterslvcounts,
         const vector<int>& masterpoints) {
-    if (num_subregions_ == 1) return;
+    if (num_subregions == 1) return;
 
     num_mesg_send2master = slavemstrpes.size();
     map_master_pe2globale_pe = AbstractedMemory::alloc<int>(num_mesg_send2master);
@@ -366,7 +340,7 @@ void Mesh::writeMeshStats() {
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
-    if (num_subregions_ > 1) gnump -= num_slaves;
+    if (num_subregions > 1) gnump -= num_slaves;
     int64_t gnumz = num_zones_;
     int64_t gnums = num_sides_;
     int64_t gnume = num_edges_;
@@ -383,7 +357,7 @@ void Mesh::writeMeshStats() {
     Parallel::globalSum(gnumzch);
     Parallel::globalSum(gnumsch);
 
-    if (mype_ > 0) return;
+    if (my_PE > 0) return;
 
     cout << "--- Mesh Information ---" << endl;
     cout << "Points:  " << gnump << endl;
@@ -393,7 +367,7 @@ void Mesh::writeMeshStats() {
     cout << "Side chunks:  " << gnumsch << endl;
     cout << "Point chunks:  " << gnumpch << endl;
     cout << "Zone chunks:  " << gnumzch << endl;
-    cout << "Chunk size:  " << chunk_size_ << endl;
+    cout << "Chunk size:  " << chunk_size << endl;
     cout << "------------------------" << endl;
 
 }
@@ -406,9 +380,10 @@ vector<int> Mesh::getXPlane(const double c) {
     vector<int> mapbp;
     const double eps = 1.e-12;
 
+    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
     for (int p = 0; p < num_pts_; ++p) {
     		ptr_t pt_ptr(p);
-    		if (fabs(pt_x_.read(pt_ptr).x - c) < eps) {
+    		if (fabs(pt_x_acc.read(pt_ptr).x - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -422,9 +397,10 @@ vector<int> Mesh::getYPlane(const double c) {
     vector<int> mapbp;
     const double eps = 1.e-12;
 
+    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
     for (int p = 0; p < num_pts_; ++p) {
 		ptr_t pt_ptr(p);
-        if (fabs(pt_x_.read(pt_ptr).y - c) < eps) {
+        if (fabs(pt_x_acc.read(pt_ptr).y - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -461,12 +437,15 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
     double2* ex;
     double2* zx;
 
+    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
+    Double2Accessor pt_x_pred_acc = local_points.getRegionAccessor<double2>(FID_PXP);
+
     if (pred) {
-        px = &pt_x_pred_;
+        px = &pt_x_pred_acc;
         ex = edge_x_pred;
         zx = zone_x_pred;
     } else {
-        px = &pt_x_;
+        px = &pt_x_acc;
         ex = edge_x;
         zx = zone_x_;
     }
@@ -502,6 +481,9 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
     double* svol;
     double* zarea;
     double* zvol;
+
+    Double2Accessor pt_x_ = local_points.getRegionAccessor<double2>(FID_PX);
+    Double2Accessor pt_x_pred_ = local_points.getRegionAccessor<double2>(FID_PXP);
 
     if (pred) {
         px = &pt_x_pred_;
@@ -598,6 +580,7 @@ void Mesh::calcEdgeLen(const int side_chunk) {
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
+    Double2Accessor pt_x_pred_ = local_points.getRegionAccessor<double2>(FID_PXP);
 	for (int s = sfirst; s < slast; ++s) {
         const ptr_t p1(map_side2pt1_[s]);
         const ptr_t p2(mapSideToPt2(s));
@@ -674,7 +657,7 @@ void Mesh::parallelGather(
     int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
-                " on PE " << mype_ << endl;
+                " on PE " << my_PE << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -746,7 +729,7 @@ void Mesh::parallelScatter(
     int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
-                " on PE " << mype_ << endl;
+                " on PE " << my_PE << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -801,6 +784,9 @@ void Mesh::sumToPoints(
         const double* corner_mass,
         const double2* corner_force) {
 
+
+    DoubleAccessor pt_weighted_mass_ = local_points.getRegionAccessor<double>(FID_PMASWT);
+    Double2Accessor pt_force_ = local_points.getRegionAccessor<double2>(FID_PF);
     sumOnProc(corner_mass, pt_weighted_mass_);
     sumOnProc(corner_force, pt_force_);
 

@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "InputParameters.hh"
+#include "LogicalUnstructured.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
 
@@ -28,20 +29,20 @@ class Mesh {
 public:
 
     Mesh(const InputParameters& params,
-		IndexSpace* ispace_zones,
-    		const PhysicalRegion &sides,
-   		const PhysicalRegion &pts,
-    		const PhysicalRegion &zone_pts_crs,
+		LogicalUnstructured& ispace_zones,
+    		LogicalUnstructured& sides,
+   		LogicalUnstructured& pts,
+    		LogicalUnstructured& zone_pts_crs,
     		const PhysicalRegion &ghost_pts,
         Context ctx, HighLevelRuntime* rt);
     ~Mesh();
 
     // parameters
-    int chunk_size_;                 // max size for processing chunks
-    double subregion_xmin_; 		   // bounding box for a subregion
-    double subregion_xmax_; 		   // if xmin != std::numeric_limits<double>::max(),
-    double subregion_ymin_;         // should have 4 entries:
-    double subregion_ymax_; 		   // xmin, xmax, ymin, ymax
+    int chunk_size;                 // max size for processing chunks
+    double subregion_xmin; 		   // bounding box for a subregion
+    double subregion_xmax; 		   // if xmin != std::numeric_limits<double>::max(),
+    double subregion_ymin;         // should have 4 entries:
+    double subregion_ymax; 		   // xmin, xmax, ymin, ymax
 
     // mesh variables
     // (See documentation for more details on the mesh
@@ -143,23 +144,16 @@ public:
             const double* corner_mass,
             const double2* corner_force);
 
-    IndexSpace ispace_sides_;
-	IndexSpace ispace_local_pts_;
-
-	Double2Accessor pt_x_;          // point coordinates
-	Double2Accessor pt_x_pred_;      // point coords, middle of cycle
-
-    Double2Accessor pt_force_;            // point force
-    DoubleAccessor pt_weighted_mass_;     // point mass, weighted by 1/r
+    LogicalUnstructured zone_points;
+    LogicalUnstructured local_points;
 
 private:
 
-	Double2Accessor pt_x_init_;
-	IntAccessor zone_pts_;
-	IntAccessor zone_pts_ptr_legion;
+	LogicalUnstructured pt_x_init;
+	LogicalUnstructured zone_pts_ptr_CRS;
 
 	// children
-    GenerateMesh* gmesh_;
+    GenerateMesh* generate_mesh;
 
     // point-to-corner inverse map is stored as a linked list...
     int* map_pt2crn_first;   // map:  point -> first corner
@@ -184,17 +178,14 @@ private:
     double* side_vol_;
     double* side_vol_pred;     // side volume, middle of cycle
 
-    Context ctx_;
-    HighLevelRuntime* runtime_;
+    Context ctx;
+    HighLevelRuntime* runtime;
 
-    FieldSpace fspace_all_pts_;
-    LogicalRegion lregion_all_pts_;
-    IndexSpace* ispace_zones_;
+    LogicalUnstructured zones;
+    const PhysicalRegion& ghost_points;
 
-    const PhysicalRegion& ghost_pts_;
-
-    const int num_subregions_;
-    const int mype_;
+    const int num_subregions;
+    const int my_PE;
 
     void init();
 
@@ -241,8 +232,6 @@ private:
     void parallelScatter(
             T* pvar,
             const T* prxvar);
-
-    void allocatePtFields();
 }; // class Mesh
 
 
