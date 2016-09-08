@@ -62,8 +62,7 @@ void top_level_task(const Task *task,
     input_params.directs_.ntasks_ = ntasks;
     input_params.probname_ = probname;
 
-	Parallel parallel(input_params, ctx, runtime);
-	parallel.run(input_params);
+	Parallel::run(input_params, ctx, runtime);
 }
 
 

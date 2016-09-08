@@ -19,23 +19,26 @@
 
 #include "AddReductionOp.hh"
 #include "Driver.hh"
+#include "GlobalMesh.hh"
 #include "MinReductionOp.hh"
 #include "Vec2.hh"
 #include "WriteTask.hh"
 
-Parallel::Parallel(InputParameters input_params,
-		Context ctx, HighLevelRuntime *runtime) :
-		global_mesh_(input_params, ctx, runtime),
-		ctx_(ctx),
-		runtime_(runtime),
-		num_subregions_(input_params.directs_.ntasks_)
+void Parallel::run(InputParameters input_params,
+		Context ctx, HighLevelRuntime *runtime)
 {
-	  // we're going to use a must epoch launcher, so we need at least as many
-	  //  processors in our system as we have subregions - check that now
-	  std::set<Processor> all_procs;
-	  Realm::Machine::get_machine().get_all_processors(all_procs);
-	  int num_loc_procs = 0;
-	  for(std::set<Processor>::const_iterator it = all_procs.begin();
+
+    GlobalMesh global_mesh_(input_params, ctx, runtime);
+    std::vector<void*> serializer;
+    MustEpochLauncher must_epoch_launcher;
+    const int num_subregions_ = input_params.directs_.ntasks_;
+
+	// we're going to use a must epoch launcher, so we need at least as many
+    //  processors in our system as we have subregions - check that now
+	std::set<Processor> all_procs;
+	Realm::Machine::get_machine().get_all_processors(all_procs);
+	int num_loc_procs = 0;
+	for(std::set<Processor>::const_iterator it = all_procs.begin();
 	      it != all_procs.end();
 	      it++)
 	    if((*it).kind() == Processor::LOC_PROC)
@@ -54,12 +57,12 @@ Parallel::Parallel(InputParameters input_params,
 
 	  double zero = 0.0;
 	  DynamicCollective add_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions_, AddReductionOp::redop_id,
+		runtime->create_dynamic_collective(ctx, num_subregions_, AddReductionOp::redop_id,
 						   &zero, sizeof(zero));
 
 	  TimeStep max;
 	  DynamicCollective min_reduction =
-		runtime_->create_dynamic_collective(ctx_, num_subregions_, MinReductionOp::redop_id,
+		runtime->create_dynamic_collective(ctx, num_subregions_, MinReductionOp::redop_id,
 						   &max, sizeof(max));
 
 	  std::vector<SPMDArgs> args(num_subregions_);
@@ -102,13 +105,13 @@ Parallel::Parallel(InputParameters input_params,
 		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
 
 		  DomainPoint point(color);
-		  LogicalRegion my_zones = runtime_->get_logical_subregion_by_color(ctx_,
+		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh_.lpart_zones_, color);
-		  LogicalRegion my_sides = runtime_->get_logical_subregion_by_color(ctx_,
+		  LogicalRegion my_sides = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh_.lpart_sides_, color);
-		  LogicalRegion my_pts = runtime_->get_logical_subregion_by_color(ctx_,
+		  LogicalRegion my_pts = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh_.lpart_pts_, color);
-		  LogicalRegion my_zone_pts_ptr = runtime_->get_logical_subregion_by_color(ctx_,
+		  LogicalRegion my_zone_pts_ptr = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh_.lpart_zone_pts_crs_, color);
 		  std::vector<LogicalRegion> lregions_ghost;
 		  for (int i=0; i < global_mesh_.neighbors[color].size(); i++) {
@@ -125,26 +128,19 @@ Parallel::Parallel(InputParameters input_params,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
-}  // init
 
-Parallel::~Parallel() {
-	for (int i=0; i < serializer.size(); i++)
-		free(serializer[i]);
-}
-
-void Parallel::run(InputParameters input_params) {
-	  FutureMap fm = runtime_->execute_must_epoch(ctx_, must_epoch_launcher);
+	  FutureMap fm = runtime->execute_must_epoch(ctx, must_epoch_launcher);
 	  fm.wait_all_results();
 
 	  RunStat run_stat = fm.get_result<RunStat>(0);
 
 	  // Legion cannot handle data structures with indirections in them
-	  void* serializer;
+	  void* serial;
 	  size_t n_probname = input_params.probname_.length();
 	  size_t size = sizeof(RunStat) + sizeof(DirectInputParameters) + sizeof(size_t)
 			  + n_probname * sizeof(char);
-	  serializer = malloc(size);
-	  unsigned char *next = (unsigned char*)(serializer) ;
+	  serial = malloc(size);
+	  unsigned char *next = (unsigned char*)(serial) ;
 	  memcpy((void*)next, (void*)(&run_stat), sizeof(RunStat));
 	  next += sizeof(RunStat);
 
@@ -159,8 +155,8 @@ void Parallel::run(InputParameters input_params) {
 	  next_size = sizeof(char) * n_probname;
 	  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
 
-	  WriteTask write_launcher(global_mesh_.lregion_global_zones_, serializer, size);
-      runtime_->execute_task(ctx_, write_launcher);
+	  WriteTask write_launcher(global_mesh_.lregion_global_zones_, serial, size);
+      runtime->execute_task(ctx, write_launcher);
 
 }
 

@@ -16,7 +16,6 @@
 #include <limits>
 #include <stdint.h>
 
-#include "GlobalMesh.hh"
 #include "InputParameters.hh"
 #include "Vec2.hh"
 
@@ -112,10 +111,8 @@ public:
     //static int mype() { return 0; }            // PE number for my rank
                                 // (0 if not using MPI)
 
-    Parallel(InputParameters input_params,
+    static void run(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
-    ~Parallel();
-    void run(InputParameters input_params);
 
     // TODO use Legion
     static void globalSum(int& x);     // find sum over all PEs - overloaded
@@ -153,14 +150,6 @@ public:
 	static TimeStep globalMinTask(const Task *task,
 					const std::vector<PhysicalRegion> &regions,
 					Context ctx, HighLevelRuntime *runtime);
-
-private:
-	GlobalMesh global_mesh_;
-	std::vector<void*> serializer;
-	MustEpochLauncher must_epoch_launcher;
-	Context ctx_;
-	HighLevelRuntime *runtime_;
-	const int num_subregions_;
 };  // class Parallel
 
 struct SPMDArgs {
