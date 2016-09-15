@@ -21,7 +21,7 @@
 
 // forward declarations
 class InputFile;
-class Mesh;
+class LocalMesh;
 class Hydro;
 
 class DriverTask : public TaskLauncher {
@@ -81,7 +81,7 @@ public:
     void calcGlobalDt();
 
 private:
-    Mesh *mesh;
+    LocalMesh *mesh;
     Hydro *hydro;
 
     DynamicCollective add_reduction_;

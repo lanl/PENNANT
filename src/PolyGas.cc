@@ -102,7 +102,7 @@ void PolyGas::calcForce(
         const int sfirst,
         const int slast) {
 
-    const Mesh* mesh = hydro->mesh;
+    const LocalMesh* mesh = hydro->mesh;
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {

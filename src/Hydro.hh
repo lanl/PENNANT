@@ -22,7 +22,7 @@
 
 // forward declarations
 class InputFile;
-class Mesh;
+class LocalMesh;
 class PolyGas;
 class TTS;
 class QCS;
@@ -32,7 +32,7 @@ class HydroBC;
 class Hydro {
 public:
 
-    Hydro(const InputParameters& params, Mesh* m,
+    Hydro(const InputParameters& params, LocalMesh* m,
     		DynamicCollective add_reduction,
 			IndexSpace* ispace_zones,
 			DoubleAccessor* zone_rho,
@@ -43,7 +43,7 @@ public:
     ~Hydro();
 
     // associated mesh object
-    Mesh* mesh;
+    LocalMesh* mesh;
 
     // children of this object
     PolyGas* pgas;
@@ -91,79 +91,44 @@ public:
     void doCycle(const double dt);
 
     void advPosHalf(
-            const double2* px0,
-            const double2* pu0,
             const double dt,
-            Double2Accessor& pxp,
             const int pfirst,
             const int plast);
 
     void advPosFull(
-            const double2* px0,
-            const double2* pu0,
-            const double2* pa,
             const double dt,
-            Double2Accessor& px,
-            double2* pu,
             const int pfirst,
             const int plast);
 
     void calcCrnrMass(
-            const DoubleAccessor* zr,
-            const double* zarea,
-            const double* smf,
-            double* cmaswt,
             const int sfirst,
             const int slast);
 
     void sumCrnrForce(
-            const double2* sf,
-            const double2* sf2,
-            const double2* sf3,
-            double2* cftot,
             const int sfirst,
             const int slast);
 
     void calcAccel(
-            const Double2Accessor& pf,
-            const DoubleAccessor& pmass,
-            double2* pa,
             const int pfirst,
             const int plast);
 
     void calcRho(
-            const double* zm,
             const double* zvol,
             DoubleAccessor* zr,
             const int zfirst,
             const int zlast);
 
     void calcWork(
-            const double2* sf,
-            const double2* sf2,
-            const double2* pu0,
-            const double2* pu,
-            const Double2Accessor& px0,
             const double dt,
-            double* zw,
-            double* zetot,
             const int sfirst,
             const int slast);
 
     void calcWorkRate(
-            const double* zvol0,
-            const double* zvol,
-            const double* zw,
-            const DoubleAccessor* zp,
             const double dt,
-            double* zwrate,
             const int zfirst,
             const int zlast);
 
     void calcEnergy(
-            const double* zetot,
-            const double* zm,
-			const DoubleAccessor* ze,
             const int zfirst,
             const int zlast);
 
@@ -173,7 +138,7 @@ public:
             const double* zvol,
             const double* zm,
             const double* smf,
-            const Double2Accessor& px,
+            const double2* px,
             const double2* pu,
             double& ei,
             double& ek,
@@ -183,15 +148,12 @@ public:
             const int slast);
 
     void calcDtCourant(
-            const double* zdl,
             double& dtrec,
             char* msgdtrec,
             const int zfirst,
             const int zlast);
 
     void calcDtVolume(
-            const double* zvol,
-            const double* zvol0,
             const double dtlast,
             double& dtrec,
             char* msgdtrec,
@@ -199,8 +161,6 @@ public:
             const int zlast);
 
     void calcDtHydro(
-            const double* zvol,
-            const double* zvol0,
             const double dtlast,
             const int zfirst,
             const int zlast);

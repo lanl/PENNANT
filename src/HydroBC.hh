@@ -19,14 +19,14 @@
 #include "Vec2.hh"
 
 // forward declarations
-class Mesh;
+class LocalMesh;
 
 
 class HydroBC {
 public:
 
     // associated mesh object
-    Mesh* mesh;
+    LocalMesh* mesh;
 
     int numb;                      // number of bdy points
     double2 vfix;                  // vector perp. to fixed plane
@@ -35,7 +35,7 @@ public:
     std::vector<int> pchblast;
 
     HydroBC(
-            Mesh* msh,
+            LocalMesh* msh,
             const double2 v,
             const std::vector<int>& mbp);
 

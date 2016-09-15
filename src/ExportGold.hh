@@ -19,13 +19,13 @@
 #include "Parallel.hh"
 
 // forward declarations
-class Mesh;
+class LocalMesh;
 
 
 class ExportGold {
 public:
 
-    Mesh* mesh;
+    LocalMesh* mesh;
 
     std::vector<int> tris;         // zone index list for 3-sided zones
     std::vector<int> quads;        // same, for 4-sided zones
@@ -39,7 +39,7 @@ public:
     int gntris, gnquads, gnothers; // total number across all PEs
                                    //     of tris/quads/others
 
-    ExportGold(Mesh* m);
+    ExportGold(LocalMesh* m);
     ~ExportGold();
 
     void write(

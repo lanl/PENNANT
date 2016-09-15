@@ -99,7 +99,7 @@ void QCS::setCornerDiv(
             const int sfirst,
             const int slast) {
 
-    Mesh* mesh = hydro->mesh;
+    LocalMesh* mesh = hydro->mesh;
     const int nums = mesh->num_sides_;
     const int numz = mesh->num_zones_;
 
@@ -132,7 +132,7 @@ void QCS::setCornerDiv(
     }
 
     // [2] Divergence at the corner
-    Double2Accessor pt_x_pred_ = mesh->local_points.getRegionAccessor<double2>(FID_PXP);
+    const double2* pt_x_pred_ = mesh->pt_x_pred;
     #pragma ivdep
     for (int c = cfirst; c < clast; ++c) {
         int s2 = c;
@@ -152,8 +152,7 @@ void QCS::setCornerDiv(
         // Velocities and positions
         // 0 = point p
         up0 = pu[p];
-        ptr_t pt_ptr(p);
-        xp0 = pt_x_pred_.read(pt_ptr);
+        xp0 = pt_x_pred_[p];
         // 1 = edge e2
         up1 = 0.5 * (pu[p] + pu[p2]);
         xp1 = ex[e2];
@@ -222,7 +221,7 @@ void QCS::setQCnForce(
         const int sfirst,
         const int slast) {
 
-    const Mesh* mesh = hydro->mesh;
+    const LocalMesh* mesh = hydro->mesh;
 
     const double2* pu = hydro->pt_vel;
     const DoubleAccessor* zrp = hydro->zone_rho_pred_;
@@ -287,7 +286,7 @@ void QCS::setForce(
         const int sfirst,
         const int slast) {
 
-    const Mesh* mesh = hydro->mesh;
+    const LocalMesh* mesh = hydro->mesh;
     const double* elen = mesh->edge_len;
 
     int cfirst = sfirst;
@@ -331,7 +330,7 @@ void QCS::setVelDiff(
         const int sfirst,
         const int slast) {
 
-    Mesh* mesh = hydro->mesh;
+    LocalMesh* mesh = hydro->mesh;
     const int nums = mesh->num_sides_;
     const int numz = mesh->num_zones_;
     int zfirst = mesh->map_side2zone_[sfirst];
@@ -343,18 +342,16 @@ void QCS::setVelDiff(
 
     double* z0tmp = AbstractedMemory::alloc<double>(zlast - zfirst);
 
-    Double2Accessor pt_x_pred_ = mesh->local_points.getRegionAccessor<double2>(FID_PXP);
+    const double2* pt_x_pred_ = mesh->pt_x_pred;
     fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mesh->map_side2pt1_[s];
-        ptr_t pt_ptr1(p1);
         int p2 = mesh->mapSideToPt2(s);
-        ptr_t pt_ptr2(p2);
         int z = mesh->map_side2zone_[s];
         int e = mesh->map_side2edge_[s];
         int z0 = z - zfirst;
 
-        double2 dx = pt_x_pred_.read(pt_ptr2) - pt_x_pred_.read(pt_ptr1);
+        double2 dx = pt_x_pred_[p2] - pt_x_pred_[p1];
         double2 du = pu[p2] - pu[p1];
         double lenx = elen[e];
         double dux = dot(du, dx);

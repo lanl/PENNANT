@@ -24,7 +24,7 @@
 using namespace std;
 
 
-ExportGold::ExportGold(Mesh* m) : mesh(m),
+ExportGold::ExportGold(LocalMesh* m) : mesh(m),
 		num_subregions_(1),
 		mype_(0) {}
 

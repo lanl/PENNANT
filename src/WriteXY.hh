@@ -18,7 +18,7 @@
 #include "Parallel.hh"
 
 // forward declarations
-class Mesh;
+class LocalMesh;
 
 
 class WriteXY {

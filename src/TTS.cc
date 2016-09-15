@@ -53,7 +53,7 @@ void TTS::calcForce(
     //    Notes: smf stores (sm/zm)
     //           svfac stores (sv/zv)
 
-    const Mesh* mesh = hydro->mesh;
+    const LocalMesh* mesh = hydro->mesh;
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {

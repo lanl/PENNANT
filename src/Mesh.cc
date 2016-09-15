@@ -25,7 +25,7 @@
 using namespace std;
 
 
-Mesh::Mesh(const InputParameters& params,
+LocalMesh::LocalMesh(const InputParameters& params,
 		LogicalUnstructured& ispace_zones,
 		LogicalUnstructured& sides,
 		LogicalUnstructured& points,
@@ -37,77 +37,88 @@ Mesh::Mesh(const InputParameters& params,
 			subregion_xmax(params.directs_.subregion_xmax_),
 			subregion_ymin(params.directs_.subregion_ymin_),
 			subregion_ymax(params.directs_.subregion_ymax_),
-            zone_points(sides),
-            local_points(ctx, rt, points.getISpace()),
-            pt_x_init(points),
-            zone_pts_ptr_CRS(zone_pts_crs),
+            zone_points_by_gid(sides),
+            local_points_by_gid(ctx, rt, points.getISpace()),
+            pt_x_init_by_gid(points),
+            zone_pts_ptr_CRS_by_gid(zone_pts_crs),
 			generate_mesh(NULL),
 			ctx(ctx),
 			runtime(rt),
-			zones(ispace_zones),
+			zones_by_gid(ispace_zones),
 			ghost_points(ghost_pts),
 			num_subregions(params.directs_.ntasks_),
 			my_PE(params.directs_.task_id_)
 	{
 
-    generate_mesh = new GenerateMesh(params);
+    generate_mesh = new GenerateLocalMesh(params);
 
-    local_points.addField<double2>(FID_PX);
-    local_points.addField<double2>(FID_PXP);
-    local_points.addField<double>(FID_PMASWT);
-    local_points.addField<double2>(FID_PF);
-    local_points.allocate();
+    local_points_by_gid.addField<double>(FID_PMASWT);
+    local_points_by_gid.addField<double2>(FID_PF);
+    local_points_by_gid.allocate();
 
 	init();
 }
 
 
-Mesh::~Mesh() {
+LocalMesh::~LocalMesh() {
     delete generate_mesh;
 }
 
 
-void Mesh::init() {
+void LocalMesh::init() {
 
     // generate mesh
+    std::vector<double2> nodepos;  // TODO pointpos
+    std::vector<int> cellstart;  // TODO zone_pts_CRS_val
+    std::vector<int> cellnodes;  // TODO zone_pts_CRS_ptr
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
-    generate_mesh->generate(slavemstrpes, slavemstrcounts, slavepoints,
+    generate_mesh->generate(nodepos, cellstart, cellnodes,
+            slavemstrpes, slavemstrcounts, slavepoints,
             masterslvpes, masterslvcounts, masterpoints);
 
     {
-		IndexIterator pt_itr = pt_x_init.getIterator();
+		IndexIterator pt_itr = pt_x_init_by_gid.getIterator();
 		size_t npts;
 		pt_itr.next_span(npts);
 		num_pts_ = (int) npts;
+		assert(num_pts_ == nodepos.size());
 
-		IndexIterator side_itr = zone_points.getIterator();
+		IndexIterator side_itr = zone_points_by_gid.getIterator();
 		size_t nsides;
 		side_itr.next_span(nsides);
 		num_sides_ = (int) nsides;
 	    num_corners_ = num_sides_;
+	    assert(num_sides_ == cellnodes.size());
 
-		IndexIterator zone_itr = zones.getIterator();
+		IndexIterator zone_itr = zones_by_gid.getIterator();
 		size_t nzones;
 		zone_itr.next_span(nzones);
 		num_zones_ = (int) nzones;
+		assert(num_zones_ == (cellstart.size() - 1));
     }
 
     // copy cell sizes to mesh
 
-
     std::cout << "Task: " << my_PE << " zones: " << num_zones_ << std::endl;
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
-    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
+    copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
 
+    zone_pts_ptr_by_gid = AbstractedMemory::alloc<int>(num_zones_+1);
+    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS_by_gid.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
 	for (int z=0; z < num_zones_+1; ++z) {
     		ptr_t zone_ptr(z);
-    		zone_pts_ptr_[z] = pts_ptr_acc.read(zone_ptr);
+    		zone_pts_ptr_by_gid[z] = pts_ptr_acc.read(zone_ptr);
     }
 
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSideMappingArrays();
+    initSideMappingArrays(cellstart, cellnodes);
+
+    // release memory from cell* arrays
+    cellstart.resize(0);
+    cellnodes.resize(0);
+
     // now populate edge maps using side maps
     initEdgeMappingArrays();
 
@@ -135,6 +146,8 @@ void Mesh::init() {
     edge_x = AbstractedMemory::alloc<double2>(num_edges_);
     zone_x_ = AbstractedMemory::alloc<double2>(num_zones_);
     pt_x0 = AbstractedMemory::alloc<double2>(num_pts_);
+    pt_x = AbstractedMemory::alloc<double2>(num_pts_);
+    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts_);
     edge_x_pred = AbstractedMemory::alloc<double2>(num_edges_);
     zone_x_pred = AbstractedMemory::alloc<double2>(num_zones_);
     side_area_ = AbstractedMemory::alloc<double>(num_sides_);
@@ -151,12 +164,26 @@ void Mesh::init() {
     zone_dl = AbstractedMemory::alloc<double>(num_zones_);
     side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
-    IndexIterator itr = pt_x_init.getIterator();
-    Double2Accessor x_init_acc = pt_x_init.getRegionAccessor<double2>(FID_PX_INIT);
-    Double2Accessor x_acc = local_points.getRegionAccessor<double2>(FID_PX);
+    IndexIterator itr = pt_x_init_by_gid.getIterator();
+    Double2Accessor x_init_acc = pt_x_init_by_gid.getRegionAccessor<double2>(FID_PX_INIT);
+    point_local_to_globalID = AbstractedMemory::alloc<long long int>(num_pts_);
+    int i = 0;
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
-        x_acc.write(pt_ptr, x_init_acc.read(pt_ptr));
+        pt_x[i] = x_init_acc.read(pt_ptr);
+        assert(x_init_acc.read(pt_ptr) == nodepos[i]);
+        point_local_to_globalID[i] = pt_ptr.value;
+        i++;
+    }
+
+    // do a few initial calculations
+    #pragma omp parallel for schedule(static)
+    for (int pch = 0; pch < num_pt_chunks; ++pch) {
+        int pfirst = pt_chunks_first[pch];
+        int plast = pt_chunks_last[pch];
+        // copy nodepos into px, distributed across threads
+        for (int p = pfirst; p < plast; ++p)
+            pt_x[p] = nodepos[p];
     }
 
     num_bad_sides = 0;
@@ -172,31 +199,47 @@ void Mesh::init() {
 }
 
 
-void Mesh::initSideMappingArrays() {
+void LocalMesh::initSideMappingArrays(
+        const vector<int>& cellstart,
+        const vector<int>& cellnodes) {
 
     map_side2pt1_ = AbstractedMemory::alloc<int>(num_sides_);
     zone_pts_val_ = map_side2pt1_;
     map_side2zone_  = AbstractedMemory::alloc<int>(num_sides_);
 
-    IntAccessor zone_pts_acc = zone_points.getRegionAccessor<int>(FID_ZONE_PTS);
-    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
     for (int z = 0; z < num_zones_; ++z) {
-		ptr_t zone_ptr(z);
-		ptr_t zone_ptr_plus1(z+1);
+        int sbase = cellstart[z];
+        int size = cellstart[z+1] - sbase;
+        for (int n = 0; n < size; ++n) {
+            int s = sbase + n;
+            map_side2zone_[s] = z;
+            map_side2pt1_[s] = cellnodes[s];
+        } // for n
+    } // for z
+
+    map_side2pt1_by_gid = AbstractedMemory::alloc<int>(num_sides_);
+    zone_pts_val_by_gid = map_side2pt1_by_gid;
+    map_side2zone_by_gid  = AbstractedMemory::alloc<int>(num_sides_);
+
+    IntAccessor zone_pts_acc = zone_points_by_gid.getRegionAccessor<int>(FID_ZONE_PTS);
+    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS_by_gid.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
+    for (int z = 0; z < num_zones_; ++z) {
+        ptr_t zone_ptr(z);
+        ptr_t zone_ptr_plus1(z+1);
         int sbase = pts_ptr_acc.read(zone_ptr);
         int size = pts_ptr_acc.read(zone_ptr_plus1) - pts_ptr_acc.read(zone_ptr);
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
-            map_side2zone_[s] = z;
+            map_side2zone_by_gid[s] = z;
             ptr_t side_ptr(s);
-            map_side2pt1_[s] = zone_pts_acc.read(side_ptr);
+            map_side2pt1_by_gid[s] = zone_pts_acc.read(side_ptr);
         } // for n
     } // for z
 
 }
 
 
-void Mesh::initEdgeMappingArrays() {
+void LocalMesh::initEdgeMappingArrays() {
 
     vector<vector<int> > edgepp(num_pts_), edgepe(num_pts_);
 
@@ -224,7 +267,7 @@ void Mesh::initEdgeMappingArrays() {
 }
 
 
-void Mesh::populateChunks() {
+void LocalMesh::populateChunks() {
 
     if (chunk_size == 0) chunk_size = max(num_pts_, num_sides_);
 
@@ -268,7 +311,7 @@ void Mesh::populateChunks() {
 }
 
 
-void Mesh::populateInverseMap() {
+void LocalMesh::populateInverseMap() {
     map_pt2crn_first = AbstractedMemory::alloc<int>(num_pts_);
     map_crn2crn_next = AbstractedMemory::alloc<int>(num_sides_);
 
@@ -293,7 +336,7 @@ void Mesh::populateInverseMap() {
 }
 
 
-void Mesh::initParallel(
+void LocalMesh::initParallel(
         const vector<int>& slavemstrpes,
         const vector<int>& slavemstrcounts,
         const vector<int>& slavepoints,
@@ -335,7 +378,7 @@ void Mesh::initParallel(
 }
 
 
-void Mesh::writeMeshStats() {
+void LocalMesh::writeMeshStats() {
 
     int64_t gnump = num_pts_;
     // make sure that boundary points aren't double-counted;
@@ -375,15 +418,13 @@ void Mesh::writeMeshStats() {
 
 
 
-vector<int> Mesh::getXPlane(const double c) {
+vector<int> LocalMesh::getXPlane(const double c) {
 
     vector<int> mapbp;
     const double eps = 1.e-12;
 
-    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
     for (int p = 0; p < num_pts_; ++p) {
-    		ptr_t pt_ptr(p);
-    		if (fabs(pt_x_acc.read(pt_ptr).x - c) < eps) {
+    		if (fabs(pt_x[p].x - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -392,15 +433,13 @@ vector<int> Mesh::getXPlane(const double c) {
 }
 
 
-vector<int> Mesh::getYPlane(const double c) {
+vector<int> LocalMesh::getYPlane(const double c) {
 
     vector<int> mapbp;
     const double eps = 1.e-12;
 
-    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
     for (int p = 0; p < num_pts_; ++p) {
-		ptr_t pt_ptr(p);
-        if (fabs(pt_x_acc.read(pt_ptr).y - c) < eps) {
+        if (fabs(pt_x[p].y - c) < eps) {
             mapbp.push_back(p);
         }
     }
@@ -409,7 +448,7 @@ vector<int> Mesh::getYPlane(const double c) {
 }
 
 
-void Mesh::getPlaneChunks(
+void LocalMesh::getPlaneChunks(
         const int numb,
         const int* mapbp,
         vector<int>& pchbfirst,
@@ -432,20 +471,17 @@ void Mesh::getPlaneChunks(
 }
 
 
-void Mesh::calcCtrs(const int side_chunk, const bool pred) {
-    const Double2Accessor* px;
+void LocalMesh::calcCtrs(const int side_chunk, const bool pred) {
+    const double2* px;
     double2* ex;
     double2* zx;
 
-    Double2Accessor pt_x_acc = local_points.getRegionAccessor<double2>(FID_PX);
-    Double2Accessor pt_x_pred_acc = local_points.getRegionAccessor<double2>(FID_PXP);
-
     if (pred) {
-        px = &pt_x_pred_acc;
+        px = pt_x_pred;
         ex = edge_x_pred;
         zx = zone_x_pred;
     } else {
-        px = &pt_x_acc;
+        px = pt_x;
         ex = edge_x;
         zx = zone_x_;
     }
@@ -458,13 +494,11 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
-        ptr_t pt_ptr1(p1);
         int p2 = mapSideToPt2(s);
-        ptr_t pt_ptr2(p2);
         int e = map_side2edge_[s];
         int z = map_side2zone_[s];
-        ex[e] = 0.5 * (px->read(pt_ptr1) + px->read(pt_ptr2));
-        zx[z] += px->read(pt_ptr1);
+        ex[e] = 0.5 * (px[p1] + px[p2]);
+        zx[z] += px[p1];
     }
 
     for (int z = zfirst; z < zlast; ++z) {
@@ -474,26 +508,23 @@ void Mesh::calcCtrs(const int side_chunk, const bool pred) {
 }
 
 
-void Mesh::calcVols(const int side_chunk, const bool pred) {
-    const Double2Accessor* px;
+void LocalMesh::calcVols(const int side_chunk, const bool pred) {
+    const double2* px;
     const double2* zx;
     double* sarea;
     double* svol;
     double* zarea;
     double* zvol;
 
-    Double2Accessor pt_x_ = local_points.getRegionAccessor<double2>(FID_PX);
-    Double2Accessor pt_x_pred_ = local_points.getRegionAccessor<double2>(FID_PXP);
-
     if (pred) {
-        px = &pt_x_pred_;
+        px = pt_x_pred;
         zx = zone_x_pred;
         sarea = side_area_pred;
         svol = side_vol_pred;
         zarea = zone_area_pred;
         zvol = zone_vol_pred;
     } else {
-        px = &pt_x_;
+        px = pt_x;
         zx = zone_x_;
         sarea = side_area_;
         svol = side_vol_;
@@ -512,14 +543,12 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
     int count = 0;
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1_[s];
-        ptr_t pt_ptr1(p1);
         int p2 = mapSideToPt2(s);
-        ptr_t pt_ptr2(p2);
         int z = map_side2zone_[s];
 
         // compute side volumes, sum to zone
-        double sa = 0.5 * cross(px->read(pt_ptr2) - px->read(pt_ptr1), zx[z] - px->read(pt_ptr1));
-        double sv = third * sa * (px->read(pt_ptr1).x + px->read(pt_ptr2).x + zx[z].x);
+        double sa = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
+        double sv = third * sa * (px[p1].x + px[p2].x + zx[z].x);
         sarea[s] = sa;
         svol[s] = sv;
         zarea[z] += sa;
@@ -537,7 +566,7 @@ void Mesh::calcVols(const int side_chunk, const bool pred) {
 }
 
 
-void Mesh::checkBadSides() {
+void LocalMesh::checkBadSides() {
 
     // if there were negative side volumes, error exit
     if (num_bad_sides > 0) {
@@ -548,7 +577,7 @@ void Mesh::checkBadSides() {
 
 }
 
-void Mesh::calcSideMassFracs(const int side_chunk) {
+void LocalMesh::calcSideMassFracs(const int side_chunk) {
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
@@ -560,7 +589,7 @@ void Mesh::calcSideMassFracs(const int side_chunk) {
 }
 
 
-void Mesh::calcMedianMeshSurfVecs(const int side_chunk) {
+void LocalMesh::calcMedianMeshSurfVecs(const int side_chunk) {
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
@@ -576,23 +605,22 @@ void Mesh::calcMedianMeshSurfVecs(const int side_chunk) {
 }
 
 
-void Mesh::calcEdgeLen(const int side_chunk) {
+void LocalMesh::calcEdgeLen(const int side_chunk) {
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
-    Double2Accessor pt_x_pred_ = local_points.getRegionAccessor<double2>(FID_PXP);
 	for (int s = sfirst; s < slast; ++s) {
-        const ptr_t p1(map_side2pt1_[s]);
-        const ptr_t p2(mapSideToPt2(s));
+        const int p1 = map_side2pt1_[s];
+        const int p2 = mapSideToPt2(s);
         const int e = map_side2edge_[s];
 
-        edge_len[e] = length(pt_x_pred_.read(p2) - pt_x_pred_.read(p1));
+        edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
 
     }
 }
 
 
-void Mesh::calcCharacteristicLen(const int side_chunk) {
+void LocalMesh::calcCharacteristicLen(const int side_chunk) {
     int sfirst = side_chunks_first[side_chunk];
     int slast = side_chunks_last[side_chunk];
 
@@ -614,7 +642,7 @@ void Mesh::calcCharacteristicLen(const int side_chunk) {
 
 
 template <typename T>
-void Mesh::parallelGather(
+void LocalMesh::parallelGather(
         const T* pvar,
         T* prxvar) {
 #ifdef USE_MPI
@@ -670,7 +698,7 @@ void Mesh::parallelGather(
 
 
 template <typename T>
-void Mesh::parallelSum(
+void LocalMesh::parallelSum(
         T* pvar,
         T* prxvar) {
 #ifdef USE_MPI
@@ -691,7 +719,7 @@ void Mesh::parallelSum(
 
 
 template <typename T>
-void Mesh::parallelScatter(
+void LocalMesh::parallelScatter(
         T* pvar,
         const T* prxvar) {
 #ifdef USE_MPI
@@ -760,7 +788,7 @@ void Mesh::sumAcrossProcs(T* pvar) {
 */
 
 template <typename T>
-void Mesh::sumOnProc(
+void LocalMesh::sumOnProc(
         const T* cvar,
 	    RegionAccessor<AccessorType::Generic, T>& pvar) {
 
@@ -780,13 +808,13 @@ void Mesh::sumOnProc(
 }
 
 
-void Mesh::sumToPoints(
+void LocalMesh::sumToPoints(
         const double* corner_mass,
         const double2* corner_force) {
 
 
-    DoubleAccessor pt_weighted_mass_ = local_points.getRegionAccessor<double>(FID_PMASWT);
-    Double2Accessor pt_force_ = local_points.getRegionAccessor<double2>(FID_PF);
+    DoubleAccessor pt_weighted_mass_ = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
+    Double2Accessor pt_force_ = local_points_by_gid.getRegionAccessor<double2>(FID_PF);
     sumOnProc(corner_mass, pt_weighted_mass_);
     sumOnProc(corner_force, pt_force_);
 

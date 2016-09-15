@@ -19,7 +19,7 @@ using namespace std;
 
 
 HydroBC::HydroBC(
-        Mesh* msh,
+        LocalMesh* msh,
         const double2 v,
         const vector<int>& mbp)
     : mesh(msh), numb(mbp.size()), vfix(v) {

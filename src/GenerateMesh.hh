@@ -24,7 +24,7 @@
 class InputFile;
 
 
-class GenerateMesh {
+class GenerateLocalMesh {
 public:
 
     std::string meshtype_;       // generated mesh type
@@ -40,10 +40,13 @@ public:
     int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
                                 // global, in x and y directions
 
-    GenerateMesh(const InputParameters& params);
-    ~GenerateMesh();
+    GenerateLocalMesh(const InputParameters& params);
+    ~GenerateLocalMesh();
 
     void generate(
+            std::vector<double2>& pointpos,
+            std::vector<int>& zonestart,
+            std::vector<int>& zonepoints,
             std::vector<int>& slavemstrpes,
             std::vector<int>& slavemstrcounts,
             std::vector<int>& slavepoints,

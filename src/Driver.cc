@@ -49,7 +49,7 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
 	for (int color=0; color < ghost_pts.size(); ++color) {
 		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
-		region_requirements[4+color].flags |= NO_ACCESS_FLAG;
+		region_requirements[4+color].add_flags(NO_ACCESS_FLAG);
 		add_field(4+color/*idx*/, FID_GHOST_PF);
 		add_field(4+color/*idx*/, FID_GHOST_PMASWT);
 	}
@@ -170,7 +170,7 @@ Driver::Driver(const InputParameters& params,
 {
     DoubleAccessor zrp = local_zones.getRegionAccessor<double>(FID_ZRP);
 
-    mesh = new Mesh(params, space_zones, zone_points, points, zone_points_CRS, ghost_pts, ctx_, runtime_);
+    mesh = new LocalMesh(params, space_zones, zone_points, points, zone_points_CRS, ghost_pts, ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
           zone_pressure, zone_rho_pred, ctx_, runtime_);
 

@@ -23,7 +23,7 @@
 using namespace std;
 
 
-GenerateMesh::GenerateMesh(const InputParameters& input_params) :
+GenerateLocalMesh::GenerateLocalMesh(const InputParameters& input_params) :
 	meshtype_(input_params.meshtype_),
 	global_nzones_x_(input_params.directs_.nzones_x_),
 	global_nzones_y_(input_params.directs_.nzones_y_),
@@ -36,10 +36,13 @@ GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 }
 
 
-GenerateMesh::~GenerateMesh() {}
+GenerateLocalMesh::~GenerateLocalMesh() {}
 
 
-void GenerateMesh::generate(
+void GenerateLocalMesh::generate(
+        std::vector<double2>& pointpos,
+        std::vector<int>& zonestart,
+        std::vector<int>& zonepoints,
         std::vector<int>& slavemstrpes,
         std::vector<int>& slavemstrcounts,
         std::vector<int>& slavepoints,
@@ -47,9 +50,6 @@ void GenerateMesh::generate(
         std::vector<int>& masterslvcounts,
         std::vector<int>& masterpoints){
 
-    std::vector<double2> pointpos;
-    std::vector<int> zonestart;
-    std::vector<int> zonepoints;
 
 	// do calculations common to all mesh types
     zone_x_offset_ = proc_index_x_ * global_nzones_x_ / num_proc_x_;
@@ -82,7 +82,7 @@ void GenerateMesh::generate(
 }
 
 
-void GenerateMesh::generateRect(
+void GenerateLocalMesh::generateRect(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -208,7 +208,7 @@ void GenerateMesh::generateRect(
 }
 
 
-void GenerateMesh::generatePie(
+void GenerateLocalMesh::generatePie(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -369,7 +369,7 @@ void GenerateMesh::generatePie(
 }
 
 
-void GenerateMesh::generateHex(
+void GenerateLocalMesh::generateHex(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -566,7 +566,7 @@ void GenerateMesh::generateHex(
 }
 
 
-void GenerateMesh::calcPartitions() {
+void GenerateLocalMesh::calcPartitions() {
 
     // pick numpex, numpey such that PE blocks are as close to square
     // as possible
