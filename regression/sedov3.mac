@@ -1,0 +1,8 @@
+#!/bin/bash
+
+rm -rf ${HOME}/local/regression/pennant/sedov3  #${SLURM_JOB_ID}
+mkdir -p ${HOME}/local/regression/pennant/sedov3  #${SLURM_JOB_ID}
+cd ${HOME}/local/regression/pennant/sedov3  #${SLURM_JOB_ID}
+cp ${HOME}/github/PENNANT//pennant . 
+cp ${HOME}/github/PENNANT/test/sedov/sedov.pnt  . 
+GASNET_BACKTRACE=1  GASNET_MASTERIP='127.0.0.1' GASNET_SPAWN=-L SSH_SERVERS="localhost,localhost,localhost,localhost,localhost,localhost,localhost,localhost" /Users/jgraham/opt/gasnet/1.26.3/bin/amudprun -np 3 ./pennant 3 sedov.pnt -ll:cpu 3

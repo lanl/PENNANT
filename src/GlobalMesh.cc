@@ -92,9 +92,9 @@ void GlobalMesh::init()
 
 	// ghost communication
 	Coloring ghost_pts_map;
-	ghost_pts_map[0].points = std::set<ptr_t>(); // empty set
 
 	for (int color=0; color < inputParams.directs_.ntasks_; ++color) {
+	    ghost_pts_map[color].points = std::set<ptr_t>(); // empty set
 		std::vector<int> partners;
 		generate_mesh.sharePoints(color, &partners, &ghost_pts_map);
 		neighbors.push_back(partners);

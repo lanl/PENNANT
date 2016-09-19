@@ -1,4 +1,4 @@
-cstop   10
+cstop   160
 tstop   1.0
 meshtype rect
 meshparams 45 45 1.125 1.125
