@@ -144,10 +144,10 @@ public:
             const double2* corner_force);
 
     LogicalUnstructured local_points_by_gid;
+    ptr_t* point_local_to_globalID;
 
 private:
 
-    long long int* point_local_to_globalID;
 	LogicalUnstructured pt_x_init_by_gid;
 
 	// children

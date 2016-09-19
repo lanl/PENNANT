@@ -44,7 +44,7 @@ void HydroBC::applyFixedBC(
     #pragma ivdep
     for (int b = bfirst; b < blast; ++b) {
         int p = mapbp[b];
-        ptr_t pt_ptr(p);
+        ptr_t pt_ptr = mesh->point_local_to_globalID[p];
 
         pu[p] = project(pu[p], vfix);
         double2 old_pf = pf.read(pt_ptr);

@@ -62,41 +62,31 @@ LocalMesh::~LocalMesh() {
 void LocalMesh::init() {
 
     // generate mesh
-    std::vector<double2> nodepos;  // TODO pointpos
-    std::vector<int> cellstart;  // TODO zone_pts_CRS_val
-    std::vector<int> cellnodes;  // TODO zone_pts_CRS_ptr
+    std::vector<double2> point_position_initial;
+    std::vector<int> zone_points_pointer_calc;
+    std::vector<int> zone_points_values_calc;
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
-    generate_mesh->generate(nodepos, cellstart, cellnodes,
+    generate_mesh->generate(point_position_initial, zone_points_pointer_calc, zone_points_values_calc,
             slavemstrpes, slavemstrcounts, slavepoints,
             masterslvpes, masterslvcounts, masterpoints);
 
-    {
-		IndexIterator pt_itr = pt_x_init_by_gid.getIterator();
-		size_t npts;
-		pt_itr.next_span(npts);
-		num_pts_ = (int) npts;
-		assert(num_pts_ == nodepos.size());
-    }
-
-		num_sides_ = cellnodes.size();
-	    num_corners_ = num_sides_;
-
-		num_zones_ = cellstart.size() - 1;
+    num_pts_ = point_position_initial.size();
+    num_sides_ = zone_points_values_calc.size();
+    num_corners_ = num_sides_;
+    num_zones_ = zone_points_pointer_calc.size() - 1;
 
     // copy cell sizes to mesh
-
-    std::cout << "Task: " << my_PE << " zones: " << num_zones_ << std::endl;
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
-    copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
+    copy(zone_points_pointer_calc.begin(), zone_points_pointer_calc.end(), zone_pts_ptr_);
 
     // populate maps:
     // use the cell* arrays to populate the side maps
-    initSideMappingArrays(cellstart, cellnodes);
+    initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc);
 
     // release memory from cell* arrays
-    cellstart.resize(0);
-    cellnodes.resize(0);
+    zone_points_pointer_calc.resize(0);
+    zone_points_values_calc.resize(0);
 
     // now populate edge maps using side maps
     initEdgeMappingArrays();
@@ -145,15 +135,16 @@ void LocalMesh::init() {
 
     IndexIterator itr = pt_x_init_by_gid.getIterator();
     Double2Accessor x_init_acc = pt_x_init_by_gid.getRegionAccessor<double2>(FID_PX_INIT);
-    point_local_to_globalID = AbstractedMemory::alloc<long long int>(num_pts_);
+    point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts_);
     int i = 0;
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
         pt_x[i] = x_init_acc.read(pt_ptr);
-        assert(x_init_acc.read(pt_ptr) == nodepos[i]);
-        point_local_to_globalID[i] = pt_ptr.value;
+        assert(x_init_acc.read(pt_ptr) == point_position_initial[i]);
+        point_local_to_globalID[i] = pt_ptr;
         i++;
     }
+    assert(i == num_pts_);
 
     // do a few initial calculations
     #pragma omp parallel for schedule(static)
@@ -162,8 +153,9 @@ void LocalMesh::init() {
         int plast = pt_chunks_last[pch];
         // copy nodepos into px, distributed across threads
         for (int p = pfirst; p < plast; ++p)
-            pt_x[p] = nodepos[p];
+            pt_x[p] = point_position_initial[p];
     }
+    point_position_initial.resize(0);
 
     num_bad_sides = 0;
     for (int sch = 0; sch < num_side_chunks; ++sch) {
@@ -359,9 +351,9 @@ void LocalMesh::writeMeshStats() {
     Parallel::globalSum(gnumzch);
     Parallel::globalSum(gnumsch);
 
-    if (my_PE > 0) return;
+    // TODO if (my_PE > 0) return;
 
-    cout << "--- Mesh Information ---" << endl;
+    cout << "--- Mesh Information ---" << endl; // TODO must be global sum
     cout << "Points:  " << gnump << endl;
     cout << "Zones:  "  << gnumz << endl;
     cout << "Sides:  "  << gnums << endl;
@@ -755,7 +747,7 @@ void LocalMesh::sumOnProc(
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];
         for (int p = pfirst; p < plast; ++p) {
-        		ptr_t pt_ptr(p);
+        		ptr_t pt_ptr = point_local_to_globalID[p];
             T x = T();
             for (int c = map_pt2crn_first[p]; c >= 0; c = map_crn2crn_next[c]) {
                 x += cvar[c];

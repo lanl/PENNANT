@@ -168,7 +168,7 @@ public:
 
     void writeEnergyCheck();
 
-    void copyToLegion(
+    void copyZonesToLegion(
             DoubleAccessor* zone_rho,
             DoubleAccessor*  zone_energy_density,
             DoubleAccessor*  zone_pressure,

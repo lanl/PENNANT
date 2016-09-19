@@ -179,7 +179,6 @@ void Hydro::doCycle(
     const int num_side_chunks = mesh->num_side_chunks;
 
     // Begin hydro cycle
-    // TODO use pointer and copy back later
     Double2Accessor point_force = mesh->local_points_by_gid.getRegionAccessor<double2>(FID_PF);
     for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
         int pt_first = mesh->pt_chunks_first[pt_chunk];
@@ -238,7 +237,7 @@ void Hydro::doCycle(
         for (int i = 0; i < bcs.size(); ++i) {
             int bfirst = bcs[i]->pchbfirst[pch];
             int blast = bcs[i]->pchblast[pch];
-            bcs[i]->applyFixedBC(pt_vel0, point_force, bfirst, blast); // TODO double2*
+            bcs[i]->applyFixedBC(pt_vel0, point_force, bfirst, blast);
         }
 
         // 5. compute accelerations
@@ -355,7 +354,7 @@ void Hydro::calcAccel(
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {  // TODO pf and pmass use gid
-    		ptr_t pt_ptr(p);
+    		ptr_t pt_ptr = mesh->point_local_to_globalID[p];
         pa[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
     }
 
@@ -608,24 +607,20 @@ void Hydro::writeEnergyCheck() {
  }
 
 
-void Hydro::copyToLegion(
+void Hydro::copyZonesToLegion(
         DoubleAccessor* rho_acc,
         DoubleAccessor*  energy_density_acc,
         DoubleAccessor*  pressure_acc,
         IndexSpace ispace_zones)
 {
-    {
-        IndexIterator zone_itr(runtime_,ctx_, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
-        size_t nzones;
-        zone_itr.next_span(nzones);
-        assert((int) nzones == mesh->num_zones_);
-    }
-
     IndexIterator zone_itr(runtime_,ctx_, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
-    for (int z = 0; z < mesh->num_zones_; z++){
+    int z = 0;
+    while (zone_itr.has_next()) {
         ptr_t zone_ptr = zone_itr.next();
         rho_acc->write(zone_ptr, zone_rho_[z]);
         energy_density_acc->write(zone_ptr, zone_energy_density_[z]);
         pressure_acc->write(zone_ptr, zone_pressure_[z]);
+        z++;
     }
+    assert(z == mesh->num_zones_);
 }

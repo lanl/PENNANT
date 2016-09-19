@@ -208,7 +208,7 @@ RunStat Driver::run() {
     } // while cycle...
 
     // copy Hydro zone data to legion regions
-    hydro->copyToLegion(zone_rho, zone_energy_density, zone_pressure, ispace_zones);
+    hydro->copyZonesToLegion(zone_rho, zone_energy_density, zone_pressure, ispace_zones);
 
     if (mype_ == 0) {
 
