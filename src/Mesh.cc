@@ -26,10 +26,7 @@ using namespace std;
 
 
 LocalMesh::LocalMesh(const InputParameters& params,
-		LogicalUnstructured& ispace_zones,
-		LogicalUnstructured& sides,
 		LogicalUnstructured& points,
-		LogicalUnstructured& zone_pts_crs,
 		const PhysicalRegion& ghost_pts,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size(params.directs_.chunk_size_),
@@ -37,14 +34,11 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			subregion_xmax(params.directs_.subregion_xmax_),
 			subregion_ymin(params.directs_.subregion_ymin_),
 			subregion_ymax(params.directs_.subregion_ymax_),
-            zone_points_by_gid(sides),
             local_points_by_gid(ctx, rt, points.getISpace()),
             pt_x_init_by_gid(points),
-            zone_pts_ptr_CRS_by_gid(zone_pts_crs),
 			generate_mesh(NULL),
 			ctx(ctx),
 			runtime(rt),
-			zones_by_gid(ispace_zones),
 			ghost_points(ghost_pts),
 			num_subregions(params.directs_.ntasks_),
 			my_PE(params.directs_.task_id_)
@@ -83,33 +77,18 @@ void LocalMesh::init() {
 		pt_itr.next_span(npts);
 		num_pts_ = (int) npts;
 		assert(num_pts_ == nodepos.size());
-
-		IndexIterator side_itr = zone_points_by_gid.getIterator();
-		size_t nsides;
-		side_itr.next_span(nsides);
-		num_sides_ = (int) nsides;
-	    num_corners_ = num_sides_;
-	    assert(num_sides_ == cellnodes.size());
-
-		IndexIterator zone_itr = zones_by_gid.getIterator();
-		size_t nzones;
-		zone_itr.next_span(nzones);
-		num_zones_ = (int) nzones;
-		assert(num_zones_ == (cellstart.size() - 1));
     }
+
+		num_sides_ = cellnodes.size();
+	    num_corners_ = num_sides_;
+
+		num_zones_ = cellstart.size() - 1;
 
     // copy cell sizes to mesh
 
     std::cout << "Task: " << my_PE << " zones: " << num_zones_ << std::endl;
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
     copy(cellstart.begin(), cellstart.end(), zone_pts_ptr_);
-
-    zone_pts_ptr_by_gid = AbstractedMemory::alloc<int>(num_zones_+1);
-    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS_by_gid.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
-	for (int z=0; z < num_zones_+1; ++z) {
-    		ptr_t zone_ptr(z);
-    		zone_pts_ptr_by_gid[z] = pts_ptr_acc.read(zone_ptr);
-    }
 
     // populate maps:
     // use the cell* arrays to populate the side maps
@@ -216,26 +195,6 @@ void LocalMesh::initSideMappingArrays(
             map_side2pt1_[s] = cellnodes[s];
         } // for n
     } // for z
-
-    map_side2pt1_by_gid = AbstractedMemory::alloc<int>(num_sides_);
-    zone_pts_val_by_gid = map_side2pt1_by_gid;
-    map_side2zone_by_gid  = AbstractedMemory::alloc<int>(num_sides_);
-
-    IntAccessor zone_pts_acc = zone_points_by_gid.getRegionAccessor<int>(FID_ZONE_PTS);
-    IntAccessor pts_ptr_acc = zone_pts_ptr_CRS_by_gid.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
-    for (int z = 0; z < num_zones_; ++z) {
-        ptr_t zone_ptr(z);
-        ptr_t zone_ptr_plus1(z+1);
-        int sbase = pts_ptr_acc.read(zone_ptr);
-        int size = pts_ptr_acc.read(zone_ptr_plus1) - pts_ptr_acc.read(zone_ptr);
-        for (int n = 0; n < size; ++n) {
-            int s = sbase + n;
-            map_side2zone_by_gid[s] = z;
-            ptr_t side_ptr(s);
-            map_side2pt1_by_gid[s] = zone_pts_acc.read(side_ptr);
-        } // for n
-    } // for z
-
 }
 
 

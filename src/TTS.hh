@@ -14,7 +14,6 @@
 #define TTS_HH_
 
 #include "InputParameters.hh"
-#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -36,7 +35,7 @@ public:
 
 void calcForce(
         const double* zarea,
-        const DoubleAccessor* zr,
+        const double* zr,
         const double* zss,
         const double* sarea,
         const double* smf,

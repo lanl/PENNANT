@@ -27,12 +27,12 @@ using namespace std;
 
 DriverTask::DriverTask(LogicalRegion my_zones,
 		LogicalRegion all_zones,
-		LogicalRegion my_sides,
-		LogicalRegion all_sides,
+//		LogicalRegion my_sides,
+//		LogicalRegion all_sides,
 		LogicalRegion my_pts,
 		LogicalRegion all_pts,
-		LogicalRegion my_zone_pts_ptr,
-		LogicalRegion all_zone_pts_ptr,
+//		LogicalRegion my_zone_pts_ptr, // TODO Remove both from global mesh
+//		LogicalRegion all_zone_pts_ptr, // TODO Remove both from global mesh
 		std::vector<LogicalRegion> ghost_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
@@ -43,15 +43,15 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 	add_field(0/*idx*/, FID_ZP);
 	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
 	add_field(1/*idx*/, FID_PX_INIT);
-	add_region_requirement(RegionRequirement(my_sides, READ_ONLY, EXCLUSIVE, all_sides));
-	add_field(2/*idx*/, FID_ZONE_PTS);
-	add_region_requirement(RegionRequirement(my_zone_pts_ptr, READ_ONLY, EXCLUSIVE, all_zone_pts_ptr));
-	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
+//	add_region_requirement(RegionRequirement(my_sides, READ_ONLY, EXCLUSIVE, all_sides));
+//	add_field(2/*idx*/, FID_ZONE_PTS);
+//	add_region_requirement(RegionRequirement(my_zone_pts_ptr, READ_ONLY, EXCLUSIVE, all_zone_pts_ptr));
+//	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
 	for (int color=0; color < ghost_pts.size(); ++color) {
 		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
-		region_requirements[4+color].add_flags(NO_ACCESS_FLAG);
-		add_field(4+color/*idx*/, FID_GHOST_PF);
-		add_field(4+color/*idx*/, FID_GHOST_PMASWT);
+		region_requirements[2+color].add_flags(NO_ACCESS_FLAG);
+		add_field(2+color/*idx*/, FID_GHOST_PF);
+		add_field(2+color/*idx*/, FID_GHOST_PMASWT);
 	}
 }
 
@@ -62,23 +62,18 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() > 4);
-	assert(task->regions.size() > 4);
+	assert(regions.size() > 2);
+	assert(task->regions.size() > 2);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
-	assert(task->regions[2].privilege_fields.size() == 1);
-	assert(task->regions[3].privilege_fields.size() == 1);
-	assert(task->regions[4].privilege_fields.size() == 2);
+	assert(task->regions[2].privilege_fields.size() == 2);
 
 	// Legion Zones
 	LogicalUnstructured zones(ctx, runtime, regions[0]);
 
-    LogicalUnstructured local_zones(ctx, runtime, regions[0].get_logical_region().get_index_space());
-    local_zones.addField<double>(FID_ZRP);
-    local_zones.allocate();
-
 	// Legion cannot handle data structures with indirections in them
-    unsigned char *serialized_args = (unsigned char *) task->args;
+	// TODO hide this behing a static member function
+	unsigned char *serialized_args = (unsigned char *) task->args;
     SPMDArgs args;
 	size_t next_size = sizeof(SPMDArgs);
     memcpy((void*)(&args), (void*)serialized_args, next_size);
@@ -118,18 +113,14 @@ RunStat DriverTask::cpu_run(const Task *task,
 	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
     }
 
-    DoubleAccessor zone_rho_pred = local_zones.getRegionAccessor<double>(FID_ZRP);
-
     // For some reason Legion explodes if I do this in the Hydro object or use LogicalUnstructured
-    IndexSpace ispace_zones = zones.getISpace(); //regions[0].get_logical_region().get_index_space();
-    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR);//regions[0].get_field_accessor(FID_ZR).typeify<double>();
-    DoubleAccessor zone_energy_density = zones.getRegionAccessor<double>(FID_ZE);//regions[0].get_field_accessor(FID_ZE).typeify<double>();
-    DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);//regions[0].get_field_accessor(FID_ZP).typeify<double>();
+    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR); // TODO can I do this in driver object or combine objects?
+    DoubleAccessor zone_energy_density = zones.getRegionAccessor<double>(FID_ZE);
+    DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
-    		&ispace_zones, &zone_rho, &zone_energy_density, &zone_pressure, &zone_rho_pred,
-    		zones, local_zones,
-        regions[2], regions[1], regions[3], regions[4],
+    		&zone_rho, &zone_energy_density, &zone_pressure, zones,
+        regions[1], regions[2],
 		ctx, runtime);
 
     RunStat value=drv.run();
@@ -139,16 +130,11 @@ RunStat DriverTask::cpu_run(const Task *task,
 Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
-		IndexSpace* ispace_zones,
 		DoubleAccessor* zone_rho,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
-		DoubleAccessor* zone_rho_pred,
         LogicalUnstructured& global_comm_zones,
-        LogicalUnstructured& local_zones,
-		const PhysicalRegion& sides,
 		const PhysicalRegion& pts,
-		const PhysicalRegion& zone_pts_crs,
 		const PhysicalRegion& ghost_pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
@@ -164,16 +150,13 @@ Driver::Driver(const InputParameters& params,
 		  runtime_(rt),
 		  mype_(params.directs_.task_id_),
           points(ctx, rt, pts),
-          zone_points_CRS(ctx, rt, zone_pts_crs),
-          zone_points(ctx, rt, sides),
-          space_zones(ctx, rt, *ispace_zones)
+          zone_rho(zone_rho),
+          zone_energy_density(zone_energy_density),
+          zone_pressure(zone_pressure),
+          ispace_zones(global_comm_zones.getISpace())
 {
-    DoubleAccessor zrp = local_zones.getRegionAccessor<double>(FID_ZRP);
-
-    mesh = new LocalMesh(params, space_zones, zone_points, points, zone_points_CRS, ghost_pts, ctx_, runtime_);
-    hydro = new Hydro(params, mesh, add_reduction_, ispace_zones, zone_rho, zone_energy_density,
-          zone_pressure, zone_rho_pred, ctx_, runtime_);
-
+    mesh = new LocalMesh(params, points, ghost_pts, ctx_, runtime_);
+    hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);
 }
 
 RunStat Driver::run() {
@@ -223,6 +206,9 @@ RunStat Driver::run() {
         } // if mype_...
 
     } // while cycle...
+
+    // copy Hydro zone data to legion regions
+    hydro->copyToLegion(zone_rho, zone_energy_density, zone_pressure, ispace_zones);
 
     if (mype_ == 0) {
 

@@ -224,7 +224,7 @@ void QCS::setQCnForce(
     const LocalMesh* mesh = hydro->mesh;
 
     const double2* pu = hydro->pt_vel;
-    const DoubleAccessor* zrp = hydro->zone_rho_pred_;
+    const double* zrp = hydro->zone_rho_pred_;
     const double* zss = hydro->zone_sound_speed;
     const double* elen = mesh->edge_len;
 
@@ -246,8 +246,7 @@ void QCS::setQCnForce(
         double ztmp1 = q1 * zss[z];
         double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
         // Compute c0rmu for each corner
-        ptr_t zone_ptr(z);
-        double rmu = zkur * zrp->read(zone_ptr) * c0evol[c0];
+        double rmu = zkur * zrp[z] * c0evol[c0];
         c0rmu[c0] = ((c0div[c0] > 0.0) ? 0. : rmu);
 
     } // for c

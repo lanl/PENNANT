@@ -121,9 +121,9 @@ void Parallel::run(InputParameters input_params,
 		  }
 
 		  DriverTask driver_launcher(my_zones, global_mesh.zones.getLRegion(),
-				  my_sides, global_mesh.sides.getLRegion(),
+				  //my_sides, global_mesh.sides.getLRegion(),  // TODO Remove both from global mesh
 				  my_pts, global_mesh.points.getLRegion(),
-				  my_zone_pts_ptr, global_mesh.zonePointsCRS.getLRegion(),
+				  //my_zone_pts_ptr, global_mesh.zonePointsCRS.getLRegion(), // TODO Remove both from global mesh
 				  lregions_ghost,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);

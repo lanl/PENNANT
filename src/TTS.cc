@@ -32,7 +32,7 @@ TTS::~TTS() {}
 
 void TTS::calcForce(
         const double* zarea,
-        const DoubleAccessor* zr,
+        const double* zr,
         const double* zss,
         const double* sarea,
         const double* smf,
@@ -58,13 +58,12 @@ void TTS::calcForce(
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = mesh->map_side2zone_[s];
-        ptr_t zone_ptr(z);
 
         double svfacinv = zarea[z] / sarea[s];
-        double srho = zr->read(zone_ptr) * smf[s] * svfacinv;
+        double srho = zr[z] * smf[s] * svfacinv;
         double sstmp = max(zss[z], ssmin);
         sstmp = alfa * sstmp * sstmp;
-        double sdp = sstmp * (srho - zr->read(zone_ptr));
+        double sdp = sstmp * (srho - zr[z]);
         double2 sqq = -sdp * ssurfp[s];
         sf[s] = sqq;
 

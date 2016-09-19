@@ -30,10 +30,6 @@ public:
 			LogicalRegion all_zones,
 			LogicalRegion my_pts,
 			LogicalRegion all_pts,
-			LogicalRegion my_sides,
-			LogicalRegion all_sides,
-			LogicalRegion my_zone_pts_ptr,
-			LogicalRegion all_zone_pts_ptr,
 			std::vector<LogicalRegion> ghost_pts,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;
@@ -64,16 +60,11 @@ public:
     Driver(const InputParameters &params,
             DynamicCollective add_reduction,
             DynamicCollective min_reduction,
-            IndexSpace* ispace_zones,
             DoubleAccessor* zone_rho,
             DoubleAccessor* zone_energy_density,
             DoubleAccessor* zone_pressure,
-            DoubleAccessor* zone_rho_pred,
             LogicalUnstructured& global_comm_zones,
-            LogicalUnstructured& local_zones,
-            const PhysicalRegion& sides,
             const PhysicalRegion& pts,
-            const PhysicalRegion& zone_pts_crs,
             const PhysicalRegion& ghost_pts,
             Context ctx, HighLevelRuntime* rt);
 
@@ -90,9 +81,10 @@ private:
     HighLevelRuntime* runtime_;
     const int mype_;
     LogicalUnstructured points;
-    LogicalUnstructured zone_points_CRS;
-    LogicalUnstructured zone_points;
-    LogicalUnstructured space_zones;
+    DoubleAccessor* zone_rho;
+    DoubleAccessor* zone_energy_density;
+    DoubleAccessor* zone_pressure;
+    IndexSpace ispace_zones;
 };  // class Driver
 
 

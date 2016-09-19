@@ -29,10 +29,7 @@ class LocalMesh {
 public:
 
     LocalMesh(const InputParameters& params,
-		LogicalUnstructured& ispace_zones,
-    		LogicalUnstructured& sides,
    		LogicalUnstructured& pts,
-    		LogicalUnstructured& zone_pts_crs,
     		const PhysicalRegion &ghost_pts,
         Context ctx, HighLevelRuntime* rt);
     ~LocalMesh();
@@ -73,18 +70,14 @@ public:
     	return map_side2pt1_[mapSideToSideNext(s)];
     }
     int* map_side2zone_;        // map: side -> zone
-    int* map_side2zone_by_gid;        // map: side -> zone
     int* map_side2edge_;        // map: side -> edge
 
     inline int zoneNPts(const int &i) const
     {return zone_pts_ptr_[i+1] - zone_pts_ptr_[i];}        // number of points in zone
     int* map_side2pt1_;     // maps: side -> points 1 and 2
-    int* map_side2pt1_by_gid;     // maps: side -> points 1 and 2
     // Compressed Row Storage (CRS) of zone to points/sides mapping
     int* zone_pts_val_;     // := map_side2pt1_
     int* zone_pts_ptr_;
-    int* zone_pts_val_by_gid;     // := map_side2pt1_
-    int* zone_pts_ptr_by_gid;
 
     double2* zone_x_;       // zone center coordinates
     double2* edge_x_pred;      // edge ctr coords, middle of cycle
@@ -150,14 +143,12 @@ public:
             const double* corner_mass,
             const double2* corner_force);
 
-    LogicalUnstructured zone_points_by_gid;
     LogicalUnstructured local_points_by_gid;
 
 private:
 
     long long int* point_local_to_globalID;
 	LogicalUnstructured pt_x_init_by_gid;
-	LogicalUnstructured zone_pts_ptr_CRS_by_gid;
 
 	// children
     GenerateLocalMesh* generate_mesh;
@@ -188,7 +179,6 @@ private:
     Context ctx;
     HighLevelRuntime* runtime;
 
-    LogicalUnstructured zones_by_gid;
     const PhysicalRegion& ghost_points;
 
     const int num_subregions;

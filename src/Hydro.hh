@@ -34,11 +34,6 @@ public:
 
     Hydro(const InputParameters& params, LocalMesh* m,
     		DynamicCollective add_reduction,
-			IndexSpace* ispace_zones,
-			DoubleAccessor* zone_rho,
-			DoubleAccessor* zone_energy_density,
-			DoubleAccessor* zone_pressure,
-			DoubleAccessor* zone_rho_pred,
         Context ctx, HighLevelRuntime* rt);
     ~Hydro();
 
@@ -114,7 +109,7 @@ public:
 
     void calcRho(
             const double* zvol,
-            DoubleAccessor* zr,
+            double* zr,
             const int zfirst,
             const int zlast);
 
@@ -173,19 +168,20 @@ public:
 
     void writeEnergyCheck();
 
-	DoubleAccessor* zone_rho_;             // zone density // TODO make private
-    DoubleAccessor* zone_rho_pred_;        // zone density, middle of cycle
-	DoubleAccessor* zone_energy_density_;  // zone specific internal energy
+    void copyToLegion(
+            DoubleAccessor* zone_rho,
+            DoubleAccessor*  zone_energy_density,
+            DoubleAccessor*  zone_pressure,
+            IndexSpace ispace_zones);
+
+	double* zone_rho_;             // zone density // TODO make private
+    double* zone_rho_pred_;        // zone density, middle of cycle
+	double* zone_energy_density_;  // zone specific internal energy
     // (energy per unit mass)  // TODO make private
-	DoubleAccessor* zone_pressure_;        // zone pressure  // TODO make private
+	double* zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void allocateZoneFields();
-    void fillZoneAccessor(DoubleAccessor* acc, double value);
 
-    FieldSpace fspace_zones_;
-	LogicalRegion lregion_local_zones_;
-
-	IndexSpace* ispace_zones_;
     DynamicCollective add_reduction_;
     Context ctx_;
     HighLevelRuntime* runtime_;

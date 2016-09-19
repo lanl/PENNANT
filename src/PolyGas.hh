@@ -14,7 +14,6 @@
 #define POLYGAS_HH_
 
 #include "InputParameters.hh"
-#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
@@ -35,29 +34,29 @@ public:
     ~PolyGas();
 
     void calcStateAtHalf(
-            const DoubleAccessor* zr0,
+            const double* zr0,
             const double* zvolp,
             const double* zvol0,
-            const DoubleAccessor* ze,
+            const double* ze,
             const double* zwrate,
             const double* zm,
             const double dt,
-            DoubleAccessor* zp,
+            double* zp,
             double* zss,
             const int zfirst,
             const int zlast);
 
     void calcEOS(
-            const DoubleAccessor* zr,
-            const DoubleAccessor* ze,
-            DoubleAccessor* zp,
+            const double* zr,
+            const double* ze,
+            double* zp,
             double* z0per,
             double* zss,
             const int zfirst,
             const int zlast);
 
     void calcForce(
-            const DoubleAccessor* zp,
+            const double* zp,
             const double2* ssurfp,
             double2* sf,
             const int sfirst,
