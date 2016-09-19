@@ -30,7 +30,7 @@ public:
 
     LocalMesh(const InputParameters& params,
    		LogicalUnstructured& pts,
-    		const PhysicalRegion &ghost_pts,
+    		//const PhysicalRegion &ghost_pts,
         Context ctx, HighLevelRuntime* rt);
     ~LocalMesh();
 
@@ -179,7 +179,7 @@ private:
     Context ctx;
     HighLevelRuntime* runtime;
 
-    const PhysicalRegion& ghost_points;
+    //const PhysicalRegion& ghost_points;
 
     const int num_subregions;
     const int my_PE;

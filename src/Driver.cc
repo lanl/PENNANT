@@ -25,14 +25,11 @@
 
 using namespace std;
 
-DriverTask::DriverTask(LogicalRegion my_zones,
+DriverTask::DriverTask(int my_color,
+		LogicalRegion my_zones,
 		LogicalRegion all_zones,
-//		LogicalRegion my_sides,
-//		LogicalRegion all_sides,
 		LogicalRegion my_pts,
 		LogicalRegion all_pts,
-//		LogicalRegion my_zone_pts_ptr, // TODO Remove both from global mesh
-//		LogicalRegion all_zone_pts_ptr, // TODO Remove both from global mesh
 		std::vector<LogicalRegion> ghost_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
@@ -47,12 +44,13 @@ DriverTask::DriverTask(LogicalRegion my_zones,
 //	add_field(2/*idx*/, FID_ZONE_PTS);
 //	add_region_requirement(RegionRequirement(my_zone_pts_ptr, READ_ONLY, EXCLUSIVE, all_zone_pts_ptr));
 //	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
-	for (int color=0; color < ghost_pts.size(); ++color) {
+/*	for (int color=0; color < ghost_pts.size(); ++color) {
 		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
-		region_requirements[2+color].add_flags(NO_ACCESS_FLAG);
-		add_field(2+color/*idx*/, FID_GHOST_PF);
-		add_field(2+color/*idx*/, FID_GHOST_PMASWT);
-	}
+		if (color != my_color)
+			region_requirements[2+color].add_flags(NO_ACCESS_FLAG);
+		add_field(2+color, FID_GHOST_PF);
+		add_field(2+color, FID_GHOST_PMASWT);
+	}*/
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -62,11 +60,11 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() > 2);
-	assert(task->regions.size() > 2);
+	//assert(regions.size() > 2);
+	//assert(task->regions.size() > 2);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
-	assert(task->regions[2].privilege_fields.size() == 2);
+	//assert(task->regions[2].privilege_fields.size() == 2);
 
 	// Legion Zones
 	LogicalUnstructured zones(ctx, runtime, regions[0]);
@@ -120,7 +118,7 @@ RunStat DriverTask::cpu_run(const Task *task,
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
     		&zone_rho, &zone_energy_density, &zone_pressure, zones,
-        regions[1], regions[2],
+        regions[1], //regions[2],
 		ctx, runtime);
 
     RunStat value=drv.run();
@@ -135,7 +133,6 @@ Driver::Driver(const InputParameters& params,
 		DoubleAccessor* zone_pressure,
         LogicalUnstructured& global_comm_zones,
 		const PhysicalRegion& pts,
-		const PhysicalRegion& ghost_pts,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -155,7 +152,8 @@ Driver::Driver(const InputParameters& params,
           zone_pressure(zone_pressure),
           ispace_zones(global_comm_zones.getISpace())
 {
-    mesh = new LocalMesh(params, points, ghost_pts, ctx_, runtime_);
+    mesh = new LocalMesh(params, points, //ghost_pts,
+    		ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);
 }
 

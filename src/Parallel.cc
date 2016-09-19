@@ -107,12 +107,12 @@ void Parallel::run(InputParameters input_params,
 		  DomainPoint point(color);
 		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh.zones.getLPart(), color);
-		  LogicalRegion my_sides = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh.sides.getLPart(), color);
+		  // TODO Remove both from global mesh LogicalRegion my_sides = runtime->get_logical_subregion_by_color(ctx,
+		  // TODO Remove both from global mesh		  global_mesh.sides.getLPart(), color);
 		  LogicalRegion my_pts = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh.points.getLPart(), color);
-		  LogicalRegion my_zone_pts_ptr = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh.zonePointsCRS.getLPart(), color);
+		  // TODO Remove both from global meshLogicalRegion my_zone_pts_ptr = runtime->get_logical_subregion_by_color(ctx,
+		  // TODO Remove both from global mesh		  global_mesh.zonePointsCRS.getLPart(), color);
 		  std::vector<LogicalRegion> lregions_ghost;
 		  for (int i=0; i < global_mesh.neighbors[color].size(); i++) {
 			  lregions_ghost.push_back(global_mesh.lRegionsGhost[(global_mesh.neighbors[color])[i]]);
@@ -120,10 +120,8 @@ void Parallel::run(InputParameters input_params,
 			  args[color].neighbors_empty_.push_back(global_mesh.emptyBarriers[i]);
 		  }
 
-		  DriverTask driver_launcher(my_zones, global_mesh.zones.getLRegion(),
-				  //my_sides, global_mesh.sides.getLRegion(),  // TODO Remove both from global mesh
+		  DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
 				  my_pts, global_mesh.points.getLRegion(),
-				  //my_zone_pts_ptr, global_mesh.zonePointsCRS.getLRegion(), // TODO Remove both from global mesh
 				  lregions_ghost,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);

@@ -9,3 +9,6 @@ sbatch ./nohsmall
 sbatch ./sedov
 sbatch ./sedovsmall
 
+sbatch ./noh2
+sbatch ./sedov3
+sbatch ./nohpoly4

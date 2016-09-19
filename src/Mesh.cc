@@ -27,7 +27,7 @@ using namespace std;
 
 LocalMesh::LocalMesh(const InputParameters& params,
 		LogicalUnstructured& points,
-		const PhysicalRegion& ghost_pts,
+		//const PhysicalRegion& ghost_pts,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size(params.directs_.chunk_size_),
 			subregion_xmin(params.directs_.subregion_xmin_),
@@ -39,7 +39,7 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			generate_mesh(NULL),
 			ctx(ctx),
 			runtime(rt),
-			ghost_points(ghost_pts),
+			//ghost_points(ghost_pts),
 			num_subregions(params.directs_.ntasks_),
 			my_PE(params.directs_.task_id_)
 	{

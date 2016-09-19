@@ -26,7 +26,8 @@ class Hydro;
 
 class DriverTask : public TaskLauncher {
 public:
-	DriverTask(LogicalRegion my_zones,
+	DriverTask(int my_color,
+			LogicalRegion my_zones,
 			LogicalRegion all_zones,
 			LogicalRegion my_pts,
 			LogicalRegion all_pts,
@@ -65,7 +66,7 @@ public:
             DoubleAccessor* zone_pressure,
             LogicalUnstructured& global_comm_zones,
             const PhysicalRegion& pts,
-            const PhysicalRegion& ghost_pts,
+          //  const PhysicalRegion& ghost_pts,
             Context ctx, HighLevelRuntime* rt);
 
     RunStat run();

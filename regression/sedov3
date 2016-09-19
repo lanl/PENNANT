@@ -12,8 +12,8 @@ export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
 export GASNET_BACKTRACE=1  
 
 
-mkdir -p ${HOME}/local/regression/pennant/sedov  #${SLURM_JOB_ID}
-cd ${HOME}/local/regression/pennant/sedov  #${SLURM_JOB_ID}
+mkdir -p ${HOME}/local/regression/pennant/sedov3  #${SLURM_JOB_ID}
+cd ${HOME}/local/regression/pennant/sedov3  #${SLURM_JOB_ID}
 cp ${HOME}/gitlab/pennant-spmd//pennant . 
 cp ${HOME}/gitlab/pennant-spmd/test/sedov/sedov.pnt  . 
-/home/jgraham/opt/gasnet/1.24.0-hack/bin/gasnetrun_ibv -n 4 -spawner=mpi ./pennant 1 sedov.pnt -ll:cpu 1 -ll:dma 3 -ll:csize 10000
+/home/jgraham/opt/gasnet/1.24.0-hack/bin/gasnetrun_ibv -n 6 -spawner=mpi ./pennant 3 sedov.pnt -ll:cpu 3 -ll:dma 3

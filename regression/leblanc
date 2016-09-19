@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N1 --constraint="ib_fdr"
+#SBATCH -N1 --res=jgraham
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
 export GASNET_USE_XRC=0
