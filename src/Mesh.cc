@@ -134,13 +134,10 @@ void LocalMesh::init() {
     side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
 
     IndexIterator itr = pt_x_init_by_gid.getIterator();
-    Double2Accessor x_init_acc = pt_x_init_by_gid.getRegionAccessor<double2>(FID_PX_INIT);
     point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts_);
     int i = 0;
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
-        pt_x[i] = x_init_acc.read(pt_ptr);
-        assert(x_init_acc.read(pt_ptr) == point_position_initial[i]);
         point_local_to_globalID[i] = pt_ptr;
         i++;
     }

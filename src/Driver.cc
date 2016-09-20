@@ -39,11 +39,7 @@ DriverTask::DriverTask(int my_color,
 	add_field(0/*idx*/, FID_ZE);
 	add_field(0/*idx*/, FID_ZP);
 	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
-	add_field(1/*idx*/, FID_PX_INIT);
-//	add_region_requirement(RegionRequirement(my_sides, READ_ONLY, EXCLUSIVE, all_sides));
-//	add_field(2/*idx*/, FID_ZONE_PTS);
-//	add_region_requirement(RegionRequirement(my_zone_pts_ptr, READ_ONLY, EXCLUSIVE, all_zone_pts_ptr));
-//	add_field(3/*idx*/, FID_ZONE_PTS_PTR);
+	add_field(1/*idx*/, FID_GHOST_PF);  // TODO until real ghost regions give access to index space
 /*	for (int color=0; color < ghost_pts.size(); ++color) {
 		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
 		if (color != my_color)

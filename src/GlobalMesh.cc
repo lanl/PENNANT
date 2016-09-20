@@ -11,11 +11,9 @@
 
 
 GlobalMesh::GlobalMesh(const InputParameters &input_params, Context ctx, HighLevelRuntime *runtime) :
-	inputParams(input_params),
     zones(ctx, runtime),
-    sides(ctx, runtime),
     points(ctx, runtime),
-    zonePointsCRS(ctx, runtime),
+	inputParams(input_params),
 	ctx(ctx),
 	runtime(runtime)
 {
@@ -41,54 +39,17 @@ void GlobalMesh::init()
 	zones.addField<double>(FID_ZE);
 	zones.allocate(numZones);
 
-	// sides (and corners)
-	numSides = generate_mesh.numberOfSides();
-	sides.addField<int>(FID_ZONE_PTS);
-	sides.allocate(numSides);
-
 	// points
 	numPoints = generate_mesh.numberOfPoints();
-    points.addField<double2>(FID_PX_INIT);
+    points.addField<double2>(FID_GHOST_PF); // TODO until real ghost regions give access to index space
     points.allocate(numPoints);
-
-	// zone points compressed row storage
-	numZonePointsCRS = generate_mesh.numberOfZones() + 1;
-	zonePointsCRS.addField<int>(FID_ZONE_PTS_PTR);
-	zonePointsCRS.allocate(numZonePointsCRS);
-
-	// TODO move back to local SPMD mesh as much as we can
-    std::vector<double2> nodepos;
-    std::vector<int> cellstart, cellnodes;
-    generate_mesh.generate(nodepos, cellstart, cellnodes);
-
-    Double2Accessor pt_x = points.getRegionAccessor<double2>(FID_PX_INIT);
-    for (int p = 0; p < numPoints; ++p) {
-        ptr_t pt_ptr(p);
-        pt_x.write(pt_ptr, nodepos[p]);
-   }
-
-   IntAccessor zone_pts = sides.getRegionAccessor<int>(FID_ZONE_PTS);
-   for (int s = 0; s < numSides; ++s) {
-        	ptr_t side_ptr(s);
-        zone_pts.write(side_ptr, cellnodes[s]);
-    }
-
-    	IntAccessor zone_pts_ptr = zonePointsCRS.getRegionAccessor<int>(FID_ZONE_PTS_PTR);
-    	for (int z = 0; z < numZonePointsCRS; ++z) {
-        	ptr_t zone_ptr(z);
-        zone_pts_ptr.write(zone_ptr, cellstart[z]);
-    }
 
 	// partitions
     	Coloring zones_map;
-    	Coloring sides_map;
     	Coloring local_pts_map;
-    	Coloring CRS_map;
-	generate_mesh.colorPartitions(cellstart, &zones_map, &sides_map, &local_pts_map, &CRS_map);
+	generate_mesh.colorPartitions(&zones_map, &local_pts_map);
 	zones.partition(zones_map, true);
-	sides.partition(sides_map, true);
 	points.partition(local_pts_map, false);
-	zonePointsCRS.partition(CRS_map, false);
 
 	// ghost communication
 	Coloring ghost_pts_map;

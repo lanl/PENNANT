@@ -24,9 +24,7 @@ public:
 	std::vector<std::vector<int>> neighbors;
 
     LogicalUnstructured zones;
-    LogicalUnstructured sides;
     LogicalUnstructured points;
-    LogicalUnstructured zonePointsCRS;
 
 private:
 	void init();
@@ -36,9 +34,7 @@ private:
 
 	const InputParameters inputParams;
 	int numZones;
-	int numSides;
 	int numPoints;
-	int numZonePointsCRS;
 	Context ctx;
 	HighLevelRuntime *runtime;
 };

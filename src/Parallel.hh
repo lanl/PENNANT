@@ -30,17 +30,11 @@ using namespace LegionRuntime::Accessor;
 
 enum ZoneFields {
 	FID_ZR,
-	FID_ZRP,
 	FID_ZE,
 	FID_ZP,
 };
 
-enum SideAndCornerFields {
-	FID_ZONE_PTS,
-};
-
 enum PointFields {
-	FID_PX_INIT,
 	FID_PF,
 	FID_PMASWT,
 	FID_GHOST_PF,
