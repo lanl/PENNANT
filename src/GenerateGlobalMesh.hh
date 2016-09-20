@@ -8,9 +8,12 @@
 #ifndef SRC_GENERATEGLOBALMESH_HH_
 #define SRC_GENERATEGLOBALMESH_HH_
 
+
+#include "GenerateMesh.hh"
 #include "Parallel.hh"
 
-class GenerateGlobalMesh {
+
+class GenerateGlobalMesh : public GenerateMesh {
 public:
     GenerateGlobalMesh(const InputParameters& params);
     int numberOfZones() const;
@@ -25,16 +28,6 @@ public:
 			Coloring *shared_pts) const;
 
 private:
-    std::string meshtype_;                  // generated mesh type
-    int global_nzones_x_, global_nzones_y_; // global number of zones, in x and y
-                                            // directions
-    double len_x_, len_y_;                  // length of mesh sides, in x and y
-                                            // directions
-    int num_proc_x_, num_proc_y_;           // number of PEs to use, in x and y
-                                            // directions
-	const int num_subregions_;
-
-    void calcPartitions();
     void colorZones(Coloring *local_zones_map) const;
     void colorPartitionsRect(
     			Coloring *local_zones_map,

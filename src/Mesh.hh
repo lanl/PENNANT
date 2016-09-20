@@ -23,7 +23,7 @@
 
 // forward declarations
 class InputFile;
-class GenerateLocalMesh;
+class GenerateMesh;
 
 class LocalMesh {
 public:
@@ -151,7 +151,7 @@ private:
 	LogicalUnstructured pt_x_init_by_gid;
 
 	// children
-    GenerateLocalMesh* generate_mesh;
+    GenerateMesh* generate_mesh;
 
     // point-to-corner inverse map is stored as a linked list...
     int* map_pt2crn_first;   // map:  point -> first corner

@@ -44,7 +44,7 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			my_PE(params.directs_.task_id_)
 	{
 
-    generate_mesh = new GenerateLocalMesh(params);
+    generate_mesh = new GenerateMesh(params);
 
     local_points_by_gid.addField<double>(FID_PMASWT);
     local_points_by_gid.addField<double2>(FID_PF);

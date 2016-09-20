@@ -17,31 +17,15 @@
 #include <vector>
 
 #include "InputParameters.hh"
-#include "Parallel.hh"
 #include "Vec2.hh"
 
 // forward declarations
 class InputFile;
 
 
-class GenerateLocalMesh {
+class GenerateMesh {
 public:
-
-    std::string meshtype_;       // generated mesh type
-    int global_nzones_x_, global_nzones_y_;             // global number of zones, in x and y
-                                // directions
-    double len_x_, len_y_;          // length of mesh sides, in x and y
-                                // directions
-    int num_proc_x_, num_proc_y_;         // number of PEs to use, in x and y
-                                // directions
-    int proc_index_x_, proc_index_y_;           // my PE index, in x and y directions
-    int nzones_x_, nzones_y_;               // (local) number of zones, in x and y
-                                // directions
-    int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
-                                // global, in x and y directions
-
-    GenerateLocalMesh(const InputParameters& params);
-    ~GenerateLocalMesh();
+    GenerateMesh(const InputParameters& params);
 
     void generate(
             std::vector<double2>& pointpos,
@@ -54,6 +38,19 @@ public:
             std::vector<int>& masterslvcounts,
             std::vector<int>& masterpoints);
 
+protected:
+    std::string meshtype_;       // generated mesh type
+    int global_nzones_x_, global_nzones_y_;             // global number of zones, in x and y
+                                // directions
+    double len_x_, len_y_;          // length of mesh sides, in x and y
+                                // directions
+    int num_proc_x_, num_proc_y_;         // number of PEs to use, in x and y
+                                // directions
+    int proc_index_x_, proc_index_y_;           // my PE index, in x and y directions
+    int nzones_x_, nzones_y_;               // (local) number of zones, in x and y
+                                // directions
+    int zone_x_offset_, zone_y_offset_;     // offsets of local zone array into
+                                // global, in x and y directions
     void generateRect(
             std::vector<double2>& pointpos,
             std::vector<int>& zonestart,
@@ -90,7 +87,6 @@ public:
             std::vector<int>& masterslvcounts,
             std::vector<int>& masterpoints);
 
-private:
     void calcPartitions();
     const int num_subregions_;
     const int mype_;

@@ -18,12 +18,11 @@
 #include <algorithm>
 
 #include "Vec2.hh"
-#include "Parallel.hh"
 
 using namespace std;
 
 
-GenerateLocalMesh::GenerateLocalMesh(const InputParameters& input_params) :
+GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 	meshtype_(input_params.meshtype_),
 	global_nzones_x_(input_params.directs_.nzones_x_),
 	global_nzones_y_(input_params.directs_.nzones_y_),
@@ -36,10 +35,7 @@ GenerateLocalMesh::GenerateLocalMesh(const InputParameters& input_params) :
 }
 
 
-GenerateLocalMesh::~GenerateLocalMesh() {}
-
-
-void GenerateLocalMesh::generate(
+void GenerateMesh::generate(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonepoints,
@@ -75,14 +71,10 @@ void GenerateLocalMesh::generate(
                 masterslvpes, masterslvcounts, masterpoints);
 
     zonestart.push_back(zonestart.back()+zonesize.back());  // compressed row storage
-
-    //assert(point_position.size() == numberOfPoints());
-	//assert((zone_points_ptr.size() - 1) == numberOfZones());
-	//assert(zone_points_val.size() == numberOfSides());
 }
 
 
-void GenerateLocalMesh::generateRect(
+void GenerateMesh::generateRect(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -208,7 +200,7 @@ void GenerateLocalMesh::generateRect(
 }
 
 
-void GenerateLocalMesh::generatePie(
+void GenerateMesh::generatePie(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -369,7 +361,7 @@ void GenerateLocalMesh::generatePie(
 }
 
 
-void GenerateLocalMesh::generateHex(
+void GenerateMesh::generateHex(
         std::vector<double2>& pointpos,
         std::vector<int>& zonestart,
         std::vector<int>& zonesize,
@@ -566,7 +558,7 @@ void GenerateLocalMesh::generateHex(
 }
 
 
-void GenerateLocalMesh::calcPartitions() {
+void GenerateMesh::calcPartitions() {
 
     // pick numpex, numpey such that PE blocks are as close to square
     // as possible
