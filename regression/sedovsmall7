@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -N1 --res=jgraham
+
+module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
+
+export GASNET_USE_XRC=0
+export OMPI_MCA_mpi_paffinity_alone=0 
+export OMPI_MCA_rmaps_base_loadbalance=1
+export OMPI_MCA_btl="sm,openib,self"
+export OMPI_MCA_mpi_warn_on_fork=0
+export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
+export GASNET_BACKTRACE=1  
+
+
+mkdir -p ${HOME}/local/regression/pennant/sedovsmall7
+cd ${HOME}/local/regression/pennant/sedovsmall7
+cp ${HOME}/gitlab/pennant-spmd//pennant . 
+cp ${HOME}/gitlab/pennant-spmd/test/sedovsmall/sedovsmall.pnt  . 
+/home/jgraham/opt/gasnet/1.24.0-hack/bin/gasnetrun_ibv -n 7 ./pennant 7 sedovsmall.pnt -ll:cpu 7
