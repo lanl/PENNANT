@@ -139,7 +139,8 @@ void LocalMesh::init() {
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
         point_local_to_globalID[i] = pt_ptr;
-        i++;
+        assert(point_local_to_globalID[i].value == generate_mesh->pointLocalToGlobalID(i));  // TODO find fastest and use that, no assert
+        	i++;
     }
     assert(i == num_pts_);
 

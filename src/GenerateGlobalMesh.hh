@@ -22,7 +22,7 @@ public:
 	void colorPartitions(
 			Coloring *local_zones_map,
 			Coloring *local_pts_map) const;
-	void sharePoints(
+	void setupHalo(
 			int color,
 			std::vector<int>* neighbors,
 			Coloring *shared_pts) const;
@@ -38,15 +38,15 @@ private:
 	void colorPartitionsHex(
 			Coloring *local_zones_map,
 			Coloring *local_pts_map) const;
-	void sharePointsRect(
+	void setupHaloRect(
 			int color,
 			std::vector<int>* neighbors,
 			Coloring *shared_pts) const;
-	void sharePointsPie(
+	void setupHaloPie(
 			int color,
 			std::vector<int>* neighbors,
 			Coloring *shared_pts) const;
-	void sharePointsHex(
+	void setupHaloHex(
 			int color,
 			std::vector<int>* neighbors,
 			Coloring *shared_pts) const;
@@ -56,12 +56,6 @@ private:
     int numberOfCornersRect() const;
     int numberOfCornersPie() const;
     int numberOfCornersHex() const;
-
-    inline int y_start(int proc_index_y) const
-    { return proc_index_y * global_nzones_y_ / num_proc_y_; }
-
-    inline int x_start(int proc_index_x) const
-    { return proc_index_x * global_nzones_x_ / num_proc_x_; }
 
 };
 
