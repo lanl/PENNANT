@@ -57,7 +57,7 @@ void GlobalMesh::init()
 	for (int color=0; color < inputParams.directs_.ntasks_; ++color) {
 	    ghost_pts_map[color].points = std::set<ptr_t>(); // empty set
 		std::vector<int> partners;
-		generate_mesh.setupHalo(color, &partners, &ghost_pts_map);
+		generate_mesh.setupHaloCommunication(color, &partners, &ghost_pts_map);
 		neighbors.push_back(partners);
 		readyBarriers.push_back(runtime->create_phase_barrier(ctx, 1));
 		emptyBarriers.push_back(runtime->create_phase_barrier(ctx, partners.size() - 1));

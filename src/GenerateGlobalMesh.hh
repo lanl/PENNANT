@@ -16,40 +16,28 @@
 class GenerateGlobalMesh : public GenerateMesh {
 public:
     GenerateGlobalMesh(const InputParameters& params);
+    void setupHaloCommunication(
+            int color,
+            std::vector<int>* masters,
+            Coloring* halo_pts_map);
     int numberOfZones() const;
     int numberOfPoints() const;
     int numberOfSides() const;
 	void colorPartitions(
-			Coloring *local_zones_map,
-			Coloring *local_pts_map) const;
-	void setupHalo(
-			int color,
-			std::vector<int>* neighbors,
-			Coloring *shared_pts) const;
+			Coloring* local_zones_map,
+			Coloring* local_pts_map) const;
 
 private:
-    void colorZones(Coloring *local_zones_map) const;
+    void colorZones(Coloring* local_zones_map) const;
     void colorPartitionsRect(
-    			Coloring *local_zones_map,
-			Coloring *local_pts_map) const;
+    			Coloring* local_zones_map,
+			Coloring* local_pts_map) const;
 	void colorPartitionsPie(
-			Coloring *local_zones_map,
-			Coloring *local_pts_map) const;
+			Coloring* local_zones_map,
+			Coloring* local_pts_map) const;
 	void colorPartitionsHex(
-			Coloring *local_zones_map,
-			Coloring *local_pts_map) const;
-	void setupHaloRect(
-			int color,
-			std::vector<int>* neighbors,
-			Coloring *shared_pts) const;
-	void setupHaloPie(
-			int color,
-			std::vector<int>* neighbors,
-			Coloring *shared_pts) const;
-	void setupHaloHex(
-			int color,
-			std::vector<int>* neighbors,
-			Coloring *shared_pts) const;
+			Coloring* local_zones_map,
+			Coloring* local_pts_map) const;
     int numberOfPointsRect() const;
     int numberOfPointsPie() const;
     int numberOfPointsHex() const;

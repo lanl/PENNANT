@@ -60,7 +60,7 @@ protected:
     const int num_subregions;
     const int my_color;
 
-    void calcLocalConstants();
+    void calcLocalConstants(int color);
 
     void generateRect(
             std::vector<double2>& pointpos,

@@ -29,7 +29,7 @@ GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 	my_color(input_params.directs_.task_id_)
 {
     calcPartitions();
-	calcLocalConstants();
+	calcLocalConstants(my_color);
 
 }
 
@@ -569,15 +569,14 @@ void GenerateMesh::calcPartitions() {
     num_proc_x = (longside1 <= longside2 ? n1 : n2);
     num_proc_y = num_subregions / num_proc_x;
     if (swapflag) swap(num_proc_x, num_proc_y);
-    proc_index_x = my_color % num_proc_x;
-    proc_index_y = my_color / num_proc_x;
-
 }
 
 
-void GenerateMesh::calcLocalConstants()
+void GenerateMesh::calcLocalConstants(int color)
 {
-	// do calculations common to all mesh types
+    proc_index_x = color % num_proc_x;
+    proc_index_y = color / num_proc_x;
+
     zone_x_offset = proc_index_x * global_nzones_x / num_proc_x;
     const int zxstop = (proc_index_x + 1) * global_nzones_x / num_proc_x;
     nzones_x = zxstop - zone_x_offset;

@@ -63,16 +63,11 @@ void GenerateGlobalMesh::colorPartitions(
     		colorPartitionsHex(zone_map, pt_map);
 }
 
-void GenerateGlobalMesh::setupHalo(int color,
-		std::vector<int>* neighbors,
-		Coloring *shared_pts) const
+void GenerateGlobalMesh::setupHaloCommunication(int color,
+		std::vector<int>* masters,
+		Coloring* halo_pts_map)
 {
-    if (meshtype == "pie")
-    		setupHaloPie(color, neighbors, shared_pts);
-    else if (meshtype == "rect")
-		setupHaloRect(color, neighbors, shared_pts);
-    else if (meshtype == "hex")
-		setupHaloHex(color, neighbors, shared_pts);
+        calcLocalConstants(color);
 }
 
 
@@ -168,108 +163,6 @@ void GenerateGlobalMesh::colorPartitionsRect(
 	}
 }
 
-void GenerateGlobalMesh::setupHaloPie(int color,
-		std::vector<int>* neighbors,
-		Coloring *shared_pts_map) const
-{
-	neighbors->push_back(color);   // need access to own ghost region
-	const int proc_index_x = color % num_proc_x;
-	const int proc_index_y = color / num_proc_x;
-	const int zone_y_start = yStart(proc_index_y);
-	const int zone_y_stop = yStart(proc_index_y + 1);
-	const int zone_x_start = xStart(proc_index_x);
-	const int zone_x_stop = xStart(proc_index_x + 1);
-}
-
-void GenerateGlobalMesh::setupHaloHex(int color,
-		std::vector<int>* neighbors,
-		Coloring *shared_pts_map) const
-{
-	neighbors->push_back(color);   // need access to own ghost region
-	const int proc_index_x = color % num_proc_x;
-	const int proc_index_y = color / num_proc_x;
-	const int zone_y_start = yStart(proc_index_y);
-	const int zone_y_stop = yStart(proc_index_y + 1);
-	const int zone_x_start = xStart(proc_index_x);
-	const int zone_x_stop = xStart(proc_index_x + 1);
-}
-
-void GenerateGlobalMesh::setupHaloRect(int color,
-		std::vector<int>* neighbors,
-		Coloring *shared_pts_map) const
-{
-	neighbors->push_back(color);   // need access to own ghost region
-	const int proc_index_x = color % num_proc_x;
-	const int proc_index_y = color / num_proc_x;
-	const int zone_y_start = yStart(proc_index_y);
-	const int zone_y_stop = yStart(proc_index_y + 1);
-	const int zone_x_start = xStart(proc_index_x);
-	const int zone_x_stop = xStart(proc_index_x + 1);
-
-    const int local_origin = zone_y_start * (global_nzones_x + 1) + zone_x_start;
-
-    // enumerate slave points
-    // slave point with master at lower left
-    if (proc_index_x != 0 && proc_index_y != 0) {
-        int mstrpe = color - num_proc_x - 1;
-        int pt = local_origin;
-        (*shared_pts_map)[color].points.insert(pt);
-        neighbors->push_back(mstrpe);
-    }
-    // slave points with master below
-    if (proc_index_y != 0) {
-        int mstrpe = color - num_proc_x;
-        int p = local_origin;
-        for (int i = zone_x_start; i <= zone_x_stop; ++i) {
-            if (i == zone_x_start && proc_index_x != 0) { p++; continue; }
-            (*shared_pts_map)[color].points.insert(p);
-            p++;
-        }
-        neighbors->push_back(mstrpe);
-    }
-    // slave points with master to left
-    if (proc_index_x != 0) {
-        int mstrpe = color - 1;
-        int p = local_origin;
-        for (int j = zone_y_start; j <= zone_y_stop; ++j) {
-            if (j == zone_y_start && proc_index_y != 0) { p += global_nzones_x + 1; continue; }
-            (*shared_pts_map)[color].points.insert(p);
-            p += global_nzones_x + 1;
-        }
-        neighbors->push_back(mstrpe);
-    }
-
-    // enumerate master points
-    // master points with slave to right
-    if (proc_index_x != num_proc_x - 1) {
-        int slvpe = color + 1;
-        int p = zone_y_start * (global_nzones_x + 1) + zone_x_stop;
-        for (int j = zone_y_start; j <= zone_y_stop; ++j) {
-            if (j == zone_y_start && proc_index_y != 0) { p += global_nzones_x + 1; continue; }
-            (*shared_pts_map)[color].points.insert(p);
-            p += global_nzones_x + 1;
-        }
-        neighbors->push_back(slvpe);
-    }
-    // master points with slave above
-    if (proc_index_y != num_proc_y - 1) {
-        int slvpe = color + num_proc_x;
-        int p = zone_y_stop * (global_nzones_x + 1) + zone_x_start;
-        for (int i = zone_x_start; i <= zone_x_stop; ++i) {
-            if (i == zone_x_start && proc_index_x != 0) { p++; continue; }
-            (*shared_pts_map)[color].points.insert(p);
-            p++;
-        }
-        neighbors->push_back(slvpe);
-    }
-    // master point with slave at upper right
-    if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-        int slvpe = color + num_proc_x + 1;
-        int p = zone_y_stop * (global_nzones_x + 1) + zone_x_stop;
-        (*shared_pts_map)[color].points.insert(p);
-        neighbors->push_back(slvpe);
-    }
-}
 
 void GenerateGlobalMesh::colorZones(Coloring *zone_map) const
 {
