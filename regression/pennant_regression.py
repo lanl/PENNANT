@@ -45,8 +45,6 @@ def compare_values(base, regress):
             max_error = error
     return max_error
 
-base_file = "/home/jgraham/github/PENNANT/test/sedovsmall/sedovsmall.xy.std"
-regress_file = "/home/jgraham/local/regression/pennant/sedovsmall/sedovsmall.xy"
 
 parser = argparse.ArgumentParser()
 parser.add_argument('base_file', help='baseline .xy.std file')
