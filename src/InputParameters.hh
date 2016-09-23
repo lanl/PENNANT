@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-// Legion cannot handle data structures with indirections in them
 struct DirectInputParameters {
 	int ntasks_;
 	int task_id_;
@@ -48,9 +47,7 @@ struct DirectInputParameters {
 };
 
 struct InputParameters {
-	// Legion cannot handle data structures with indirections in them
-	DirectInputParameters directs_;
-    // Legion cannot handle data structures with indirections in them
+	DirectInputParameters directs_; // for serialization
     std::string meshtype_;          // generated mesh type
     std::vector<double> bcx_;       // x values of x-plane fixed boundaries
     std::vector<double> bcy_;       // y values of y-plane fixed boundaries

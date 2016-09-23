@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <numeric>
 #include <iostream>
+#include <string>
 
 #include "AddReductionOp.hh"
 #include "Driver.hh"
@@ -29,7 +30,6 @@ void Parallel::run(InputParameters input_params,
 		Context ctx, HighLevelRuntime *runtime)
 {
     GlobalMesh global_mesh(input_params, ctx, runtime);
-    std::vector<void*> serializer;
     MustEpochLauncher must_epoch_launcher;
     const int num_subregions_ = input_params.directs_.ntasks_;
 
@@ -66,14 +66,18 @@ void Parallel::run(InputParameters input_params,
 						   &max, sizeof(max));
 
 	  std::vector<SPMDArgs> args(num_subregions_);
-	  serializer.resize(num_subregions_);
+	  std::vector<SPMDArgsSerializer> args_seriliazed(num_subregions_);
 
 	  for (int color = 0; color < num_subregions_; color++) {
 		  args[color].pbarrier_as_master = global_mesh.phase_barriers[color];
-		  args[color].add_reduction_ = add_reduction;
-		  args[color].min_reduction_ = min_reduction;
-		  args[color].direct_input_params_ = input_params.directs_;
-		  args[color].direct_input_params_.task_id_ = color;
+		  args[color].add_reduction = add_reduction;
+		  args[color].min_reduction = min_reduction;
+		  args[color].direct_input_params = input_params.directs_;
+		  args[color].direct_input_params.task_id_ = color;
+          args[color].meshtype = input_params.meshtype_;
+          args[color].probname = input_params.probname_;
+          args[color].bcx = input_params.bcx_;
+          args[color].bcy = input_params.bcy_;
 
 		  std::vector<LogicalRegion> lregions_halos;
           lregions_halos.push_back(global_mesh.lregions_halo[color]);
@@ -87,34 +91,7 @@ void Parallel::run(InputParameters input_params,
               //args[color].masters_pbarriers.push_back(global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
           }
 
-          // Legion cannot handle data structures with indirections in them
-		  args[color].n_meshtype_ = input_params.meshtype_.length();
-		  args[color].n_probname_ = input_params.probname_.length();
-		  args[color].n_bcx_ = input_params.bcx_.size();
-		  args[color].n_bcy_ = input_params.bcy_.size();
-
-		  // Legion cannot handle data structures with indirections in them
-		  size_t size = sizeof(SPMDArgs) + (args[color].n_meshtype_ + args[color].n_probname_)
-				  * sizeof(char) + (args[color].n_bcx_+ args[color].n_bcy_) * sizeof(double);
-		  serializer[color] = malloc(size);
-		  unsigned char *next = (unsigned char*)(serializer[color]) ;
-		  memcpy((void*)next, (void*)(&(args[color])), sizeof(SPMDArgs));
-		  next += sizeof(SPMDArgs);
-
-		  size_t next_size = args[color].n_meshtype_ * sizeof(char);
-		  memcpy((void*)next, (void*)input_params.meshtype_.c_str(), next_size);
-		  next += next_size;
-
-		  next_size = args[color].n_probname_ * sizeof(char);
-		  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
-		  next += next_size;
-
-		  next_size = args[color].n_bcx_ * sizeof(double);
-		  memcpy((void*)next, (void*)&(input_params.bcx_[0]), next_size);
-		  next += next_size;
-
-		  next_size = args[color].n_bcy_ * sizeof(double);
-		  memcpy((void*)next, (void*)&(input_params.bcy_[0]), next_size);
+		  args_seriliazed[color].archive(&(args[color]));
 
 		  DomainPoint point(color);
 		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
@@ -125,7 +102,7 @@ void Parallel::run(InputParameters input_params,
 		  DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
 				  my_pts, global_mesh.points.getLRegion(),
 				  lregions_halos,
-				  serializer[color], size);
+				  args_seriliazed[color].getBitStream(), args_seriliazed[color].getBitStreamSize());
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }
 
@@ -134,31 +111,17 @@ void Parallel::run(InputParameters input_params,
 
 	  RunStat run_stat = fm.get_result<RunStat>(0);
 
-	  // Legion cannot handle data structures with indirections in them
-	  void* serial;
-	  size_t n_probname = input_params.probname_.length();
-	  size_t size = sizeof(RunStat) + sizeof(DirectInputParameters) + sizeof(size_t)
-			  + n_probname * sizeof(char);
-	  serial = malloc(size);
-	  unsigned char *next = (unsigned char*)(serial) ;
-	  memcpy((void*)next, (void*)(&run_stat), sizeof(RunStat));
-	  next += sizeof(RunStat);
+      SPMDArgs arg;
+      SPMDArgsSerializer serial;
+      arg.probname = input_params.probname_;
+      arg.direct_input_params = input_params.directs_;
+      serial.archive(&arg);
 
-	  size_t next_size = sizeof(DirectInputParameters);
-	  memcpy((void*)next, (void*)(&input_params.directs_), next_size);
-	  next += next_size;
-
-	  next_size = sizeof(size_t);
-	  memcpy((void*)next, (void*)(&n_probname), next_size);
-	  next += next_size;
-
-	  next_size = sizeof(char) * n_probname;
-	  memcpy((void*)next, (void*)input_params.probname_.c_str(), next_size);
-
-	  WriteTask write_launcher(global_mesh.zones.getLRegion(), serial, size);
+	  WriteTask write_launcher(global_mesh.zones.getLRegion(),
+              serial.getBitStream(), serial.getBitStreamSize());
       runtime->execute_task(ctx, write_launcher);
-
 }
+
 
 void Parallel::globalSum(int& x) {
     //if (num_subregions_ == 1)
@@ -315,6 +278,7 @@ Future Parallel::globalMin(TimeStep local_value,
   return ff2;
 }
 
+
 TimeStep Parallel::globalMinTask (const Task *task,
                   const std::vector<PhysicalRegion> &regions,
                   Context ctx, HighLevelRuntime *runtime)
@@ -323,3 +287,148 @@ TimeStep Parallel::globalMinTask (const Task *task,
 	return value;
 }
 
+
+template<class Type>
+static size_t archiveScalar(Type scalar, void* bit_stream)
+{
+    memcpy(bit_stream, (void*)(&scalar), sizeof(Type));
+    return sizeof(Type);
+}
+
+
+static size_t archiveString(std::string name, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t size_size = archiveScalar(name.length()+1, (void*)serialized);
+    serialized += size_size;
+
+    size_t string_size = name.length() * sizeof(char);
+    memcpy((void*)serialized, (void*)name.c_str(), string_size);
+    serialized += string_size;
+
+    size_t terminator_size = archiveScalar('\0', (void*)serialized);
+
+    return size_size + string_size + terminator_size;
+}
+
+template<class Type>
+static size_t archiveVector(std::vector<Type> vec, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t size_size = archiveScalar(vec.size(), (void*)serialized);
+    serialized += size_size;
+
+    size_t vec_size = vec.size() * sizeof(Type);
+    memcpy((void*)serialized, (void*)vec.data(), vec_size);
+
+    return size_size + vec_size;
+}
+
+void SPMDArgsSerializer::archive(SPMDArgs* args)
+{
+    assert(args != nullptr);
+    spmd_args = args;
+
+    bit_stream_size = 2 * sizeof(DynamicCollective) + sizeof(DirectInputParameters)
+            + sizeof(PhaseBarrier) + 4 * sizeof(size_t)
+            + (args->meshtype.length()  + 1 + args->probname.length() + 1) * sizeof(char)
+            + (args->bcx.size()+ args->bcy.size()) * sizeof(double);
+    bit_stream = malloc(bit_stream_size);
+    free_bit_stream = true;
+
+    unsigned char *serialized = (unsigned char*)(bit_stream);
+
+    size_t stream_size = 0;
+    stream_size += archiveScalar(args->add_reduction, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(args->min_reduction, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(args->direct_input_params, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(args->pbarrier_as_master, (void*)(serialized+stream_size));
+    stream_size += archiveString(args->meshtype, (void*)(serialized+stream_size));
+    stream_size += archiveString(args->probname, (void*)(serialized+stream_size));
+    stream_size += archiveVector(args->bcx, (void*)(serialized+stream_size));
+    stream_size += archiveVector(args->bcy, (void*)(serialized+stream_size));
+
+    assert(stream_size == bit_stream_size);
+}
+
+
+template<class Type>
+static size_t restoreScalar(Type* scalar, void* bit_stream)
+{
+    memcpy((void*)scalar, bit_stream, sizeof(Type));
+    return sizeof(Type);
+}
+
+
+static size_t restoreString(std::string* name, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t n_chars;
+    size_t size_size = restoreScalar(&n_chars, (void*)serialized);
+    serialized += size_size;
+
+    size_t string_size = n_chars * sizeof(char);
+    char *buffer = (char *)malloc(string_size);
+    memcpy((void *)buffer, (void *)serialized, string_size);
+    *name = std::string(buffer);
+
+    return size_size + string_size;
+}
+
+
+template<class Type>
+static size_t restoreVector(std::vector<Type>* vec, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t n_entries;
+    size_t size_size = restoreScalar(&n_entries, (void*)serialized);
+    serialized += size_size;
+
+    vec->resize(n_entries);
+    size_t vec_size = n_entries * sizeof(Type);
+    memcpy((void*)vec->data(), (void*)serialized, vec_size);
+
+    return size_size + vec_size;
+}
+
+
+void SPMDArgsSerializer::restore(SPMDArgs* args)
+{
+    assert(args != nullptr);
+    assert(bit_stream != nullptr);
+    spmd_args = args;
+
+    unsigned char *serialized_args = (unsigned char *) bit_stream;
+
+    bit_stream_size = 0;
+    bit_stream_size += restoreScalar(&(args->add_reduction), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(args->min_reduction), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(args->direct_input_params), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(args->pbarrier_as_master), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreString(&(args->meshtype), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreString(&(args->probname), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(args->bcx), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(args->bcy), (void*)(serialized_args + bit_stream_size));
+}
+
+
+void* SPMDArgsSerializer::getBitStream()
+{
+    return bit_stream;
+}
+
+
+size_t SPMDArgsSerializer::getBitStreamSize()
+{
+    return bit_stream_size;
+}
+
+
+void SPMDArgsSerializer::setBitStream(void* stream)
+{
+    bit_stream = stream;
+};

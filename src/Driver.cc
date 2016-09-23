@@ -65,54 +65,24 @@ RunStat DriverTask::cpu_run(const Task *task,
 	// Legion Zones
 	LogicalUnstructured zones(ctx, runtime, regions[0]);
 
-	// Legion cannot handle data structures with indirections in them
-	// TODO hide this behing a static member function
-	unsigned char *serialized_args = (unsigned char *) task->args;
     SPMDArgs args;
-	size_t next_size = sizeof(SPMDArgs);
-    memcpy((void*)(&args), (void*)serialized_args, next_size);
-	serialized_args += next_size;
+    SPMDArgsSerializer args_serializer;
+    args_serializer.setBitStream(task->args);
+    args_serializer.restore(&args);
 
     InputParameters params;
-    params.directs_ = args.direct_input_params_;
-
-    // Legion cannot handle data structures with indirections in them
-    {
-      next_size = args.n_meshtype_ * sizeof(char);
-	  char *buffer = (char *)malloc(next_size+1);
-	  memcpy((void *)buffer, (void *)serialized_args, next_size);
-	  buffer[next_size] = '\0';
-	  params.meshtype_ = string(buffer);
-	  free(buffer);
-	  serialized_args += next_size;
-    }
-    {
-	  next_size = args.n_probname_ * sizeof(char);
-	  char *buffer = (char *)malloc(next_size+1);
-	  memcpy((void *)buffer, (void *)serialized_args, next_size);
-	  buffer[next_size] = '\0';
-	  params.probname_ = string(buffer);
-	  free(buffer);
-	  serialized_args += next_size;
-    }
-    {
-	  params.bcx_.resize(args.n_bcx_);
-	  next_size = args.n_bcx_ * sizeof(double);
-	  memcpy((void *)&(params.bcx_[0]), (void *)serialized_args, next_size);
-	  serialized_args += next_size;
-    }
-    {
-	  params.bcy_.resize(args.n_bcy_);
-	  next_size = args.n_bcy_ * sizeof(double);
-	  memcpy((void *)&(params.bcy_[0]), (void *)serialized_args, next_size);
-    }
+    params.directs_ = args.direct_input_params;
+    params.meshtype_ = args.meshtype;
+    params.probname_ = args.probname;
+    params.bcx_ = args.bcx;
+	params.bcy_ = args.bcy;
 
     // For some reason Legion explodes if I do this in the Hydro object or use LogicalUnstructured
-    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR); // TODO can I do this in driver object or combine objects?
+    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR); // TODO can I do this in driver object?
     DoubleAccessor zone_energy_density = zones.getRegionAccessor<double>(FID_ZE);
     DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);
 
-    Driver drv(params, args.add_reduction_, args.min_reduction_,
+    Driver drv(params, args.add_reduction, args.min_reduction,
             args.pbarrier_as_master, //args.masters_pbarriers,
             &zone_rho, &zone_energy_density, &zone_pressure, zones,
             regions[1], //regions[2],
@@ -123,8 +93,8 @@ RunStat DriverTask::cpu_run(const Task *task,
 }
 
 Driver::Driver(const InputParameters& params,
-		DynamicCollective add_reduction,
-		DynamicCollective min_reduction,
+		DynamicCollective add_reduct,
+		DynamicCollective min_reduct,
         PhaseBarrier pbarrier_as_master,
         //std::vector<PhaseBarrier> masters_pbarriers,
 		DoubleAccessor* zone_rho,
@@ -140,8 +110,8 @@ Driver::Driver(const InputParameters& params,
 		  dtinit(params.directs_.dtinit_),
 		  dtfac(params.directs_.dtfac_),
 		  dtreport(params.directs_.dtreport_),
-		  add_reduction_(add_reduction),
-		  min_reduction_(min_reduction),
+		  add_reduction(add_reduct),
+		  min_reduction(min_reduct),
 		  ctx_(ctx),
 		  runtime_(rt),
 		  mype_(params.directs_.task_id_),
@@ -155,7 +125,7 @@ Driver::Driver(const InputParameters& params,
 
     mesh = new LocalMesh(params, points, //ghost_pts,
     		ctx_, runtime_);
-    hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);
+    hydro = new Hydro(params, mesh, add_reduction, ctx_, runtime_);
 }
 
 RunStat Driver::run() {
@@ -280,7 +250,7 @@ void Driver::calcGlobalDt() {
 	TimeStep recommend;
 	recommend.dt_ = dt;
 	snprintf(recommend.message_, 80, "%s", msgdt.c_str());
-	Future future_min = Parallel::globalMin(recommend, min_reduction_, runtime_, ctx_);
+	Future future_min = Parallel::globalMin(recommend, min_reduction, runtime_, ctx_);
 
 	TimeStep ts = future_min.get_result<TimeStep>();
 	dt = ts.dt_;

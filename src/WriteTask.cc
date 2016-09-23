@@ -40,46 +40,22 @@ void WriteTask::cpu_run(const Task *task,
 	DoubleAccessor zone_pressure = regions[0].get_field_accessor(FID_ZP).typeify<double>();
 	DoubleAccessor zone_rho = regions[0].get_field_accessor(FID_ZR).typeify<double>();
 
-	// Legion cannot handle data structures with indirections in them
-    unsigned char *serialized_args = (unsigned char *) task->args;
-    RunStat run_stat;
-	size_t next_size = sizeof(RunStat);
-    memcpy((void*)(&run_stat), (void*)serialized_args, next_size);
-	serialized_args += next_size;
-
-	next_size = sizeof(DirectInputParameters);
-	DirectInputParameters input_params;
-	memcpy((void*)(&input_params), (void*)serialized_args, next_size);
-	serialized_args += next_size;
-
-	next_size = sizeof(size_t);
-	size_t n_probname;
-	memcpy((void*)(&n_probname), (void*)serialized_args, next_size);
-	serialized_args += next_size;
-
-	string probname;
-    {
-	  next_size = n_probname * sizeof(char);
-	  char *buffer = (char *)malloc(next_size+1);
-	  memcpy((void *)buffer, (void *)serialized_args, next_size);
-	  buffer[next_size] = '\0';
-	  probname = std::string(buffer);
-	  free(buffer);
-	  serialized_args += next_size;
-    }
-
+    SPMDArgs args;
+    SPMDArgsSerializer args_serializer;
+    args_serializer.setBitStream(task->args);
+    args_serializer.restore(&args);
 
 	//ExportGold* egold_ = new ExportGold();
     WriteXY* wxy_ = new WriteXY();
 
-    if (input_params.write_xy_file_) {
+    if (args.direct_input_params.write_xy_file_) {
 		IndexIterator zr_itr(rt, ctx, ispace_zones);
 		IndexIterator ze_itr(rt, ctx, ispace_zones);
 		IndexIterator zp_itr(rt, ctx, ispace_zones);
         cout << "Writing .xy file..." << endl;
-        wxy_->write(probname, zone_rho, zone_energy_density, zone_pressure, zr_itr, ze_itr, zp_itr);
+        wxy_->write(args.probname, zone_rho, zone_energy_density, zone_pressure, zr_itr, ze_itr, zp_itr);
     }
-    if (input_params.write_gold_file_) {
+    if (args.direct_input_params.write_gold_file_) {
             cout << "Writing gold file..." << endl;
         //egold_->write(probname, cycle, time, zr, ze, zp, iterator);
     }

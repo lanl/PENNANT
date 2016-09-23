@@ -146,16 +146,32 @@ public:
 };  // class Parallel
 
 struct SPMDArgs {
-	DynamicCollective add_reduction_;
-	DynamicCollective min_reduction_;
-	DirectInputParameters direct_input_params_;
-    // Legion cannot handle data structures with indirections in them
-    int n_meshtype_;
-    int n_probname_;
-    int n_bcx_;
-    int n_bcy_;
+	DynamicCollective add_reduction;
+	DynamicCollective min_reduction;
+	DirectInputParameters direct_input_params;
+    std::string meshtype;
+    std::string probname;
+    std::vector<double> bcx;
+    std::vector<double> bcy;
 	PhaseBarrier pbarrier_as_master;
 	//std::vector<PhaseBarrier> masters_pbarriers;  // TODO Serialize?!
+};
+
+class SPMDArgsSerializer {
+public:
+    SPMDArgsSerializer() {spmd_args = nullptr; bit_stream = nullptr; bit_stream_size = 0; free_bit_stream = false;}
+    ~SPMDArgsSerializer() {if (free_bit_stream) free(bit_stream);}
+    void archive(SPMDArgs* spmd_args);
+    void* getBitStream();
+    size_t getBitStreamSize();
+
+    void restore(SPMDArgs* spmd_args);
+    void setBitStream(void* bit_stream);
+private:
+    SPMDArgs* spmd_args;
+    void* bit_stream;
+    size_t bit_stream_size;
+    bool free_bit_stream;
 };
 
 enum Variants {

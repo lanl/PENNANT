@@ -78,8 +78,8 @@ private:
     LocalMesh *mesh;
     Hydro *hydro;
 
-    DynamicCollective add_reduction_;
-    DynamicCollective min_reduction_;
+    DynamicCollective add_reduction;
+    DynamicCollective min_reduction;
     Context ctx_;
     HighLevelRuntime* runtime_;
     const int mype_;
