@@ -61,6 +61,8 @@ public:
     Driver(const InputParameters &params,
             DynamicCollective add_reduction,
             DynamicCollective min_reduction,
+            PhaseBarrier pbarrier_as_master,
+          //  std::vector<PhaseBarrier> masters_pbarriers,
             DoubleAccessor* zone_rho,
             DoubleAccessor* zone_energy_density,
             DoubleAccessor* zone_pressure,

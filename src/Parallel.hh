@@ -154,10 +154,8 @@ struct SPMDArgs {
     int n_probname_;
     int n_bcx_;
     int n_bcy_;
-	PhaseBarrier i_am_ready_;
-	PhaseBarrier i_am_empty_;
-	std::vector<PhaseBarrier> neighbors_ready_;  // TODO Serialize
-	std::vector<PhaseBarrier> neighbors_empty_;
+	PhaseBarrier pbarrier_as_master;
+	//std::vector<PhaseBarrier> masters_pbarriers;  // TODO Serialize?!
 };
 
 enum Variants {

@@ -63,11 +63,21 @@ void GenerateGlobalMesh::colorPartitions(
     		colorPartitionsHex(zone_map, pt_map);
 }
 
-void GenerateGlobalMesh::setupHaloCommunication(int color,
-		std::vector<int>* masters,
+void GenerateGlobalMesh::setupHaloCommunication(
+        int color,
+        std::vector<int>* master_colors,
+        std::vector<int>* slave_colors,
 		Coloring* halo_pts_map)
 {
         calcLocalConstants(color);
+
+        std::vector<int> slaved_points;
+        std::vector<int> slaved_points_counts;
+        std::vector<int> master_points;
+        std::vector<int> master_points_counts;
+std::cout << color << " call generate" << std::endl;
+        generateHaloPoints(*master_colors, slaved_points_counts, slaved_points,
+                *slave_colors, master_points_counts, master_points);
 }
 
 

@@ -69,13 +69,25 @@ void Parallel::run(InputParameters input_params,
 	  serializer.resize(num_subregions_);
 
 	  for (int color = 0; color < num_subregions_; color++) {
-		  args[color].i_am_ready_ = global_mesh.readyBarriers[color];
-		  args[color].i_am_empty_ = global_mesh.emptyBarriers[color];
+		  args[color].pbarrier_as_master = global_mesh.phase_barriers[color];
 		  args[color].add_reduction_ = add_reduction;
 		  args[color].min_reduction_ = min_reduction;
 		  args[color].direct_input_params_ = input_params.directs_;
 		  args[color].direct_input_params_.task_id_ = color;
-		  // Legion cannot handle data structures with indirections in them
+
+		  std::vector<LogicalRegion> lregions_halos;
+          lregions_halos.push_back(global_mesh.lregions_halo[color]);
+          for (int i=0; i < global_mesh.masters[color].size(); i++) {
+              std::cout << "color: " << color << " i: " << i
+                      << " size: " << global_mesh.masters[color].size()
+                      << " halo selec: " << (global_mesh.masters[color])[i]
+                      << " available: " << global_mesh.lregions_halo.size() << std::endl;
+
+              lregions_halos.push_back(global_mesh.lregions_halo[(global_mesh.masters[color])[i]]);
+              //args[color].masters_pbarriers.push_back(global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
+          }
+
+          // Legion cannot handle data structures with indirections in them
 		  args[color].n_meshtype_ = input_params.meshtype_.length();
 		  args[color].n_probname_ = input_params.probname_.length();
 		  args[color].n_bcx_ = input_params.bcx_.size();
@@ -107,22 +119,12 @@ void Parallel::run(InputParameters input_params,
 		  DomainPoint point(color);
 		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh.zones.getLPart(), color);
-		  // TODO Remove both from global mesh LogicalRegion my_sides = runtime->get_logical_subregion_by_color(ctx,
-		  // TODO Remove both from global mesh		  global_mesh.sides.getLPart(), color);
 		  LogicalRegion my_pts = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh.points.getLPart(), color);
-		  // TODO Remove both from global meshLogicalRegion my_zone_pts_ptr = runtime->get_logical_subregion_by_color(ctx,
-		  // TODO Remove both from global mesh		  global_mesh.zonePointsCRS.getLPart(), color);
-		  std::vector<LogicalRegion> lregions_ghost;
-		  for (int i=0; i < global_mesh.neighbors[color].size(); i++) {
-			  lregions_ghost.push_back(global_mesh.lRegionsGhost[(global_mesh.neighbors[color])[i]]);
-			  args[color].neighbors_ready_.push_back(global_mesh.readyBarriers[i]);
-			  args[color].neighbors_empty_.push_back(global_mesh.emptyBarriers[i]);
-		  }
 
 		  DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
 				  my_pts, global_mesh.points.getLRegion(),
-				  lregions_ghost,
+				  lregions_halos,
 				  serializer[color], size);
 		  must_epoch_launcher.add_single_task(point, driver_launcher);
 	  }

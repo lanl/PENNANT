@@ -19,6 +19,7 @@ public:
     void setupHaloCommunication(
             int color,
             std::vector<int>* masters,
+            std::vector<int>* slaves,
             Coloring* halo_pts_map);
     int numberOfZones() const;
     int numberOfPoints() const;

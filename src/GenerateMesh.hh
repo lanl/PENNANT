@@ -29,13 +29,15 @@ public:
     void generate(
             std::vector<double2>& pointpos,
             std::vector<int>& zonepoints_ptr_CRS,
-            std::vector<int>& zonepoints,
-            std::vector<int>& slavemstrpes,
-            std::vector<int>& slavemstrcounts,
-            std::vector<int>& slavepoints,
-            std::vector<int>& masterslvpes,
-            std::vector<int>& masterslvcounts,
-            std::vector<int>& masterpoints) const;
+            std::vector<int>& zonepoints) const;
+
+    void generateHaloPoints(
+            std::vector<int>& master_colors,
+            std::vector<int>& slaved_points_counts,
+            std::vector<int>& slaved_points,
+            std::vector<int>& slave_color,
+            std::vector<int>& master_points_counts,
+            std::vector<int>& master_points) const;
 
     long long int pointLocalToGlobalID(int p) const;
 
@@ -58,7 +60,7 @@ protected:
     int num_points_y;
 
     const int num_subregions;
-    const int my_color;
+    int my_color;
 
     void calcLocalConstants(int color);
 
@@ -66,37 +68,43 @@ protected:
             std::vector<double2>& pointpos,
             std::vector<int>& zonestart,
             std::vector<int>& zonesize,
-            std::vector<int>& zonepoints,
-            std::vector<int>& slavemstrpes,
-            std::vector<int>& slavemstrcounts,
-            std::vector<int>& slavepoints,
-            std::vector<int>& masterslvpes,
-            std::vector<int>& masterslvcounts,
-            std::vector<int>& masterpoints) const;
+            std::vector<int>& zonepoints) const;
 
     void generatePie(
             std::vector<double2>& pointpos,
             std::vector<int>& zonestart,
             std::vector<int>& zonesize,
-            std::vector<int>& zonepoints,
-            std::vector<int>& slavemstrpes,
-            std::vector<int>& slavemstrcounts,
-            std::vector<int>& slavepoints,
-            std::vector<int>& masterslvpes,
-            std::vector<int>& masterslvcounts,
-            std::vector<int>& masterpoints) const;
+            std::vector<int>& zonepoints) const;
 
     void generateHex(
             std::vector<double2>& pointpos,
             std::vector<int>& zonestart,
             std::vector<int>& zonesize,
-            std::vector<int>& zonepoints,
-            std::vector<int>& slavemstrpes,
-            std::vector<int>& slavemstrcounts,
-            std::vector<int>& slavepoints,
-            std::vector<int>& masterslvpes,
-            std::vector<int>& masterslvcounts,
-            std::vector<int>& masterpoints) const;
+            std::vector<int>& zonepoints) const;
+
+    void generateHaloPointsRect(
+            std::vector<int>& master_colors,
+            std::vector<int>& slaved_points_counts,
+            std::vector<int>& slaved_points,
+            std::vector<int>& slave_color,
+            std::vector<int>& master_points_counts,
+            std::vector<int>& master_points) const;
+
+    void generateHaloPointsPie(
+            std::vector<int>& master_colors,
+            std::vector<int>& slaved_points_counts,
+            std::vector<int>& slaved_points,
+            std::vector<int>& slave_color,
+            std::vector<int>& master_points_counts,
+            std::vector<int>& master_points) const;
+
+    void generateHaloPointsHex(
+            std::vector<int>& master_colors,
+            std::vector<int>& slaved_points_counts,
+            std::vector<int>& slaved_points,
+            std::vector<int>& slave_color,
+            std::vector<int>& master_points_counts,
+            std::vector<int>& master_points) const;
 
     long long int pointLocalToGlobalIDPie(int p) const;
 

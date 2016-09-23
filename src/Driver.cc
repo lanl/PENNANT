@@ -113,9 +113,10 @@ RunStat DriverTask::cpu_run(const Task *task,
     DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);
 
     Driver drv(params, args.add_reduction_, args.min_reduction_,
-    		&zone_rho, &zone_energy_density, &zone_pressure, zones,
-        regions[1], //regions[2],
-		ctx, runtime);
+            args.pbarrier_as_master, //args.masters_pbarriers,
+            &zone_rho, &zone_energy_density, &zone_pressure, zones,
+            regions[1], //regions[2],
+            ctx, runtime);
 
     RunStat value=drv.run();
     return value;
@@ -124,6 +125,8 @@ RunStat DriverTask::cpu_run(const Task *task,
 Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduction,
 		DynamicCollective min_reduction,
+        PhaseBarrier pbarrier_as_master,
+        //std::vector<PhaseBarrier> masters_pbarriers,
 		DoubleAccessor* zone_rho,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
@@ -148,6 +151,8 @@ Driver::Driver(const InputParameters& params,
           zone_pressure(zone_pressure),
           ispace_zones(global_comm_zones.getISpace())
 {
+    std::cout << mype_ << " driver " << pbarrier_as_master.get_barrier().id << std::endl;
+
     mesh = new LocalMesh(params, points, //ghost_pts,
     		ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction_, ctx_, runtime_);

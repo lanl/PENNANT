@@ -23,7 +23,9 @@ GlobalMesh::GlobalMesh(const InputParameters &input_params, Context ctx, HighLev
 
 GlobalMesh::~GlobalMesh()
 {
-    // TODO destroy phase barriers
+    for (unsigned idx = 0; idx < phase_barriers.size(); idx++)
+      runtime->destroy_phase_barrier(ctx, phase_barriers[idx]);
+    phase_barriers.clear();
 }
 
 
@@ -51,16 +53,16 @@ void GlobalMesh::init()
 	zones.partition(zones_map, true);
 	points.partition(local_pts_map, false);
 
-	// ghost communication
+	// halo communication
 	Coloring ghost_pts_map;
 
 	for (int color=0; color < inputParams.directs_.ntasks_; ++color) {
 	    ghost_pts_map[color].points = std::set<ptr_t>(); // empty set
-		std::vector<int> partners;
-		generate_mesh.setupHaloCommunication(color, &partners, &ghost_pts_map);
-		neighbors.push_back(partners);
-		readyBarriers.push_back(runtime->create_phase_barrier(ctx, 1));
-		emptyBarriers.push_back(runtime->create_phase_barrier(ctx, partners.size() - 1));
+		std::vector<int> master_colors, slave_colors;
+		generate_mesh.setupHaloCommunication(color, &master_colors, &slave_colors, &ghost_pts_map);
+		masters.push_back(master_colors);
+		phase_barriers.push_back(runtime->create_phase_barrier(ctx, 1 + slave_colors.size()));
+		std::cout << color << " create " << phase_barriers[color].get_barrier().id << std::endl;
 	}
 
 
@@ -80,7 +82,7 @@ void GlobalMesh::init()
 	    		fSpaceGhostPoints);
 		sprintf(buf, "lregion_ghost_pts %d", color);
 		runtime->attach_name(lregion_ghost_pts, buf);
-		lRegionsGhost.push_back(lregion_ghost_pts);
+		lregions_halo.push_back(lregion_ghost_pts);
 	}
 }
 

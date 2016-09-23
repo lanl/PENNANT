@@ -14,14 +14,13 @@
 
 class GlobalMesh {
 public:
-	GlobalMesh(const InputParameters &input_params,
-			Context ctx, HighLevelRuntime *runtime);
+	GlobalMesh(const InputParameters& input_params,
+			Context ctx, HighLevelRuntime* runtime);
 	virtual ~GlobalMesh();
 
-	std::vector<PhaseBarrier> readyBarriers;
-	std::vector<PhaseBarrier> emptyBarriers;
-	std::vector<LogicalRegion> lRegionsGhost;
-	std::vector<std::vector<int>> neighbors;
+	std::vector<PhaseBarrier> phase_barriers;
+	std::vector<LogicalRegion> lregions_halo;
+	std::vector<std::vector<int>> masters;
 
     LogicalUnstructured zones;
     LogicalUnstructured points;
@@ -36,7 +35,7 @@ private:
 	int numZones;
 	int numPoints;
 	Context ctx;
-	HighLevelRuntime *runtime;
+	HighLevelRuntime* runtime;
 };
 
 #endif /* GLOBALMESH_HH_ */

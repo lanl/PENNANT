@@ -14,6 +14,7 @@
 #include "GenerateMesh.hh"
 
 #include <cassert>
+#include <iostream>
 
 
 using namespace std;
@@ -37,30 +38,18 @@ GenerateMesh::GenerateMesh(const InputParameters& input_params) :
 void GenerateMesh::generate(
         vector<double2>& pointpos,
         vector<int>& zonepoints_ptr_CRS,
-        vector<int>& zonepoints,
-        vector<int>& slavemstrpes,
-        vector<int>& slavemstrcounts,
-        vector<int>& slavepoints,
-        vector<int>& masterslvpes,
-        vector<int>& masterslvcounts,
-        vector<int>& masterpoints) const {
+        vector<int>& zonepoints) const {
 
 
     // mesh type-specific calculations
     vector<int> zonesize;
     string allowable_mesh_type = "!@#$&!*()@#$";
     if (meshtype == "pie")
-        generatePie(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints,
-                slavemstrpes, slavemstrcounts, slavepoints,
-                masterslvpes, masterslvcounts, masterpoints);
+        generatePie(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints);
     else if (meshtype == "rect")
-        generateRect(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints,
-                slavemstrpes, slavemstrcounts, slavepoints,
-                masterslvpes, masterslvcounts, masterpoints);
+        generateRect(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints);
     else if (meshtype == "hex")
-        generateHex(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints,
-                slavemstrpes, slavemstrcounts, slavepoints,
-                masterslvpes, masterslvcounts, masterpoints);
+        generateHex(pointpos, zonepoints_ptr_CRS, zonesize, zonepoints);
     else
         assert(meshtype != allowable_mesh_type);
 
@@ -68,17 +57,44 @@ void GenerateMesh::generate(
 }
 
 
+void GenerateMesh::generateHaloPoints(
+        vector<int>& master_colors,
+        vector<int>& slaved_points_counts,
+        vector<int>& slaved_points,
+        vector<int>& slave_colors,
+        vector<int>& master_points_counts,
+        vector<int>& master_points) const {
+
+
+    // mesh type-specific calculations
+    vector<int> zonesize;
+    string allowable_mesh_type = "!@#$&!*()@#$";
+    if (meshtype == "pie")
+        generateHaloPointsPie(
+                master_colors, slaved_points_counts, slaved_points,
+                slave_colors, master_points_counts, master_points);
+    else if (meshtype == "rect")
+        generateHaloPointsRect(
+                master_colors, slaved_points_counts, slaved_points,
+                slave_colors, master_points_counts, master_points);
+    else if (meshtype == "hex")
+        generateHaloPointsHex(
+                master_colors, slaved_points_counts, slaved_points,
+                slave_colors, master_points_counts, master_points);
+    else
+        assert(meshtype != allowable_mesh_type);
+
+    for (int i=0; i<master_colors.size(); i++)
+        std::cout << "color: " << my_color << " i: " << i << " master: "
+        << master_colors[i] << std::endl;
+}
+
+
 void GenerateMesh::generateRect(
         vector<double2>& pointpos,
         vector<int>& zonestart,
         vector<int>& zonesize,
-        vector<int>& zonepoints,
-        vector<int>& slavemstrpes,
-        vector<int>& slavemstrcounts,
-        vector<int>& slavepoints,
-        vector<int>& masterslvpes,
-        vector<int>& masterslvcounts,
-        vector<int>& masterpoints) const {
+        vector<int>& zonepoints) const {
 
     const int np = num_points_x * num_points_y;
 
@@ -109,85 +125,6 @@ void GenerateMesh::generateRect(
             zonepoints.push_back(p0 + num_points_x);
        }
     }
-
-    if (num_subregions == 1) return;
-
-    // estimate sizes of slave/master arrays
-    slavepoints.reserve((proc_index_y != 0) * num_points_x + (proc_index_x != 0) * num_points_y);
-    masterpoints.reserve((proc_index_y != num_proc_y - 1) * num_points_x +
-            (proc_index_x != num_proc_x - 1) * num_points_y + 1);
-
-    // enumerate slave points
-    // slave point with master at lower left
-    if (proc_index_x != 0 && proc_index_y != 0) {
-        int mstrpe = my_color - num_proc_x - 1;
-        slavepoints.push_back(0);
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(1);
-    }
-    // slave points with master below
-    if (proc_index_y != 0) {
-        int mstrpe = my_color - num_proc_x;
-        int oldsize = slavepoints.size();
-        int p = 0;
-        for (int i = 0; i < num_points_x; ++i) {
-            if (i == 0 && proc_index_x != 0) { p++; continue; }
-            slavepoints.push_back(p);
-            p++;
-        }
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
-    }
-    // slave points with master to left
-    if (proc_index_x != 0) {
-        int mstrpe = my_color - 1;
-        int oldsize = slavepoints.size();
-        int p = 0;
-        for (int j = 0; j < num_points_y; ++j) {
-            if (j == 0 && proc_index_y != 0) { p += num_points_x; continue; }
-            slavepoints.push_back(p);
-            p += num_points_x;
-        }
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
-    }
-
-    // enumerate master points
-    // master points with slave to right
-    if (proc_index_x != num_proc_x - 1) {
-        int slvpe = my_color + 1;
-        int oldsize = masterpoints.size();
-        int p = num_points_x - 1;
-        for (int j = 0; j < num_points_y; ++j) {
-            if (j == 0 && proc_index_y != 0) { p += num_points_x; continue; }
-            masterpoints.push_back(p);
-            p += num_points_x;
-        }
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
-    }
-    // master points with slave above
-    if (proc_index_y != num_proc_y - 1) {
-        int slvpe = my_color + num_proc_x;
-        int oldsize = masterpoints.size();
-        int p = (num_points_y - 1) * num_points_x;
-        for (int i = 0; i < num_points_x; ++i) {
-            if (i == 0 && proc_index_x != 0) { p++; continue; }
-            masterpoints.push_back(p);
-            p++;
-        }
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
-    }
-    // master point with slave at upper right
-    if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-        int slvpe = my_color + num_proc_x + 1;
-        int p = num_points_x * num_points_y - 1;
-        masterpoints.push_back(p);
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(1);
-    }
-
 }
 
 
@@ -195,13 +132,7 @@ void GenerateMesh::generatePie(
         vector<double2>& pointpos,
         vector<int>& zonestart,
         vector<int>& zonesize,
-        vector<int>& zonepoints,
-        vector<int>& slavemstrpes,
-        vector<int>& slavemstrcounts,
-        vector<int>& slavepoints,
-        vector<int>& masterslvpes,
-        vector<int>& masterslvcounts,
-        vector<int>& masterpoints) const {
+        vector<int>& zonepoints) const {
 
     const int np = (proc_index_y == 0 ? num_points_x * (num_points_y - 1) + 1 : num_points_x * num_points_y);
 
@@ -245,107 +176,6 @@ void GenerateMesh::generatePie(
             zonepoints.push_back(p0 + num_points_x);
         }
     }
-
-    if (num_subregions == 1) return;
-
-    // estimate sizes of slave/master arrays
-    slavepoints.reserve((proc_index_y != 0) * num_points_x + (proc_index_x != 0) * num_points_y);
-    masterpoints.reserve((proc_index_y != num_proc_y - 1) * num_points_x +
-            (proc_index_x != num_proc_x - 1) * num_points_y + 1);
-
-    // enumerate slave points
-    // slave point with master at lower left
-    if (proc_index_x != 0 && proc_index_y != 0) {
-        int mstrpe = my_color - num_proc_x - 1;
-        slavepoints.push_back(0);
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(1);
-    }
-    // slave points with master below
-    if (proc_index_y != 0) {
-        int mstrpe = my_color - num_proc_x;
-        int oldsize = slavepoints.size();
-        int p = 0;
-        for (int i = 0; i < num_points_x; ++i) {
-            if (i == 0 && proc_index_x != 0) { p++; continue; }
-            slavepoints.push_back(p);
-            p++;
-        }
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
-    }
-    // slave points with master to left
-    if (proc_index_x != 0) {
-        int mstrpe = my_color - 1;
-        int oldsize = slavepoints.size();
-        if (proc_index_y == 0) {
-            slavepoints.push_back(0);
-            // special case:
-            // slave point at origin, master not to immediate left
-            if (proc_index_x > 1) {
-                slavemstrpes.push_back(0);
-                slavemstrcounts.push_back(1);
-                oldsize += 1;
-            }
-        }
-        int p = (proc_index_y > 0 ? num_points_x : 1);
-        for (int j = 1; j < num_points_y; ++j) {
-            slavepoints.push_back(p);
-            p += num_points_x;
-        }
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
-    }
-
-    // enumerate master points
-    // master points with slave to right
-    if (proc_index_x != num_proc_x - 1) {
-        int slvpe = my_color + 1;
-        int oldsize = masterpoints.size();
-        // special case:  origin as master for slave on PE 1
-        if (proc_index_x == 0 && proc_index_y == 0) {
-            masterpoints.push_back(0);
-        }
-        int p = (proc_index_y > 0 ? 2 * num_points_x - 1 : num_points_x);
-        for (int j = 1; j < num_points_y; ++j) {
-            masterpoints.push_back(p);
-            p += num_points_x;
-        }
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
-        // special case:  origin as master for slaves on PEs > 1
-        if (proc_index_x == 0 && proc_index_y == 0) {
-            for (int slvpe = 2; slvpe < num_proc_x; ++slvpe) {
-                masterpoints.push_back(0);
-                masterslvpes.push_back(slvpe);
-                masterslvcounts.push_back(1);
-            }
-        }
-    }
-    // master points with slave above
-    if (proc_index_y != num_proc_y - 1) {
-        int slvpe = my_color + num_proc_x;
-        int oldsize = masterpoints.size();
-        int p = (num_points_y - 1) * num_points_x;
-        if (proc_index_y == 0) p -= num_points_x - 1;
-        for (int i = 0; i < num_points_x; ++i) {
-            if (i == 0 && proc_index_x != 0) { p++; continue; }
-            masterpoints.push_back(p);
-            p++;
-        }
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
-    }
-    // master point with slave at upper right
-    if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-        int slvpe = my_color + num_proc_x + 1;
-        int p = num_points_x * num_points_y - 1;
-        if (proc_index_y == 0) p -= num_points_x - 1;
-        masterpoints.push_back(p);
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(1);
-    }
-
 }
 
 
@@ -353,13 +183,7 @@ void GenerateMesh::generateHex(
         vector<double2>& pointpos,
         vector<int>& zonestart,
         vector<int>& zonesize,
-        vector<int>& zonepoints,
-        vector<int>& slavemstrpes,
-        vector<int>& slavemstrcounts,
-        vector<int>& slavepoints,
-        vector<int>& masterslvpes,
-        vector<int>& masterslvcounts,
-        vector<int>& masterpoints) const {
+        vector<int>& zonepoints) const {
 
     // generate point coordinates
     pointpos.reserve(2 * num_points_x * num_points_y);  // upper bound
@@ -436,107 +260,341 @@ void GenerateMesh::generateHex(
             zonepoints.insert(zonepoints.end(), v.begin(), v.end());
         } // for i
     } // for j
+}
+
+
+void GenerateMesh::generateHaloPointsRect(
+        vector<int>& master_colors,
+        vector<int>& slaved_points_counts,
+        vector<int>& slaved_points,
+        vector<int>& slave_colors,
+        vector<int>& master_points_counts,
+        vector<int>& master_points) const {
+
+    const int np = num_points_x * num_points_y;
 
     if (num_subregions == 1) return;
 
+    // estimate sizes of slave/master arrays
+    slaved_points.reserve((proc_index_y != 0) * num_points_x + (proc_index_x != 0) * num_points_y);
+    master_points.reserve((proc_index_y != num_proc_y - 1) * num_points_x +
+            (proc_index_x != num_proc_x - 1) * num_points_y + 1);
+
+    // enumerate slave points
+    // slave point with master at lower left
+    if (proc_index_x != 0 && proc_index_y != 0) {
+        int mstrpe = my_color - num_proc_x - 1;
+        slaved_points.push_back(0);
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(1);
+    }
+    // slave points with master below
+    if (proc_index_y != 0) {
+        int mstrpe = my_color - num_proc_x;
+        int oldsize = slaved_points.size();
+        int p = 0;
+        for (int i = 0; i < num_points_x; ++i) {
+            if (i == 0 && proc_index_x != 0) { p++; continue; }
+            slaved_points.push_back(p);
+            p++;
+        }
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
+    }
+    // slave points with master to left
+    if (proc_index_x != 0) {
+        int mstrpe = my_color - 1;
+        int oldsize = slaved_points.size();
+        int p = 0;
+        for (int j = 0; j < num_points_y; ++j) {
+            if (j == 0 && proc_index_y != 0) { p += num_points_x; continue; }
+            slaved_points.push_back(p);
+            p += num_points_x;
+        }
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
+    }
+
+    // enumerate master points
+    // master points with slave to right
+    if (proc_index_x != num_proc_x - 1) {
+        int slvpe = my_color + 1;
+        int oldsize = master_points.size();
+        int p = num_points_x - 1;
+        for (int j = 0; j < num_points_y; ++j) {
+            if (j == 0 && proc_index_y != 0) { p += num_points_x; continue; }
+            master_points.push_back(p);
+            p += num_points_x;
+        }
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
+    }
+    // master points with slave above
+    if (proc_index_y != num_proc_y - 1) {
+        int slvpe = my_color + num_proc_x;
+        int oldsize = master_points.size();
+        int p = (num_points_y - 1) * num_points_x;
+        for (int i = 0; i < num_points_x; ++i) {
+            if (i == 0 && proc_index_x != 0) { p++; continue; }
+            master_points.push_back(p);
+            p++;
+        }
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
+    }
+    // master point with slave at upper right
+    if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
+        int slvpe = my_color + num_proc_x + 1;
+        int p = num_points_x * num_points_y - 1;
+        master_points.push_back(p);
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(1);
+    }
+
+}
+
+
+void GenerateMesh::generateHaloPointsPie(
+        vector<int>& master_colors,
+        vector<int>& slaved_points_counts,
+        vector<int>& slaved_points,
+        vector<int>& slave_colors,
+        vector<int>& master_points_counts,
+        vector<int>& master_points) const {
+
+    const int np = (proc_index_y == 0 ? num_points_x * (num_points_y - 1) + 1 : num_points_x * num_points_y);
+
+    if (num_subregions == 1) return;
+
+    // estimate sizes of slave/master arrays
+    slaved_points.reserve((proc_index_y != 0) * num_points_x + (proc_index_x != 0) * num_points_y);
+    master_points.reserve((proc_index_y != num_proc_y - 1) * num_points_x +
+            (proc_index_x != num_proc_x - 1) * num_points_y + 1);
+
+    // enumerate slave points
+    // slave point with master at lower left
+    if (proc_index_x != 0 && proc_index_y != 0) {
+        int mstrpe = my_color - num_proc_x - 1;
+        slaved_points.push_back(0);
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(1);
+    }
+    // slave points with master below
+    if (proc_index_y != 0) {
+        int mstrpe = my_color - num_proc_x;
+        int oldsize = slaved_points.size();
+        int p = 0;
+        for (int i = 0; i < num_points_x; ++i) {
+            if (i == 0 && proc_index_x != 0) { p++; continue; }
+            slaved_points.push_back(p);
+            p++;
+        }
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
+    }
+    // slave points with master to left
+    if (proc_index_x != 0) {
+        int mstrpe = my_color - 1;
+        int oldsize = slaved_points.size();
+        if (proc_index_y == 0) {
+            slaved_points.push_back(0);
+            // special case:
+            // slave point at origin, master not to immediate left
+            if (proc_index_x > 1) {
+                master_colors.push_back(0);
+                slaved_points_counts.push_back(1);
+                oldsize += 1;
+            }
+        }
+        int p = (proc_index_y > 0 ? num_points_x : 1);
+        for (int j = 1; j < num_points_y; ++j) {
+            slaved_points.push_back(p);
+            p += num_points_x;
+        }
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
+    }
+
+    // enumerate master points
+    // master points with slave to right
+    if (proc_index_x != num_proc_x - 1) {
+        int slvpe = my_color + 1;
+        int oldsize = master_points.size();
+        // special case:  origin as master for slave on PE 1
+        if (proc_index_x == 0 && proc_index_y == 0) {
+            master_points.push_back(0);
+        }
+        int p = (proc_index_y > 0 ? 2 * num_points_x - 1 : num_points_x);
+        for (int j = 1; j < num_points_y; ++j) {
+            master_points.push_back(p);
+            p += num_points_x;
+        }
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
+        // special case:  origin as master for slaves on PEs > 1
+        if (proc_index_x == 0 && proc_index_y == 0) {
+            for (int slvpe = 2; slvpe < num_proc_x; ++slvpe) {
+                master_points.push_back(0);
+                slave_colors.push_back(slvpe);
+                master_points_counts.push_back(1);
+            }
+        }
+    }
+    // master points with slave above
+    if (proc_index_y != num_proc_y - 1) {
+        int slvpe = my_color + num_proc_x;
+        int oldsize = master_points.size();
+        int p = (num_points_y - 1) * num_points_x;
+        if (proc_index_y == 0) p -= num_points_x - 1;
+        for (int i = 0; i < num_points_x; ++i) {
+            if (i == 0 && proc_index_x != 0) { p++; continue; }
+            master_points.push_back(p);
+            p++;
+        }
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
+    }
+    // master point with slave at upper right
+    if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
+        int slvpe = my_color + num_proc_x + 1;
+        int p = num_points_x * num_points_y - 1;
+        if (proc_index_y == 0) p -= num_points_x - 1;
+        master_points.push_back(p);
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(1);
+    }
+
+}
+
+
+void GenerateMesh::generateHaloPointsHex(
+        vector<int>& master_colors,
+        vector<int>& slaved_points_counts,
+        vector<int>& slaved_points,
+        vector<int>& slave_colors,
+        vector<int>& master_points_counts,
+        vector<int>& master_points) const
+{
+
+    if (num_subregions == 1) return;
+
+    int np = 0;
+    vector<int> pbase(num_points_y);
+    for (int j = 0; j < num_points_y; ++j) {
+        pbase[j] = np;
+        int gj = j + zone_y_offset;
+        for (int i = 0; i < num_points_x; ++i) {
+            int gi = i + zone_x_offset;
+            if (gi == 0 || gi == global_nzones_x || gj == 0 || gj == global_nzones_y)
+                np++;
+            else if (i == nzones_x && j == 0)
+                np++;
+            else if (i == 0 && j == nzones_y)
+                np++;
+            else {
+                np += 2;
+            }
+        } // for i
+    } // for j
+
     // estimate upper bounds for sizes of slave/master arrays
-    slavepoints.reserve((proc_index_y != 0) * 2 * num_points_x +
+    slaved_points.reserve((proc_index_y != 0) * 2 * num_points_x +
             (proc_index_x != 0) * 2 * num_points_y);
-    masterpoints.reserve((proc_index_y != num_proc_y - 1) * 2 * num_points_x +
+    master_points.reserve((proc_index_y != num_proc_y - 1) * 2 * num_points_x +
             (proc_index_x != num_proc_x - 1) * 2 * num_points_y + 2);
 
     // enumerate slave points
     // slave points with master at lower left
     if (proc_index_x != 0 && proc_index_y != 0) {
         int mstrpe = my_color - num_proc_x - 1;
-        slavepoints.push_back(0);
-        slavepoints.push_back(1);
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(2);
+        slaved_points.push_back(0);
+        slaved_points.push_back(1);
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(2);
     }
     // slave points with master below
     if (proc_index_y != 0) {
         int p = 0;
         int mstrpe = my_color - num_proc_x;
-        int oldsize = slavepoints.size();
+        int oldsize = slaved_points.size();
         for (int i = 0; i < num_points_x; ++i) {
             if (i == 0 && proc_index_x != 0) {
                 p += 2;
                 continue;
             }
             if (i == 0 || i == nzones_x)
-                slavepoints.push_back(p++);
+                slaved_points.push_back(p++);
             else {
-                slavepoints.push_back(p++);
-                slavepoints.push_back(p++);
+                slaved_points.push_back(p++);
+                slaved_points.push_back(p++);
             }
         }  // for i
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
     }  // if mypey != 0
     // slave points with master to left
     if (proc_index_x != 0) {
         int mstrpe = my_color - 1;
-        int oldsize = slavepoints.size();
+        int oldsize = slaved_points.size();
         for (int j = 0; j < num_points_y; ++j) {
             if (j == 0 && proc_index_y != 0) continue;
             int p = pbase[j];
             if (j == 0 || j == nzones_y)
-                slavepoints.push_back(p++);
+                slaved_points.push_back(p++);
             else {
-                slavepoints.push_back(p++);
-                slavepoints.push_back(p++);
+                slaved_points.push_back(p++);
+                slaved_points.push_back(p++);
            }
         }  // for j
-        slavemstrpes.push_back(mstrpe);
-        slavemstrcounts.push_back(slavepoints.size() - oldsize);
+        master_colors.push_back(mstrpe);
+        slaved_points_counts.push_back(slaved_points.size() - oldsize);
     }  // if mypex != 0
 
     // enumerate master points
     // master points with slave to right
     if (proc_index_x != num_proc_x - 1) {
         int slvpe = my_color + 1;
-        int oldsize = masterpoints.size();
+        int oldsize = master_points.size();
         for (int j = 0; j < num_points_y; ++j) {
             if (j == 0 && proc_index_y != 0) continue;
             int p = (j == nzones_y ? np : pbase[j+1]);
             if (j == 0 || j == nzones_y)
-                masterpoints.push_back(p-1);
+                master_points.push_back(p-1);
             else {
-                masterpoints.push_back(p-2);
-                masterpoints.push_back(p-1);
+                master_points.push_back(p-2);
+                master_points.push_back(p-1);
            }
         }
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
     }  // if mypex != numpex - 1
     // master points with slave above
     if (proc_index_y != num_proc_y - 1) {
         int p = pbase[nzones_y];
         int slvpe = my_color + num_proc_x;
-        int oldsize = masterpoints.size();
+        int oldsize = master_points.size();
         for (int i = 0; i < num_points_x; ++i) {
             if (i == 0 && proc_index_x != 0) {
                 p++;
                 continue;
             }
             if (i == 0 || i == nzones_x)
-                masterpoints.push_back(p++);
+                master_points.push_back(p++);
             else {
-                masterpoints.push_back(p++);
-                masterpoints.push_back(p++);
+                master_points.push_back(p++);
+                master_points.push_back(p++);
             }
         }  // for i
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(masterpoints.size() - oldsize);
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(master_points.size() - oldsize);
     }  // if mypey != numpey - 1
     // master points with slave at upper right
     if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
         int slvpe = my_color + num_proc_x + 1;
-        masterpoints.push_back(np-2);
-        masterpoints.push_back(np-1);
-        masterslvpes.push_back(slvpe);
-        masterslvcounts.push_back(2);
+        master_points.push_back(np-2);
+        master_points.push_back(np-1);
+        slave_colors.push_back(slvpe);
+        master_points_counts.push_back(2);
     }
 
 }
@@ -574,8 +632,9 @@ void GenerateMesh::calcPartitions() {
 
 void GenerateMesh::calcLocalConstants(int color)
 {
-    proc_index_x = color % num_proc_x;
-    proc_index_y = color / num_proc_x;
+    my_color = color;
+    proc_index_x = my_color % num_proc_x;
+    proc_index_y = my_color / num_proc_x;
 
     zone_x_offset = proc_index_x * global_nzones_x / num_proc_x;
     const int zxstop = (proc_index_x + 1) * global_nzones_x / num_proc_x;

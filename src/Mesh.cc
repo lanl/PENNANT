@@ -65,11 +65,13 @@ void LocalMesh::init() {
     std::vector<double2> point_position_initial;
     std::vector<int> zone_points_pointer_calc;
     std::vector<int> zone_points_values_calc;
-    vector<int> slavemstrpes, slavemstrcounts, slavepoints;
-    vector<int> masterslvpes, masterslvcounts, masterpoints;
-    generate_mesh->generate(point_position_initial, zone_points_pointer_calc, zone_points_values_calc,
-            slavemstrpes, slavemstrcounts, slavepoints,
-            masterslvpes, masterslvcounts, masterpoints);
+    vector<int> master_colors, slaved_points_counts, slaved_points;
+    vector<int> slave_colors, master_points_counts, master_points;
+    generate_mesh->generate(
+            point_position_initial, zone_points_pointer_calc, zone_points_values_calc);
+    generate_mesh->generateHaloPoints(
+            master_colors, slaved_points_counts, slaved_points,
+            slave_colors, master_points_counts, master_points);
 
     num_pts_ = point_position_initial.size();
     num_sides_ = zone_points_values_calc.size();
@@ -98,15 +100,15 @@ void LocalMesh::init() {
     populateInverseMap();
 
     // calculate parallel data structures
-    initParallel(slavemstrpes, slavemstrcounts, slavepoints,
-            masterslvpes, masterslvcounts, masterpoints);
+    initParallel(master_colors, slaved_points_counts, slaved_points,
+            slave_colors, master_points_counts, master_points);
     // release memory from parallel-related arrays
-    slavemstrpes.resize(0);
-    slavemstrcounts.resize(0);
-    slavepoints.resize(0);
-    masterslvpes.resize(0);
-    masterslvcounts.resize(0);
-    masterpoints.resize(0);
+    master_colors.resize(0);
+    slaved_points_counts.resize(0);
+    slaved_points.resize(0);
+    slave_colors.resize(0);
+    master_points_counts.resize(0);
+    master_points.resize(0);
 
     // write mesh statistics
     writeMeshStats();
