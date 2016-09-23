@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N1 --res=jgraham
+#SBATCH -N1 --cores-per-socket=10 --sockets-per-node=2 --constraint="haswell&ib_fdr"
 
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
