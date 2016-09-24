@@ -62,7 +62,7 @@ public:
             DynamicCollective add_reduction,
             DynamicCollective min_reduction,
             PhaseBarrier pbarrier_as_master,
-          //  std::vector<PhaseBarrier> masters_pbarriers,
+            std::vector<PhaseBarrier> masters_pbarriers,
             DoubleAccessor* zone_rho,
             DoubleAccessor* zone_energy_density,
             DoubleAccessor* zone_pressure,
@@ -82,7 +82,7 @@ private:
     DynamicCollective min_reduction;
     Context ctx_;
     HighLevelRuntime* runtime_;
-    const int mype_;
+    const int my_color;
     LogicalUnstructured points;
     DoubleAccessor* zone_rho;
     DoubleAccessor* zone_energy_density;

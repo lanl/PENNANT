@@ -83,7 +83,7 @@ RunStat DriverTask::cpu_run(const Task *task,
     DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);
 
     Driver drv(params, args.add_reduction, args.min_reduction,
-            args.pbarrier_as_master, //args.masters_pbarriers,
+            args.pbarrier_as_master, args.masters_pbarriers,
             &zone_rho, &zone_energy_density, &zone_pressure, zones,
             regions[1], //regions[2],
             ctx, runtime);
@@ -96,7 +96,7 @@ Driver::Driver(const InputParameters& params,
 		DynamicCollective add_reduct,
 		DynamicCollective min_reduct,
         PhaseBarrier pbarrier_as_master,
-        //std::vector<PhaseBarrier> masters_pbarriers,
+        std::vector<PhaseBarrier> masters_pbarriers,
 		DoubleAccessor* zone_rho,
 		DoubleAccessor* zone_energy_density,
 		DoubleAccessor* zone_pressure,
@@ -114,17 +114,16 @@ Driver::Driver(const InputParameters& params,
 		  min_reduction(min_reduct),
 		  ctx_(ctx),
 		  runtime_(rt),
-		  mype_(params.directs_.task_id_),
+		  my_color(params.directs_.task_id_),
           points(ctx, rt, pts),
           zone_rho(zone_rho),
           zone_energy_density(zone_energy_density),
           zone_pressure(zone_pressure),
           ispace_zones(global_comm_zones.getISpace())
 {
-    std::cout << mype_ << " driver " << pbarrier_as_master.get_barrier().id << std::endl;
-
     mesh = new LocalMesh(params, points, //ghost_pts,
-    		ctx_, runtime_);
+            pbarrier_as_master, masters_pbarriers,
+    		    ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction, ctx_, runtime_);
 }
 
@@ -136,7 +135,7 @@ RunStat Driver::run() {
     hydro->writeEnergyCheck();
 
     double tbegin, tlast;
-    if (mype_ == 0) {
+    if (my_color == 0) {
         // get starting timestamp
         struct timeval sbegin;
         gettimeofday(&sbegin, NULL);
@@ -157,7 +156,7 @@ RunStat Driver::run() {
 
         run_stat.time += dt;
 
-        if (mype_ == 0 &&
+        if (my_color == 0 &&
                 (run_stat.cycle == 1 || run_stat.cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
@@ -179,7 +178,7 @@ RunStat Driver::run() {
     // copy Hydro zone data to legion regions
     hydro->copyZonesToLegion(zone_rho, zone_energy_density, zone_pressure, ispace_zones);
 
-    if (mype_ == 0) {
+    if (my_color == 0) {
 
         // get stopping timestamp
         struct timeval send;

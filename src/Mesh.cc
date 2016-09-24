@@ -28,6 +28,8 @@ using namespace std;
 LocalMesh::LocalMesh(const InputParameters& params,
 		LogicalUnstructured& points,
 		//const PhysicalRegion& ghost_pts,
+        PhaseBarrier as_master,
+        std::vector<PhaseBarrier> masters,
 		Context ctx, HighLevelRuntime* rt) :
 			chunk_size(params.directs_.chunk_size_),
 			subregion_xmin(params.directs_.subregion_xmin_),
@@ -37,11 +39,13 @@ LocalMesh::LocalMesh(const InputParameters& params,
             local_points_by_gid(ctx, rt, points.getISpace()),
             pt_x_init_by_gid(points),
 			generate_mesh(NULL),
+	        pbarrier_as_master(as_master),
+	        masters_pbarriers(masters),
 			ctx(ctx),
 			runtime(rt),
 			//ghost_points(ghost_pts),
 			num_subregions(params.directs_.ntasks_),
-			my_PE(params.directs_.task_id_)
+			my_color(params.directs_.task_id_)
 	{
 
     generate_mesh = new GenerateMesh(params);
@@ -60,29 +64,20 @@ LocalMesh::~LocalMesh() {
 
 
 void LocalMesh::init() {
-
-    // generate mesh
     std::vector<double2> point_position_initial;
     std::vector<int> zone_points_pointer_calc;
     std::vector<int> zone_points_values_calc;
-    vector<int> master_colors, slaved_points_counts, slaved_points;
-    vector<int> slave_colors, master_points_counts, master_points;
     generate_mesh->generate(
             point_position_initial, zone_points_pointer_calc, zone_points_values_calc);
-    generate_mesh->generateHaloPoints(
-            master_colors, slaved_points_counts, slaved_points,
-            slave_colors, master_points_counts, master_points);
 
     num_pts_ = point_position_initial.size();
     num_sides_ = zone_points_values_calc.size();
     num_corners_ = num_sides_;
     num_zones_ = zone_points_pointer_calc.size() - 1;
 
-    // copy cell sizes to mesh
     zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
     copy(zone_points_pointer_calc.begin(), zone_points_pointer_calc.end(), zone_pts_ptr_);
 
-    // populate maps:
     // use the cell* arrays to populate the side maps
     initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc);
 
@@ -90,30 +85,16 @@ void LocalMesh::init() {
     zone_points_pointer_calc.resize(0);
     zone_points_values_calc.resize(0);
 
-    // now populate edge maps using side maps
     initEdgeMappingArrays();
 
-    // populate chunk information
     populateChunks();
 
-    // create inverse map for corner-to-point gathers
-    populateInverseMap();
+    populateInverseMap();   // for corner-to-point gathers
 
-    // calculate parallel data structures
-    initParallel(master_colors, slaved_points_counts, slaved_points,
-            slave_colors, master_points_counts, master_points);
-    // release memory from parallel-related arrays
-    master_colors.resize(0);
-    slaved_points_counts.resize(0);
-    slaved_points.resize(0);
-    slave_colors.resize(0);
-    master_points_counts.resize(0);
-    master_points.resize(0);
+    initParallel();
 
-    // write mesh statistics
     writeMeshStats();
 
-    // allocate remaining arrays
     edge_x = AbstractedMemory::alloc<double2>(num_edges_);
     zone_x_ = AbstractedMemory::alloc<double2>(num_zones_);
     pt_x0 = AbstractedMemory::alloc<double2>(num_pts_);
@@ -146,12 +127,10 @@ void LocalMesh::init() {
     }
     assert(i == num_pts_);
 
-    // do a few initial calculations
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
         int pfirst = pt_chunks_first[pch];
         int plast = pt_chunks_last[pch];
-        // copy nodepos into px, distributed across threads
         for (int p = pfirst; p < plast; ++p)
             pt_x[p] = point_position_initial[p];
     }
@@ -159,8 +138,6 @@ void LocalMesh::init() {
 
     num_bad_sides = 0;
     for (int sch = 0; sch < num_side_chunks; ++sch) {
-        //int sfirst = side_chunks_first[sch];
-        //int slast = side_chunks_last[sch];
         calcCtrs(sch, false);
         calcVols(sch, false);
         calcSideMassFracs(sch);
@@ -287,45 +264,22 @@ void LocalMesh::populateInverseMap() {
 }
 
 
-void LocalMesh::initParallel(
-        const vector<int>& slavemstrpes,
-        const vector<int>& slavemstrcounts,
-        const vector<int>& slavepoints,
-        const vector<int>& masterslvpes,
-        const vector<int>& masterslvcounts,
-        const vector<int>& masterpoints) {
+void LocalMesh::initParallel() {
     if (num_subregions == 1) return;
 
-    num_mesg_send2master = slavemstrpes.size();
-    map_master_pe2globale_pe = AbstractedMemory::alloc<int>(num_mesg_send2master);
-    copy(slavemstrpes.begin(), slavemstrpes.end(), map_master_pe2globale_pe);
-    master_pe_num_slaves = AbstractedMemory::alloc<int>(num_mesg_send2master);
-    copy(slavemstrcounts.begin(), slavemstrcounts.end(), master_pe_num_slaves);
-    map_master_pe2slave1 = AbstractedMemory::alloc<int>(num_mesg_send2master);
-    int count = 0;
-    for (int mstrpe = 0; mstrpe < num_mesg_send2master; ++mstrpe) {
-        map_master_pe2slave1[mstrpe] = count;
-        count += master_pe_num_slaves[mstrpe];
-    }
-    num_slaves = slavepoints.size();
-    map_slave2pt = AbstractedMemory::alloc<int>(num_slaves);
-    copy(slavepoints.begin(), slavepoints.end(), map_slave2pt);
+    vector<int> slaved_points_counts, slaved_points;
+    vector<int> master_points_counts, master_points;
+    generate_mesh->generateHaloPoints(
+            master_colors, slaved_points_counts, slaved_points,
+            slave_colors, master_points_counts, master_points);
 
-    num_slave_pes = masterslvpes.size();
-    map_slave_pe2global_pe = AbstractedMemory::alloc<int>(num_slave_pes);
-    copy(masterslvpes.begin(), masterslvpes.end(), map_slave_pe2global_pe);
-    slave_pe_num_prox = AbstractedMemory::alloc<int>(num_slave_pes);
-    copy(masterslvcounts.begin(), masterslvcounts.end(), slave_pe_num_prox);
-    map_slave_pe2prox1 = AbstractedMemory::alloc<int>(num_slave_pes);
-    count = 0;
-    for (int slvpe = 0; slvpe < num_slave_pes; ++slvpe) {
-        map_slave_pe2prox1[slvpe] = count;
-        count += slave_pe_num_prox[slvpe];
-    }
-    num_proxies = masterpoints.size();
-    map_prox2master_pt = AbstractedMemory::alloc<int>(num_proxies);
-    copy(masterpoints.begin(), masterpoints.end(), map_prox2master_pt);
+    num_slaves = slaved_points.size();
 
+    // release memory from parallel-related arrays
+    slaved_points_counts.resize(0);
+    slaved_points.resize(0);
+    master_points_counts.resize(0);
+    master_points.resize(0);
 }
 
 
@@ -351,7 +305,7 @@ void LocalMesh::writeMeshStats() {
     Parallel::globalSum(gnumzch);
     Parallel::globalSum(gnumsch);
 
-    // TODO if (my_PE > 0) return;
+    // TODO if (my_color > 0) return;
 
     cout << "--- Mesh Information ---" << endl; // TODO must be global sum
     cout << "Points:  " << gnump << endl;
@@ -636,7 +590,7 @@ void LocalMesh::parallelGather(
     int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelGather MPI error " << ierr <<
-                " on PE " << my_PE << endl;
+                " on PE " << my_color << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -708,7 +662,7 @@ void LocalMesh::parallelScatter(
     int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
     if (ierr != 0) {
         cerr << "Error: parallelScatter MPI error " << ierr <<
-                " on PE " << my_PE << endl;
+                " on PE " << my_color << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -761,16 +715,51 @@ void LocalMesh::sumOnProc(
 
 void LocalMesh::sumToPoints(
         const double* corner_mass,
-        const double2* corner_force) {
-
-
+        const double2* corner_force)
+{
     DoubleAccessor pt_weighted_mass_ = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
     Double2Accessor pt_force_ = local_points_by_gid.getRegionAccessor<double2>(FID_PF);
     sumOnProc(corner_mass, pt_weighted_mass_);
     sumOnProc(corner_force, pt_force_);
 
+    if (slave_colors.size() > 0) {
+        // phase 1 as master: master copies partial result in; slaves may not access data
+        pbarrier_as_master.wait();                                              // 3 * cycle
+        pbarrier_as_master.arrive(1);                                           // 3 * cycle + 1
+        pbarrier_as_master.arrive(slave_colors.size());                         // 3 * cycle + 1 (slaves never arrive here)
+        pbarrier_as_master =
+                runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 1
+        // phase 2 as master: slaves reduce; no one can read data
+        pbarrier_as_master.arrive(1);                                           // 3 * cycle + 2
+        pbarrier_as_master =
+                runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 2
+    }
 
-    // TODO this should be in Parallel::
+    for (int master=0; master < master_colors.size(); master++) {
+        // phase 2 as slave: slaves reduce; no one can read data
+        masters_pbarriers[master] =
+                runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 1
+        masters_pbarriers[master].wait();                                       // 3 * cycle + 1
+        masters_pbarriers[master].arrive(1);                                    // 3 * cycle + 2
+        masters_pbarriers[master] =
+                runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 2
+    }
+
+    if (slave_colors.size() > 0) {
+        // phase 3 as master: everybody can read accumulation
+        pbarrier_as_master.wait();                                              // 3 * cycle + 2
+        pbarrier_as_master.arrive(1);                                           // 3 * cycle + 3
+        pbarrier_as_master =
+                runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 3
+    }
+
+    for (int master=0; master < master_colors.size(); master++) {
+        // phase 3 as slave: everybody can read accumulation
+        masters_pbarriers[master].wait();                                       // 3 * cycle + 2
+        masters_pbarriers[master].arrive(1);                                    // 3 * cycle + 3
+        masters_pbarriers[master] =
+                runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 3
+    }
 
     // slaves send to masters
  /*   CopyLauncher copy_launcher;

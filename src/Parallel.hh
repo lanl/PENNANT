@@ -154,7 +154,7 @@ struct SPMDArgs {
     std::vector<double> bcx;
     std::vector<double> bcy;
 	PhaseBarrier pbarrier_as_master;
-	//std::vector<PhaseBarrier> masters_pbarriers;  // TODO Serialize?!
+	std::vector<PhaseBarrier> masters_pbarriers;
 };
 
 class SPMDArgsSerializer {

@@ -31,6 +31,8 @@ public:
     LocalMesh(const InputParameters& params,
    		LogicalUnstructured& pts,
     		//const PhysicalRegion &ghost_pts,
+        PhaseBarrier pbarrier_as_master,
+        std::vector<PhaseBarrier> masters_pbarriers,
         Context ctx, HighLevelRuntime* rt);
     ~LocalMesh();
 
@@ -157,24 +159,16 @@ private:
     int* map_pt2crn_first;   // map:  point -> first corner
     int* map_crn2crn_next;    // map:  corner -> next corner
 
-    // mpi comm variables
-    int num_mesg_send2master;     // number of messages mype sends to master pes
-    int num_slave_pes;      // number of messages mype receives from slave pes
-    int num_proxies;        // number of proxies on mype
-    int num_slaves;        // number of slaves on mype
-    int* map_slave_pe2global_pe;   // map: slave pe -> (global) pe
-    int* map_slave_pe2prox1; // map: slave pe -> first proxy in proxy buffer
-    int* map_prox2master_pt;      // map: proxy -> corresponding (master) point
-    int* slave_pe_num_prox;  // number of proxies for each slave pe
-    int* map_master_pe2globale_pe;  // map: master pe -> (global) pe
-    int* master_pe_num_slaves; // number of slaves for each master pe
-    int* map_master_pe2slave1;// map: master pe -> first slave in slave buffer
-    int* map_slave2pt;      // map: slave -> corresponding (slave) point
-
     double2* edge_x;       // edge center coordinates
     double* side_area_;
     double* side_vol_;
     double* side_vol_pred;     // side volume, middle of cycle
+
+    PhaseBarrier pbarrier_as_master;
+    std::vector<PhaseBarrier> masters_pbarriers;
+    int num_slaves;
+    std::vector<int> master_colors;
+    std::vector<int> slave_colors;
 
     Context ctx;
     HighLevelRuntime* runtime;
@@ -182,7 +176,7 @@ private:
     //const PhysicalRegion& ghost_points;
 
     const int num_subregions;
-    const int my_PE;
+    const int my_color;
 
     void init();
 
@@ -195,13 +189,7 @@ private:
 
     void populateInverseMap();
 
-    void initParallel(
-            const std::vector<int>& slavemstrpes,
-            const std::vector<int>& slavemstrcounts,
-            const std::vector<int>& slavepoints,
-            const std::vector<int>& masterslvpes,
-            const std::vector<int>& masterslvcounts,
-            const std::vector<int>& masterpoints);
+    void initParallel();
 
     void writeMeshStats();
 

@@ -88,7 +88,7 @@ void Parallel::run(InputParameters input_params,
                       << " available: " << global_mesh.lregions_halo.size() << std::endl;
 
               lregions_halos.push_back(global_mesh.lregions_halo[(global_mesh.masters[color])[i]]);
-              //args[color].masters_pbarriers.push_back(global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
+              args[color].masters_pbarriers.push_back(global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
           }
 
 		  args_seriliazed[color].archive(&(args[color]));
@@ -332,9 +332,10 @@ void SPMDArgsSerializer::archive(SPMDArgs* args)
     spmd_args = args;
 
     bit_stream_size = 2 * sizeof(DynamicCollective) + sizeof(DirectInputParameters)
-            + sizeof(PhaseBarrier) + 4 * sizeof(size_t)
+            + sizeof(PhaseBarrier) + 5 * sizeof(size_t)
             + (args->meshtype.length()  + 1 + args->probname.length() + 1) * sizeof(char)
-            + (args->bcx.size()+ args->bcy.size()) * sizeof(double);
+            + (args->bcx.size() + args->bcy.size()) * sizeof(double)
+            + args->masters_pbarriers.size() * sizeof(PhaseBarrier);
     bit_stream = malloc(bit_stream_size);
     free_bit_stream = true;
 
@@ -349,6 +350,7 @@ void SPMDArgsSerializer::archive(SPMDArgs* args)
     stream_size += archiveString(args->probname, (void*)(serialized+stream_size));
     stream_size += archiveVector(args->bcx, (void*)(serialized+stream_size));
     stream_size += archiveVector(args->bcy, (void*)(serialized+stream_size));
+    stream_size += archiveVector(args->masters_pbarriers, (void*)(serialized+stream_size));
 
     assert(stream_size == bit_stream_size);
 }
@@ -413,6 +415,7 @@ void SPMDArgsSerializer::restore(SPMDArgs* args)
     bit_stream_size += restoreString(&(args->probname), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreVector(&(args->bcx), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreVector(&(args->bcy), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(args->masters_pbarriers), (void*)(serialized_args + bit_stream_size));
 }
 
 
