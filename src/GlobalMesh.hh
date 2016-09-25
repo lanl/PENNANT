@@ -19,7 +19,7 @@ public:
 	virtual ~GlobalMesh();
 
 	std::vector<PhaseBarrier> phase_barriers;
-	std::vector<LogicalRegion> lregions_halo;
+	std::vector<LogicalUnstructured> halos;
 	std::vector<std::vector<int>> masters;
 
     LogicalUnstructured zones;
@@ -27,13 +27,8 @@ public:
 
 private:
 	void init();
-	void allocateGhostPointFields();
-
-	FieldSpace fSpaceGhostPoints;
 
 	const InputParameters inputParams;
-	int numZones;
-	int numPoints;
 	Context ctx;
 	HighLevelRuntime* runtime;
 };

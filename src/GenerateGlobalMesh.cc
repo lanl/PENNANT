@@ -75,9 +75,12 @@ void GenerateGlobalMesh::setupHaloCommunication(
         std::vector<int> slaved_points_counts;
         std::vector<int> master_points;
         std::vector<int> master_points_counts;
-std::cout << color << " call generate" << std::endl;
+
         generateHaloPoints(*master_colors, slaved_points_counts, slaved_points,
                 *slave_colors, master_points_counts, master_points);
+
+        for (int i = 0; i < master_points.size(); i++)
+            (*halo_pts_map)[color].points.insert(master_points[i]);
 }
 
 

@@ -28,11 +28,15 @@ public:
     LogicalRegion getLRegion() const {assert(lregionID != NULL); return lregion;}
     LogicalPartition getLPart() const {assert(lpartID != NULL); return lpart;}
     PhysicalRegion getPRegion();
+    IndexSpace getSubspace(Color color);
 private:
     void addField(unsigned int FID);
     bool destroy_ispace;
     IndexSpaceID* ispaceID;
     IndexSpace ispace;
+    IndexPartitionID* ipartID;
+    IndexPartition ipart;
+    IndexSpace subspace;
     std::vector<FieldID> fIDs;
     bool destroy_fspace;
     FieldSpaceID* fspaceID;
