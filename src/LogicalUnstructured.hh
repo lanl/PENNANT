@@ -28,8 +28,14 @@ public:
     IndexSpace getISpace() const { assert(ispaceID != NULL); return ispace;}
     LogicalRegion getLRegion() const {assert(lregionID != NULL); return lregion;}
     LogicalPartition getLPart() const {assert(lpartID != NULL); return lpart;}
+    LogicalRegion getLRegion(Color color) const
+    {
+        assert(lpartID != NULL);
+        return runtime->get_logical_subregion_by_color(ctx, lpart, color);
+    }
     PhysicalRegion getPRegion();
     IndexSpace getSubspace(Color color);
+    IndexIterator getSubspaceIterator(Color color) { getSubspace(color); return  IndexIterator(runtime,ctx, subspace);}
 private:
     void addField(unsigned int FID);
     bool destroy_ispace;

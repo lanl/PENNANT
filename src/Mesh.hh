@@ -168,12 +168,15 @@ private:
     std::vector<PhaseBarrier> masters_pbarriers;
     int num_slaves;
     std::vector<int> master_colors;
+    std::vector<int> slaved_points_counts, slaved_points;
     std::vector<int> slave_colors;
+    std::vector<int> master_points;
 
     Context ctx;
     HighLevelRuntime* runtime;
 
     std::vector<LogicalUnstructured> halos_points;
+    std::vector<LogicalUnstructured> slaved_halo_points;
 
     const int num_subregions;
     const int my_color;
@@ -201,23 +204,6 @@ private:
             const T* cvar,
 			RegionAccessor<AccessorType::Generic, T>& pvar);
 
-    //template <typename T>
-    //void sumAcrossProcs(T* pvar);
-
-    template <typename T>
-    void parallelGather(
-            const T* pvar,
-            T* prxvar);
-
-    template <typename T>
-    void parallelSum(
-            T* pvar,
-            T* prxvar);
-
-    template <typename T>
-    void parallelScatter(
-            T* pvar,
-            const T* prxvar);
 }; // class Mesh
 
 

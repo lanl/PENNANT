@@ -91,8 +91,6 @@ void LocalMesh::init() {
 
     populateInverseMap();   // for corner-to-point gathers
 
-    initParallel();
-
     writeMeshStats();
 
     edge_x = AbstractedMemory::alloc<double2>(num_edges_);
@@ -126,6 +124,8 @@ void LocalMesh::init() {
         	i++;
     }
     assert(i == num_pts_);
+
+    initParallel();
 
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks; ++pch) {
@@ -261,25 +261,6 @@ void LocalMesh::populateInverseMap() {
             map_crn2crn_next[c] = cp;
     }
 
-}
-
-
-void LocalMesh::initParallel() {
-    if (num_subregions == 1) return;
-
-    vector<int> slaved_points_counts, slaved_points;
-    vector<int> master_points_counts, master_points;
-    generate_mesh->generateHaloPoints(
-            master_colors, slaved_points_counts, slaved_points,
-            slave_colors, master_points_counts, master_points);
-
-    num_slaves = slaved_points.size();
-
-    // release memory from parallel-related arrays
-    slaved_points_counts.resize(0);
-    slaved_points.resize(0);
-    master_points_counts.resize(0);
-    master_points.resize(0);
 }
 
 
@@ -547,152 +528,6 @@ void LocalMesh::calcCharacteristicLen(const int side_chunk) {
 
 
 template <typename T>
-void LocalMesh::parallelGather(
-        const T* pvar,
-        T* prxvar) {
-#ifdef USE_MPI
-    // This routine gathers slave values for which MYPE owns the masters.
-    const int tagmpi = 100;
-    const int type_size = sizeof(T);
-//    std::vector<T> slvvar(numslv);
-    T* slvvar = AbstractedMemory::alloc<T>(num_slaves);
-
-    // Post receives for incoming messages from slaves.
-    // Store results in proxy buffer.
-//    vector<MPI_Request> request(numslvpe);
-    MPI_Request* request = AbstractedMemory::alloc<MPI_Request>(num_slave_pes);
-    for (int slvpe = 0; slvpe < num_slave_pes; ++slvpe) {
-        int pe = map_slave_pe2global_pe[slvpe];
-        int nprx = slave_pe_num_prox[slvpe];
-        int prx1 = map_slave_pe2prox1[slvpe];
-        MPI_Irecv(&prxvar[prx1], nprx * type_size, MPI_BYTE,
-                pe, tagmpi, MPI_COMM_WORLD, &request[slvpe]);
-    }
-
-    // Load slave data buffer from points.
-    for (int slv = 0; slv < num_slaves; ++slv) {
-        int p = map_slave2pt[slv];
-        slvvar[slv] = pvar[p];
-    }
-
-    // Send slave data to master PEs.
-    for (int mstrpe = 0; mstrpe < num_mesg_send2master; ++mstrpe) {
-        int pe = map_master_pe2globale_pe[mstrpe];
-        int nslv = master_pe_num_slaves[mstrpe];
-        int slv1 = map_master_pe2slave1[mstrpe];
-        MPI_Send(&slvvar[slv1], nslv * type_size, MPI_BYTE,
-                pe, tagmpi, MPI_COMM_WORLD);
-    }
-
-    // Wait for all receives to complete.
-//    vector<MPI_Status> status(numslvpe);
-    MPI_Status* status = AbstractedMemory::alloc<MPI_Status>(num_slave_pes);
-    int ierr = MPI_Waitall(num_slave_pes, &request[0], &status[0]);
-    if (ierr != 0) {
-        cerr << "Error: parallelGather MPI error " << ierr <<
-                " on PE " << my_color << endl;
-        cerr << "Exiting..." << endl;
-        exit(1);
-    }
-
-    AbstractedMemory::free(slvvar);
-    AbstractedMemory::free(request);
-    AbstractedMemory::free(status);
-#endif
-}
-
-
-template <typename T>
-void LocalMesh::parallelSum(
-        T* pvar,
-        T* prxvar) {
-#ifdef USE_MPI
-    // Compute sum of all (proxy/master) sets.
-    // Store results in master.
-    for (int prx = 0; prx < num_proxies; ++prx) {
-        int p = map_prox2master_pt[prx];
-        pvar[p] += prxvar[prx];
-    }
-
-    // Copy updated master data back to proxies.
-    for (int prx = 0; prx < num_proxies; ++prx) {
-        int p = map_prox2master_pt[prx];
-        prxvar[prx] = pvar[p];
-    }
-#endif
-}
-
-
-template <typename T>
-void LocalMesh::parallelScatter(
-        T* pvar,
-        const T* prxvar) {
-#ifdef USE_MPI
-    // This routine scatters master values on MYPE to all slave copies
-    // owned by other PEs.
-    const int tagmpi = 200;
-    const int type_size = sizeof(T);
-//    std::vector<T> slvvar(numslv);
-    T* slvvar = AbstractedMemory::alloc<T>(num_slaves);
-
-    // Post receives for incoming messages from masters.
-    // Store results in slave buffer.
-//    vector<MPI_Request> request(nummstrpe);
-    MPI_Request* request = AbstractedMemory::alloc<MPI_Request>(num_mesg_send2master);
-    for (int mstrpe = 0; mstrpe < num_mesg_send2master; ++mstrpe) {
-        int pe = map_master_pe2globale_pe[mstrpe];
-        int nslv = master_pe_num_slaves[mstrpe];
-        int slv1 = map_master_pe2slave1[mstrpe];
-        MPI_Irecv(&slvvar[slv1], nslv * type_size, MPI_BYTE,
-                pe, tagmpi, MPI_COMM_WORLD,  &request[mstrpe]);
-    }
-
-    // Send updated slave data from proxy buffer back to slave PEs.
-    for (int slvpe = 0; slvpe < num_slave_pes; ++slvpe) {
-        int pe = map_slave_pe2global_pe[slvpe];
-        int nprx = slave_pe_num_prox[slvpe];
-        int prx1 = map_slave_pe2prox1[slvpe];
-        MPI_Send((void*)&prxvar[prx1], nprx * type_size, MPI_BYTE,
-                pe, tagmpi, MPI_COMM_WORLD);
-    }
-
-    // Wait for all receives to complete.
-//    vector<MPI_Status> status(nummstrpe);
-    MPI_Status* status = AbstractedMemory::alloc<MPI_Status>(num_mesg_send2master);
-    int ierr = MPI_Waitall(num_mesg_send2master, &request[0], &status[0]);
-    if (ierr != 0) {
-        cerr << "Error: parallelScatter MPI error " << ierr <<
-                " on PE " << my_color << endl;
-        cerr << "Exiting..." << endl;
-        exit(1);
-    }
-
-    // Store slave data from buffer back to points.
-    for (int slv = 0; slv < num_slaves; ++slv) {
-        int p = map_slave2pt[slv];
-        pvar[p] = slvvar[slv];
-    }
-
-    AbstractedMemory::free(slvvar);
-    AbstractedMemory::free(request);
-    AbstractedMemory::free(status);
-#endif
-}
-
-/*
-template <typename T>
-void Mesh::sumAcrossProcs(T* pvar) {
-    if (num_subregions_ == 1) return;
-//    std::vector<T> prxvar(numprx);
-    T* prxvar = AbstractedMemory::alloc<T>(num_proxies);
-    parallelGather(pvar, &prxvar[0]);
-    parallelSum(pvar, &prxvar[0]);
-    parallelScatter(pvar, &prxvar[0]);
-    AbstractedMemory::free(prxvar);
-}
-*/
-
-template <typename T>
 void LocalMesh::sumOnProc(
         const T* cvar,
 	    RegionAccessor<AccessorType::Generic, T>& pvar) {
@@ -713,6 +548,31 @@ void LocalMesh::sumOnProc(
 }
 
 
+void LocalMesh::initParallel() {
+    if (num_subregions == 1) return;
+
+    vector<int> master_points_counts;
+    generate_mesh->generateHaloPoints(
+            master_colors, slaved_points_counts, slaved_points,
+            slave_colors, master_points_counts, master_points);
+    master_points_counts.resize(0);
+
+    num_slaves = slaved_points.size();
+
+    unsigned previous_master_pts_count = 0;
+    for (unsigned  master = 0; master < slaved_points_counts.size(); master++) {
+        Coloring my_slaved_pts_map;
+        for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++)
+            my_slaved_pts_map[1+master].points.insert(
+                    point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value);
+
+        previous_master_pts_count += slaved_points_counts[master];
+        halos_points[1+master].partition(my_slaved_pts_map, true);
+        slaved_halo_points.push_back(LogicalUnstructured(ctx, runtime, halos_points[1+master].getLRegion(1+master)));
+    }
+}
+
+
 void LocalMesh::sumToPoints(
         const double* corner_mass,
         const double2* corner_force)
@@ -723,11 +583,16 @@ void LocalMesh::sumToPoints(
     sumOnProc(corner_force, pt_force_);
 
     if (slave_colors.size() > 0) {
+
         IndexIterator itr = halos_points[0].getIterator();
         while (itr.has_next()) {
             ptr_t pt_ptr = itr.next();
             std::cout << my_color << " as master " << pt_ptr.value << std::endl;
         }
+        for (unsigned pt = 0; pt < master_points.size(); pt++)
+            std::cout << my_color << " masters (local) " << master_points[pt]
+                  << " (gid) " << point_local_to_globalID[master_points[pt]].value << std::endl;
+
         // phase 1 as master: master copies partial result in; slaves may not access data
         pbarrier_as_master.wait();                                              // 3 * cycle
         pbarrier_as_master.arrive(1);                                           // 3 * cycle + 1
@@ -740,12 +605,20 @@ void LocalMesh::sumToPoints(
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 2
     }
 
+    unsigned previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
-        IndexIterator itr = halos_points[1+master].getIterator();
+        IndexIterator itr = slaved_halo_points[master].getIterator();
         while (itr.has_next()) {
             ptr_t pt_ptr = itr.next();
-            std::cout << my_color << " as slave " << pt_ptr.value << std::endl;
+            std::cout << my_color << " as slave to " << master << " : " << pt_ptr.value << std::endl;
         }
+        for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++) {
+            std::cout << my_color << " as slave to " << master << " (local) "
+            << slaved_points[pt + previous_master_pts_count]
+            << " (gid) " << point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value << std::endl;
+        }
+        previous_master_pts_count += slaved_points_counts[master];
+
         // phase 2 as slave: slaves reduce; no one can read data
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 1
@@ -763,6 +636,7 @@ void LocalMesh::sumToPoints(
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 3
     }
 
+    previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
         // phase 3 as slave: everybody can read accumulation
         masters_pbarriers[master].wait();                                       // 3 * cycle + 2
@@ -770,15 +644,5 @@ void LocalMesh::sumToPoints(
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 3
     }
-
-    // slaves send to masters
- /*   CopyLauncher copy_launcher;
-    copy_launcher.add_copy_requirements(
-    		RegionRequirement(lregion_all_pts_, READ_ONLY, EXCLUSIVE, lregion_all_pts_),
-    		RegionRequirement(ghost_pts_.get_logical_region(), WRITE_DISCARD, EXCLUSIVE,
-    				ghost_pts_.get_logical_region()));
-    copy_launcher.add_src_field(0, FID_PF);
-    copy_launcher.add_dst_field(0, FID_GHOST_PF);
-    runtime_->issue_copy_operation(ctx_, copy_launcher);*/
 }
 

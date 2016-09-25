@@ -79,8 +79,10 @@ void GenerateGlobalMesh::setupHaloCommunication(
         generateHaloPoints(*master_colors, slaved_points_counts, slaved_points,
                 *slave_colors, master_points_counts, master_points);
 
-        for (int i = 0; i < master_points.size(); i++)
-            (*halo_pts_map)[color].points.insert(master_points[i]);
+        for (int i = 0; i < master_points.size(); i++) {
+            (*halo_pts_map)[color].points.insert(pointLocalToGlobalID(master_points[i]));
+            std::cout << color << " master of " << pointLocalToGlobalID(master_points[i]) << std::endl;
+        }
 }
 
 
