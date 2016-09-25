@@ -58,9 +58,9 @@ void GlobalMesh::init()
 
 		LogicalUnstructured subspace(ctx, runtime, points.getSubspace(color));
 		subspace.partition(ghost_pts_map, true);
-		halos.push_back(LogicalUnstructured(ctx, runtime, subspace.getSubspace(color)));
-        halos[color].addField<double>(FID_GHOST_PMASWT);
-        halos[color].addField<double2>(FID_GHOST_PF);
-        halos[color].allocate();
+		halos_points.push_back(LogicalUnstructured(ctx, runtime, subspace.getSubspace(color)));
+        halos_points[color].addField<double>(FID_GHOST_PMASWT);
+        halos_points[color].addField<double2>(FID_GHOST_PF);
+        halos_points[color].allocate();
 	}
 }

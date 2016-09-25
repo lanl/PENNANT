@@ -15,6 +15,7 @@ public:
     LogicalUnstructured(Context ctx, HighLevelRuntime *runtime);
     LogicalUnstructured(Context ctx, HighLevelRuntime *runtime, IndexSpace ispace);
     LogicalUnstructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion);
+    LogicalUnstructured(Context ctx, HighLevelRuntime *runtime, LogicalRegion lregion);
     virtual ~LogicalUnstructured();
     template <typename TYPE>
       void addField(FieldID FID);

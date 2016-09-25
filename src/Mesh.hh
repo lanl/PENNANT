@@ -30,7 +30,7 @@ public:
 
     LocalMesh(const InputParameters& params,
    		LogicalUnstructured& pts,
-    		//const PhysicalRegion &ghost_pts,
+        std::vector<LogicalUnstructured>& halos_points,
         PhaseBarrier pbarrier_as_master,
         std::vector<PhaseBarrier> masters_pbarriers,
         Context ctx, HighLevelRuntime* rt);
@@ -173,7 +173,7 @@ private:
     Context ctx;
     HighLevelRuntime* runtime;
 
-    //const PhysicalRegion& ghost_points;
+    std::vector<LogicalUnstructured> halos_points;
 
     const int num_subregions;
     const int my_color;

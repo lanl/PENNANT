@@ -27,7 +27,7 @@ using namespace std;
 
 LocalMesh::LocalMesh(const InputParameters& params,
 		LogicalUnstructured& points,
-		//const PhysicalRegion& ghost_pts,
+        std::vector<LogicalUnstructured>& halos_pts,
         PhaseBarrier as_master,
         std::vector<PhaseBarrier> masters,
 		Context ctx, HighLevelRuntime* rt) :
@@ -43,7 +43,7 @@ LocalMesh::LocalMesh(const InputParameters& params,
 	        masters_pbarriers(masters),
 			ctx(ctx),
 			runtime(rt),
-			//ghost_points(ghost_pts),
+			halos_points(halos_pts),
 			num_subregions(params.directs_.ntasks_),
 			my_color(params.directs_.task_id_)
 	{
@@ -723,6 +723,11 @@ void LocalMesh::sumToPoints(
     sumOnProc(corner_force, pt_force_);
 
     if (slave_colors.size() > 0) {
+        IndexIterator itr = halos_points[0].getIterator();
+        while (itr.has_next()) {
+            ptr_t pt_ptr = itr.next();
+            std::cout << my_color << " as master " << pt_ptr.value << std::endl;
+        }
         // phase 1 as master: master copies partial result in; slaves may not access data
         pbarrier_as_master.wait();                                              // 3 * cycle
         pbarrier_as_master.arrive(1);                                           // 3 * cycle + 1
@@ -736,6 +741,11 @@ void LocalMesh::sumToPoints(
     }
 
     for (int master=0; master < master_colors.size(); master++) {
+        IndexIterator itr = halos_points[1+master].getIterator();
+        while (itr.has_next()) {
+            ptr_t pt_ptr = itr.next();
+            std::cout << my_color << " as slave " << pt_ptr.value << std::endl;
+        }
         // phase 2 as slave: slaves reduce; no one can read data
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 1

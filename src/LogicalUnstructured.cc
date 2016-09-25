@@ -44,6 +44,28 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
 }
 
 
+LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
+        LogicalRegion lregion) :
+    destroy_ispace(false),
+    ispace(lregion.get_index_space()),
+    ipartID(nullptr),
+    destroy_fspace(false),
+    fspace(lregion.get_field_space()),
+    destroy_lregion(false),
+    lregion(lregion),
+    lpartID(nullptr),
+    ctx(ctx),
+    runtime(runtime)
+{
+    ispaceID = new IndexSpaceID;
+    *ispaceID = lregion.get_index_space().get_id();
+    fspaceID = new FieldSpaceID;
+    *fspaceID = lregion.get_field_space().get_id();
+    lregionID = new RegionTreeID;
+    *lregionID = lregion.get_tree_id();
+}
+
+
 LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime) :
     destroy_ispace(false),
     ispaceID(nullptr),

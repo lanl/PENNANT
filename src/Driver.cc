@@ -30,7 +30,7 @@ DriverTask::DriverTask(int my_color,
 		LogicalRegion all_zones,
 		LogicalRegion my_pts,
 		LogicalRegion all_pts,
-		std::vector<LogicalRegion> ghost_pts,
+		std::vector<LogicalRegion> halo_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
 {
@@ -40,13 +40,13 @@ DriverTask::DriverTask(int my_color,
 	add_field(0/*idx*/, FID_ZP);
 	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
 	add_field(1/*idx*/, FID_GHOST_PF);  // TODO until real ghost regions give access to index space
-/*	for (int color=0; color < ghost_pts.size(); ++color) {
-		add_region_requirement(RegionRequirement(ghost_pts[color], READ_WRITE, SIMULTANEOUS, ghost_pts[color]));
-		if (color != my_color)
-			region_requirements[2+color].add_flags(NO_ACCESS_FLAG);
-		add_field(2+color, FID_GHOST_PF);
-		add_field(2+color, FID_GHOST_PMASWT);
-	}*/
+	for (int i=0; i < halo_pts.size(); ++i) {
+		add_region_requirement(RegionRequirement(halo_pts[i], READ_WRITE, SIMULTANEOUS, halo_pts[i]));
+		if (i != 0)
+			region_requirements[2+i].add_flags(NO_ACCESS_FLAG);
+		add_field(2+i, FID_GHOST_PF);
+		add_field(2+i, FID_GHOST_PMASWT);
+	}
 }
 
 /*static*/ const char * const DriverTask::TASK_NAME = "DriverTask";
@@ -56,14 +56,19 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	//assert(regions.size() > 2);
-	//assert(task->regions.size() > 2);
+	assert(regions.size() > 2);
+	assert(task->regions.size() > 2);
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 1);
-	//assert(task->regions[2].privilege_fields.size() == 2);
+	assert(task->regions[2].privilege_fields.size() == 2);
 
-	// Legion Zones
 	LogicalUnstructured zones(ctx, runtime, regions[0]);
+
+	std::vector<LogicalUnstructured> halos_points;
+	for (int i = 2; i < task->regions.size(); i++) {
+	    runtime->unmap_region(ctx, regions[i]);
+	    halos_points.push_back(LogicalUnstructured(ctx, runtime, task->regions[i].region));
+	}
 
     SPMDArgs args;
     SPMDArgsSerializer args_serializer;
@@ -85,7 +90,7 @@ RunStat DriverTask::cpu_run(const Task *task,
     Driver drv(params, args.add_reduction, args.min_reduction,
             args.pbarrier_as_master, args.masters_pbarriers,
             &zone_rho, &zone_energy_density, &zone_pressure, zones,
-            regions[1], //regions[2],
+            regions[1], halos_points,
             ctx, runtime);
 
     RunStat value=drv.run();
@@ -102,6 +107,7 @@ Driver::Driver(const InputParameters& params,
 		DoubleAccessor* zone_pressure,
         LogicalUnstructured& global_comm_zones,
 		const PhysicalRegion& pts,
+        std::vector<LogicalUnstructured>& halos_points,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -121,7 +127,7 @@ Driver::Driver(const InputParameters& params,
           zone_pressure(zone_pressure),
           ispace_zones(global_comm_zones.getISpace())
 {
-    mesh = new LocalMesh(params, points, //ghost_pts,
+    mesh = new LocalMesh(params, points, halos_points,
             pbarrier_as_master, masters_pbarriers,
     		    ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction, ctx_, runtime_);

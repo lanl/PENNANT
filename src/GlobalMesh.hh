@@ -19,7 +19,7 @@ public:
 	virtual ~GlobalMesh();
 
 	std::vector<PhaseBarrier> phase_barriers;
-	std::vector<LogicalUnstructured> halos;
+	std::vector<LogicalUnstructured> halos_points;
 	std::vector<std::vector<int>> masters;
 
     LogicalUnstructured zones;

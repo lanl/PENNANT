@@ -31,7 +31,7 @@ public:
 			LogicalRegion all_zones,
 			LogicalRegion my_pts,
 			LogicalRegion all_pts,
-			std::vector<LogicalRegion> ghost_pts,
+			std::vector<LogicalRegion> halo_pts,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = DRIVER_TASK_ID;
@@ -68,7 +68,7 @@ public:
             DoubleAccessor* zone_pressure,
             LogicalUnstructured& global_comm_zones,
             const PhysicalRegion& pts,
-          //  const PhysicalRegion& ghost_pts,
+            std::vector<LogicalUnstructured>& halos_points,
             Context ctx, HighLevelRuntime* rt);
 
     RunStat run();
