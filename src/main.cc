@@ -17,6 +17,7 @@
 #include "math.h"
 
 #include "AddReductionOp.hh"
+#include "Add2ReductionOp.hh"
 #include "Driver.hh"
 #include "InputFile.hh"
 #include "InputParameters.hh"
@@ -84,7 +85,8 @@ int main(int argc, char **argv)
 			Processor::LOC_PROC, true/*single*/, true/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumTask");
 
-	Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
+    Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
+    Runtime::register_reduction_op<Add2ReductionOp>(Add2ReductionOp::redop_id);
 
 	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,
 			Processor::LOC_PROC, true/*single*/, true/*index*/,

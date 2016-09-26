@@ -54,7 +54,7 @@ void GlobalMesh::init()
 		std::vector<int> master_colors, slave_colors;
 		generate_mesh.setupHaloCommunication(color, &master_colors, &slave_colors, &ghost_pts_map);
 		masters.push_back(master_colors);
-		phase_barriers.push_back(runtime->create_phase_barrier(ctx, 1 + slave_colors.size()));
+		phase_barriers.push_back(runtime->create_phase_barrier(ctx, 2 * (1 + slave_colors.size())));
 
 		LogicalUnstructured subspace(ctx, runtime, points.getSubspace(color));
 		subspace.partition(ghost_pts_map, true);
