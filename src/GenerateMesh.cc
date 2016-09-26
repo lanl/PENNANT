@@ -83,10 +83,6 @@ void GenerateMesh::generateHaloPoints(
                 slave_colors, master_points_counts, master_points);
     else
         assert(meshtype != allowable_mesh_type);
-
-    for (int i=0; i<master_colors.size(); i++)
-        std::cout << "color: " << my_color << " i: " << i << " master: "
-        << master_colors[i] << std::endl;
 }
 
 

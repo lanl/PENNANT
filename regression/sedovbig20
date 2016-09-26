@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH -N1 --constraint="ib_fdr,e5-2660_v3"
+
+module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
+
+export GASNET_USE_XRC=0
+export OMPI_MCA_mpi_paffinity_alone=0 
+export OMPI_MCA_rmaps_base_loadbalance=1
+export OMPI_MCA_btl="sm,openib,self"
+export OMPI_MCA_mpi_warn_on_fork=0
+export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
+export GASNET_BACKTRACE=1  
+
+mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-fullDEBUG/sedovbig/sedovbig.1x20
+cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-fullDEBUG/sedovbig/sedovbig.1x20
+cp ${HOME}/gitlab/pennant-spmd/pennant .
+cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
+
+mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 20 ./sedovbig.pnt -ll:cpu 20 2>&1 | tee sedovbig.1x20

@@ -82,10 +82,6 @@ void Parallel::run(InputParameters input_params,
 		  std::vector<LogicalRegion> lregions_halos;
           lregions_halos.push_back(global_mesh.halos_points[color].getLRegion());
           for (int i=0; i < global_mesh.masters[color].size(); i++) {
-              std::cout << "color: " << color << " i: " << i
-                      << " size: " << global_mesh.masters[color].size()
-                      << " halo selec: " << (global_mesh.masters[color])[i] << std::endl;
-
               lregions_halos.push_back(global_mesh.halos_points[(global_mesh.masters[color])[i]].getLRegion());
               args[color].masters_pbarriers.push_back(global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
           }
