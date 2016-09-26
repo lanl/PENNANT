@@ -1,0 +1,352 @@
+[0 - 2aef79cf6480] {4}{threads}: reservation ('CPU proc 1d00000000000015') cannot be satisfied
+********************
+Running PENNANT v0.9
+********************
+
+Running with 32 Legion Tasks
+[0 - 2aef79e6b700] {4}{runtime}: WARNING: Region requirement 1 of operation DriverTask (UID 130) is using uninitialized data for field(s) 2 of logical region (2,2,2)
+--- Mesh Information ---
+Points:  9248
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9248
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -2089401976
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9055
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  1547820664
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9248
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9380
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -2089401976
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9332
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -11656
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -52624776
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  4103
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -2089401840
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -2089401840
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -381433
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9248
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -2089401840
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9244
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9248
+Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  9248
+--- Mesh Information ---Zones:  9045
+Sides:  36180
+Edges:  18292
+Side chunks:  71
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+
+Points:  9384
+Zones:  9180
+Sides:  36720
+Edges:  18563
+Side chunks:  72
+Point chunks:  19
+Zone chunks:  18
+Chunk size:  512
+------------------------
+Energy check:  total energy  =   2.467966e-01
+(internal =   2.467966e-01, kinetic =   0.000000e+00)
+End cycle      1, time = 2.50000e-06, dt = 2.50000e-06, wall = 7.13439e-02
+dt limiter: Initial timestep
+End cycle    100, time = 7.07243e-04, dt = 8.47203e-06, wall = 1.22009e+02
+dt limiter: Hydro dV/V limit for z = 3510
+End cycle    200, time = 1.86028e-03, dt = 1.69224e-05, wall = 4.67262e+02
+dt limiter: Hydro dV/V limit for z = 1521
+End cycle    300, time = 4.06477e-03, dt = 2.79302e-05, wall = 9.71007e+02
+dt limiter: Hydro dV/V limit for z = 1402
+End cycle    400, time = 7.33340e-03, dt = 3.96682e-05, wall = 1.59561e+03
+dt limiter: Hydro dV/V limit for z = 142
+End cycle    500, time = 1.20191e-02, dt = 5.39060e-05, wall = 2.38778e+03
+dt limiter: Hydro dV/V limit for z = 6678
+End cycle    600, time = 1.80834e-02, dt = 6.85912e-05, wall = 3.31897e+03
+dt limiter: Hydro dV/V limit for z = 97
+End cycle    700, time = 2.58479e-02, dt = 8.65948e-05, wall = 4.35703e+03
+dt limiter: Hydro dV/V limit for z = 5948
+End cycle    800, time = 3.54674e-02, dt = 1.04308e-04, wall = 5.67851e+03
+dt limiter: Hydro Courant limit for z = 2430
+End cycle    900, time = 4.67535e-02, dt = 1.22189e-04, wall = 6.99766e+03
+dt limiter: Hydro dV/V limit for z = 2030
+End cycle   1000, time = 6.00491e-02, dt = 1.43585e-04, wall = 8.77531e+03
+dt limiter: Hydro dV/V limit for z = 1640
+mpirun: Forwarding signal 18 to job

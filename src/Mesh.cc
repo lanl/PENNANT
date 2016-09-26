@@ -625,7 +625,6 @@ void LocalMesh::sumToPoints(
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 2
     }
 
-    unsigned previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
         // phase 2 as slave: slaves reduce; no one can read data
         masters_pbarriers[master] =
@@ -691,7 +690,6 @@ void LocalMesh::sumToPoints(
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 3
     }
 
-    previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
         // phase 3 as slave: everybody can read accumulation
         AcquireLauncher acquire_launcher(slaved_halo_points[master].getLRegion(),

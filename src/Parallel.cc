@@ -104,7 +104,7 @@ void Parallel::run(InputParameters input_params,
 	  FutureMap fm = runtime->execute_must_epoch(ctx, must_epoch_launcher);
 	  fm.wait_all_results();
 
-	  RunStat run_stat = fm.get_result<RunStat>(0);
+	  //RunStat run_stat = fm.get_result<RunStat>(0);
 
       SPMDArgs arg;
       SPMDArgsSerializer serial;

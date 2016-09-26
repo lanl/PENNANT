@@ -1,0 +1,109 @@
+********************
+Running PENNANT v0.9
+********************
+
+Running with 4 Legion Tasks
+[0 - 2abcb03b6700] {4}{runtime}: WARNING: Region requirement 1 of operation DriverTask (UID 18) is using uninitialized data for field(s) 2 of logical region (2,2,2)
+--- Mesh Information ---
+Points:  73441
+Zones:  72900
+Sides:  291600
+Edges:  146340
+Side chunks:  570
+Point chunks:  144
+Zone chunks:  143
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  73441
+Zones:  72900
+Sides:  291600
+Edges:  146340
+Side chunks:  570
+Point chunks:  144
+Zone chunks:  143
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  73441
+Zones:  72900
+Sides:  291600
+Edges:  146340
+Side chunks:  570
+Point chunks:  144
+Zone chunks:  143
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  73441
+Zones:  72900
+Sides:  291600
+Edges:  146340
+Side chunks:  570
+Point chunks:  144
+Zone chunks:  143
+Chunk size:  512
+------------------------
+Energy check:  total energy  =   2.467966e-01
+(internal =   2.467966e-01, kinetic =   0.000000e+00)
+End cycle      1, time = 2.50000e-06, dt = 2.50000e-06, wall = 7.14488e-02
+dt limiter: Initial timestep
+End cycle    100, time = 7.07243e-04, dt = 8.47203e-06, wall = 1.27574e+01
+dt limiter: Hydro dV/V limit for z = 7020
+End cycle    200, time = 1.86028e-03, dt = 1.69224e-05, wall = 2.79651e+01
+dt limiter: Hydro dV/V limit for z = 3006
+End cycle    300, time = 4.06477e-03, dt = 2.79302e-05, wall = 4.79253e+01
+dt limiter: Hydro dV/V limit for z = 2752
+End cycle    400, time = 7.33340e-03, dt = 3.96682e-05, wall = 7.66307e+01
+dt limiter: Hydro dV/V limit for z = 18367
+End cycle    500, time = 1.20191e-02, dt = 5.39060e-05, wall = 1.14519e+02
+dt limiter: Hydro dV/V limit for z = 13293
+End cycle    600, time = 1.80834e-02, dt = 6.85912e-05, wall = 1.61128e+02
+dt limiter: Hydro dV/V limit for z = 97
+End cycle    700, time = 2.58479e-02, dt = 8.65948e-05, wall = 2.18558e+02
+dt limiter: Hydro dV/V limit for z = 29978
+End cycle    800, time = 3.54674e-02, dt = 1.04308e-04, wall = 2.87769e+02
+dt limiter: Hydro Courant limit for z = 4860
+End cycle    900, time = 4.67535e-02, dt = 1.22189e-04, wall = 3.62799e+02
+dt limiter: Hydro dV/V limit for z = 4190
+End cycle   1000, time = 6.00491e-02, dt = 1.43585e-04, wall = 4.49979e+02
+dt limiter: Hydro dV/V limit for z = 3395
+End cycle   1100, time = 7.53617e-02, dt = 1.62979e-04, wall = 5.35387e+02
+dt limiter: Hydro dV/V limit for z = 1250
+End cycle   1200, time = 9.25550e-02, dt = 1.82892e-04, wall = 6.11341e+02
+dt limiter: Hydro dV/V limit for z = 4234
+End cycle   1300, time = 1.12012e-01, dt = 2.05522e-04, wall = 6.98488e+02
+dt limiter: Hydro dV/V limit for z = 1819
+End cycle   1400, time = 1.33562e-01, dt = 2.26478e-04, wall = 7.99299e+02
+dt limiter: Hydro dV/V limit for z = 4803
+End cycle   1500, time = 1.57326e-01, dt = 2.49140e-04, wall = 9.02564e+02
+dt limiter: Hydro dV/V limit for z = 1848
+End cycle   1600, time = 1.83440e-01, dt = 2.71980e-04, wall = 1.02658e+03
+dt limiter: Hydro dV/V limit for z = 5102
+End cycle   1700, time = 2.11291e-01, dt = 2.80239e-04, wall = 1.15484e+03
+dt limiter: Hydro Courant limit for z = 3780
+End cycle   1800, time = 2.39982e-01, dt = 2.91917e-04, wall = 1.28506e+03
+dt limiter: Hydro Courant limit for z = 4050
+End cycle   1900, time = 2.69528e-01, dt = 2.97714e-04, wall = 1.42927e+03
+dt limiter: Hydro Courant limit for z = 4051
+End cycle   2000, time = 2.99124e-01, dt = 2.94678e-04, wall = 1.57491e+03
+dt limiter: Hydro Courant limit for z = 4322
+End cycle   2100, time = 3.28760e-01, dt = 2.98346e-04, wall = 1.73477e+03
+dt limiter: Hydro Courant limit for z = 4591
+End cycle   2200, time = 3.59150e-01, dt = 3.09510e-04, wall = 1.89803e+03
+dt limiter: Hydro Courant limit for z = 4861
+End cycle   2300, time = 3.90720e-01, dt = 3.21901e-04, wall = 2.07157e+03
+dt limiter: Hydro Courant limit for z = 5131
+End cycle   2400, time = 4.23759e-01, dt = 3.39619e-04, wall = 2.27983e+03
+dt limiter: Hydro Courant limit for z = 5401
+End cycle   2500, time = 4.58716e-01, dt = 3.58964e-04, wall = 2.45901e+03
+dt limiter: Hydro Courant limit for z = 5671
+End cycle   2600, time = 4.95469e-01, dt = 3.69575e-04, wall = 2.68220e+03
+dt limiter: Hydro Courant limit for z = 3780
+End cycle   2700, time = 5.32422e-01, dt = 3.70997e-04, wall = 2.86401e+03
+dt limiter: Hydro Courant limit for z = 4050
+End cycle   2800, time = 5.69675e-01, dt = 3.72829e-04, wall = 3.06367e+03
+dt limiter: Hydro Courant limit for z = 4320
+End cycle   2900, time = 6.06971e-01, dt = 3.73963e-04, wall = 3.32462e+03
+dt limiter: Hydro Courant limit for z = 4320
+mpirun: Forwarding signal 18 to job

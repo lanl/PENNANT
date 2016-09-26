@@ -17,6 +17,7 @@
 #include <sys/time.h>
 #include <iostream>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <iomanip>
 
@@ -143,7 +144,8 @@ RunStat Driver::run() {
     // do energy check
     hydro->writeEnergyCheck();
 
-    double tbegin, tlast;
+    double tbegin = std::numeric_limits<double>::max();
+    double tlast = std::numeric_limits<double>::min();
     if (my_color == 0) {
         // get starting timestamp
         struct timeval sbegin;

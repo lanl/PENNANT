@@ -11,8 +11,8 @@ export OMPI_MCA_mpi_warn_on_fork=0
 export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
 export GASNET_BACKTRACE=1  
 
-mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-fullDEBUG/sedovbig/sedovbig.1x2
-cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-fullDEBUG/sedovbig/sedovbig.1x2
+mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-NOdebug/sedovbig/sedovbig.1x2
+cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd-NOdebug/sedovbig/sedovbig.1x2
 cp ${HOME}/gitlab/pennant-spmd/pennant .
 cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
 

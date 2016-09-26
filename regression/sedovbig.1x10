@@ -1,0 +1,149 @@
+********************
+Running PENNANT v0.9
+********************
+
+Running with 10 Legion Tasks
+[0 - 2b888e44f700] {4}{runtime}: WARNING: Region requirement 1 of operation DriverTask (UID 54) is using uninitialized data for field(s) 2 of logical region (2,2,2)
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  20875
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  29539
+Zones:  29160
+Sides:  116640
+Edges:  58698
+Side chunks:  228
+Point chunks:  58
+Zone chunks:  57
+Chunk size:  512
+------------------------
+Energy check:  total energy  =   2.467966e-01
+(internal =   2.467966e-01, kinetic =   0.000000e+00)
+End cycle      1, time = 2.50000e-06, dt = 2.50000e-06, wall = 4.87220e-02
+dt limiter: Initial timestep
+End cycle    100, time = 7.07243e-04, dt = 8.47203e-06, wall = 3.01995e+01
+dt limiter: Hydro dV/V limit for z = 7020
+End cycle    200, time = 1.86028e-03, dt = 1.69224e-05, wall = 9.14407e+01
+dt limiter: Hydro dV/V limit for z = 3006
+End cycle    300, time = 4.06477e-03, dt = 2.79302e-05, wall = 1.81235e+02
+dt limiter: Hydro dV/V limit for z = 2752
+End cycle    400, time = 7.33340e-03, dt = 3.96682e-05, wall = 3.03832e+02
+dt limiter: Hydro dV/V limit for z = 18367
+End cycle    500, time = 1.20191e-02, dt = 5.39060e-05, wall = 4.60411e+02
+dt limiter: Hydro dV/V limit for z = 13293
+End cycle    600, time = 1.80834e-02, dt = 6.85912e-05, wall = 6.43544e+02
+dt limiter: Hydro dV/V limit for z = 97
+End cycle    700, time = 2.58479e-02, dt = 8.65948e-05, wall = 8.41425e+02
+dt limiter: Hydro dV/V limit for z = 818
+End cycle    800, time = 3.54674e-02, dt = 1.04308e-04, wall = 1.08097e+03
+dt limiter: Hydro Courant limit for z = 4860
+End cycle    900, time = 4.67535e-02, dt = 1.22189e-04, wall = 1.33090e+03
+dt limiter: Hydro dV/V limit for z = 4190
+End cycle   1000, time = 6.00491e-02, dt = 1.43585e-04, wall = 1.58278e+03
+dt limiter: Hydro dV/V limit for z = 3395
+End cycle   1100, time = 7.53617e-02, dt = 1.62979e-04, wall = 1.90031e+03
+dt limiter: Hydro dV/V limit for z = 1250
+End cycle   1200, time = 9.25550e-02, dt = 1.82892e-04, wall = 2.04426e+03
+dt limiter: Hydro dV/V limit for z = 4234
+End cycle   1300, time = 1.12012e-01, dt = 2.05522e-04, wall = 2.30281e+03
+dt limiter: Hydro dV/V limit for z = 1819
+End cycle   1400, time = 1.33562e-01, dt = 2.26478e-04, wall = 2.80914e+03
+dt limiter: Hydro dV/V limit for z = 4803
+End cycle   1500, time = 1.57326e-01, dt = 2.49140e-04, wall = 3.17656e+03
+dt limiter: Hydro dV/V limit for z = 1848
+End cycle   1600, time = 1.83440e-01, dt = 2.71980e-04, wall = 3.59930e+03
+dt limiter: Hydro dV/V limit for z = 5102
+End cycle   1700, time = 2.11291e-01, dt = 2.80239e-04, wall = 3.86842e+03
+dt limiter: Hydro Courant limit for z = 3780
+End cycle   1800, time = 2.39982e-01, dt = 2.91917e-04, wall = 4.52426e+03
+dt limiter: Hydro Courant limit for z = 4050
+End cycle   1900, time = 2.69528e-01, dt = 2.97714e-04, wall = 5.04124e+03
+dt limiter: Hydro Courant limit for z = 4051
+mpirun: Forwarding signal 18 to job

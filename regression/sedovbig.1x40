@@ -1,0 +1,428 @@
+[0 - 2b57b9ea8480] {4}{threads}: reservation ('CPU proc 1d00000000000014') cannot be satisfied
+********************
+Running PENNANT v0.9
+********************
+
+Running with 40 Legion Tasks
+[0 - 2b57ba01d700] {4}{runtime}: WARNING: Region requirement 1 of operation DriverTask (UID 210) is using uninitialized data for field(s) 2 of logical region (2,2,2)
+--- Mesh Information ---
+Points:  1067457596
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7171
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  1067457596
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  2960
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -16532
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  1067436465
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7408
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  3737
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -35496495
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -101248
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7517
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  3516
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7517
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  4592
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -1124
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -344416
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7412
+Zones:  7236
+Sides:  28944
+Edges:  14647
+Side chunks:  57
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  -81856
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+--- Mesh Information ---
+Points:  7521
+Zones:  7344
+Sides:  29376
+Edges:  14864
+Side chunks:  58
+Point chunks:  15
+Zone chunks:  15
+Chunk size:  512
+------------------------
+Energy check:  total energy  =   2.467966e-01
+(internal =   2.467966e-01, kinetic =   0.000000e+00)
+End cycle      1, time = 2.50000e-06, dt = 2.50000e-06, wall = 8.12089e-02
+dt limiter: Initial timestep
+End cycle    100, time = 7.07243e-04, dt = 8.47203e-06, wall = 1.67391e+02
+dt limiter: Hydro dV/V limit for z = 2808
+End cycle    200, time = 1.86028e-03, dt = 1.69224e-05, wall = 6.32340e+02
+dt limiter: Hydro dV/V limit for z = 1224
+End cycle    300, time = 4.06477e-03, dt = 2.79302e-05, wall = 1.26541e+03
+dt limiter: Hydro dV/V limit for z = 1132
+End cycle    400, time = 7.33340e-03, dt = 3.96682e-05, wall = 2.19849e+03
+dt limiter: Hydro dV/V limit for z = 115
+End cycle    500, time = 1.20191e-02, dt = 5.39060e-05, wall = 3.46938e+03
+dt limiter: Hydro dV/V limit for z = 5355
+End cycle    600, time = 1.80834e-02, dt = 6.85912e-05, wall = 5.21841e+03
+dt limiter: Hydro dV/V limit for z = 97
+End cycle    700, time = 2.58479e-02, dt = 8.65948e-05, wall = 6.36689e+03
+dt limiter: Hydro dV/V limit for z = 4760
+End cycle    800, time = 3.54674e-02, dt = 1.04308e-04, wall = 8.21318e+03
+dt limiter: Hydro Courant limit for z = 1944
+mpirun: Forwarding signal 18 to job
