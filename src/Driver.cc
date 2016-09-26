@@ -64,10 +64,12 @@ RunStat DriverTask::cpu_run(const Task *task,
 
 	LogicalUnstructured zones(ctx, runtime, regions[0]);
 
-	std::vector<LogicalUnstructured> halos_points;
+    std::vector<LogicalUnstructured> halos_points;
+    std::vector<PhysicalRegion> pregions_halos;
 	for (int i = 2; i < task->regions.size(); i++) {
 	    runtime->unmap_region(ctx, regions[i]);
 	    halos_points.push_back(LogicalUnstructured(ctx, runtime, task->regions[i].region));
+	    pregions_halos.push_back(regions[i]);
 	}
 
     SPMDArgs args;
@@ -90,7 +92,7 @@ RunStat DriverTask::cpu_run(const Task *task,
     Driver drv(params, args.add_reduction, args.min_reduction,
             args.pbarrier_as_master, args.masters_pbarriers,
             &zone_rho, &zone_energy_density, &zone_pressure, zones,
-            regions[1], halos_points,
+            regions[1], halos_points, pregions_halos,
             ctx, runtime);
 
     RunStat value=drv.run();
@@ -108,6 +110,7 @@ Driver::Driver(const InputParameters& params,
         LogicalUnstructured& global_comm_zones,
 		const PhysicalRegion& pts,
         std::vector<LogicalUnstructured>& halos_points,
+        std::vector<PhysicalRegion>& pregions_halos,
         Context ctx, HighLevelRuntime* rt)
         : probname(params.probname_),
 		  tstop(params.directs_.tstop_),
@@ -127,7 +130,7 @@ Driver::Driver(const InputParameters& params,
           zone_pressure(zone_pressure),
           ispace_zones(global_comm_zones.getISpace())
 {
-    mesh = new LocalMesh(params, points, halos_points,
+    mesh = new LocalMesh(params, points, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
     		    ctx_, runtime_);
     hydro = new Hydro(params, mesh, add_reduction, ctx_, runtime_);

@@ -18,6 +18,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include "AddReductionOp.hh"
 #include "Vec2.hh"
 #include "Memory.hh"
 #include "GenerateMesh.hh"
@@ -28,6 +29,7 @@ using namespace std;
 LocalMesh::LocalMesh(const InputParameters& params,
 		LogicalUnstructured& points,
         std::vector<LogicalUnstructured>& halos_pts,
+        std::vector<PhysicalRegion>& pregionshalos,
         PhaseBarrier as_master,
         std::vector<PhaseBarrier> masters,
 		Context ctx, HighLevelRuntime* rt) :
@@ -44,6 +46,7 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			ctx(ctx),
 			runtime(rt),
 			halos_points(halos_pts),
+			pregions_halos(pregionshalos),
 			num_subregions(params.directs_.ntasks_),
 			my_color(params.directs_.task_id_)
 	{
@@ -551,11 +554,11 @@ void LocalMesh::sumOnProc(
 void LocalMesh::initParallel() {
     if (num_subregions == 1) return;
 
-    vector<int> master_points_counts;
+    vector<int> master_points_counts, master_points;
+    std::vector<int> slaved_points_counts, slaved_points;
     generate_mesh->generateHaloPoints(
             master_colors, slaved_points_counts, slaved_points,
             slave_colors, master_points_counts, master_points);
-    master_points_counts.resize(0);
 
     num_slaves = slaved_points.size();
 
@@ -570,6 +573,11 @@ void LocalMesh::initParallel() {
         halos_points[1+master].partition(my_slaved_pts_map, true);
         slaved_halo_points.push_back(LogicalUnstructured(ctx, runtime, halos_points[1+master].getLRegion(1+master)));
     }
+
+    slaved_points_counts.resize(0);
+    master_points_counts.resize(0);
+    slaved_points.resize(0);
+    master_points.resize(0);
 }
 
 
@@ -583,19 +591,16 @@ void LocalMesh::sumToPoints(
     sumOnProc(corner_force, pt_force_);
 
     if (slave_colors.size() > 0) {
-
-        IndexIterator itr = halos_points[0].getIterator();
-        while (itr.has_next()) {
-            ptr_t pt_ptr = itr.next();
-            std::cout << my_color << " as master " << pt_ptr.value << std::endl;
-        }
-        for (unsigned pt = 0; pt < master_points.size(); pt++)
-            std::cout << my_color << " masters (local) " << master_points[pt]
-                  << " (gid) " << point_local_to_globalID[master_points[pt]].value << std::endl;
-
         // phase 1 as master: master copies partial result in; slaves may not access data
-        pbarrier_as_master.wait();                                              // 3 * cycle
-        pbarrier_as_master.arrive(1);                                           // 3 * cycle + 1
+        CopyLauncher copy_launcher;
+        copy_launcher.add_copy_requirements(
+                RegionRequirement(local_points_by_gid.getLRegion(), READ_ONLY, EXCLUSIVE, local_points_by_gid.getLRegion()),
+                RegionRequirement(halos_points[0].getLRegion(), READ_WRITE, SIMULTANEOUS, halos_points[0].getLRegion()));
+        copy_launcher.add_src_field(0, FID_PMASWT);
+        copy_launcher.add_dst_field(0, FID_GHOST_PMASWT);
+        copy_launcher.add_wait_barrier(pbarrier_as_master);                     // 3 * cycle
+        copy_launcher.add_arrival_barrier(pbarrier_as_master);                  // 3 * cycle + 1
+        runtime->issue_copy_operation(ctx, copy_launcher);
         pbarrier_as_master.arrive(slave_colors.size());                         // 3 * cycle + 1 (slaves never arrive here)
         pbarrier_as_master =
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 1
@@ -607,23 +612,20 @@ void LocalMesh::sumToPoints(
 
     unsigned previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
-        IndexIterator itr = slaved_halo_points[master].getIterator();
-        while (itr.has_next()) {
-            ptr_t pt_ptr = itr.next();
-            std::cout << my_color << " as slave to " << master << " : " << pt_ptr.value << std::endl;
-        }
-        for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++) {
-            std::cout << my_color << " as slave to " << master << " (local) "
-            << slaved_points[pt + previous_master_pts_count]
-            << " (gid) " << point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value << std::endl;
-        }
-        previous_master_pts_count += slaved_points_counts[master];
-
         // phase 2 as slave: slaves reduce; no one can read data
+        CopyLauncher copy_launcher;
+        copy_launcher.add_copy_requirements(
+                RegionRequirement(local_points_by_gid.getLRegion(), READ_ONLY, EXCLUSIVE,
+                        local_points_by_gid.getLRegion()),
+                RegionRequirement(slaved_halo_points[master].getLRegion(), AddReductionOp::redop_id,
+                        SIMULTANEOUS, halos_points[1+master].getLRegion()));
+        copy_launcher.add_src_field(0, FID_PMASWT);
+        copy_launcher.add_dst_field(0, FID_GHOST_PMASWT);
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 1
-        masters_pbarriers[master].wait();                                       // 3 * cycle + 1
-        masters_pbarriers[master].arrive(1);                                    // 3 * cycle + 2
+        copy_launcher.add_wait_barrier(masters_pbarriers[master]);              // 3 * cycle + 1
+        copy_launcher.add_arrival_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
+        runtime->issue_copy_operation(ctx, copy_launcher);
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 2
     }
@@ -631,6 +633,25 @@ void LocalMesh::sumToPoints(
     if (slave_colors.size() > 0) {
         // phase 3 as master: everybody can read accumulation
         pbarrier_as_master.wait();                                              // 3 * cycle + 2
+
+        RegionRequirement halo_req(halos_points[0].getLRegion(), READ_ONLY, EXCLUSIVE,
+                halos_points[0].getLRegion());
+        halo_req.add_field(FID_GHOST_PMASWT);
+        // TODO use LogicUnstruct object
+        InlineLauncher halo_launcher(halo_req);
+        PhysicalRegion pregion_halo = runtime->map_region(ctx, halo_launcher);
+        DoubleAccessor acc_halo =
+                pregion_halo.get_field_accessor(FID_GHOST_PMASWT).typeify<double>();
+        // TODO just copy launch it back
+        {
+            IndexIterator itr = halos_points[0].getIterator();
+            while (itr.has_next()) {
+                ptr_t pt_ptr = itr.next();
+                pt_weighted_mass_.write(pt_ptr, acc_halo.read(pt_ptr));
+            }
+        }
+        runtime->unmap_region(ctx, pregion_halo);
+
         pbarrier_as_master.arrive(1);                                           // 3 * cycle + 3
         pbarrier_as_master =
                 runtime->advance_phase_barrier(ctx, pbarrier_as_master);        // 3 * cycle + 3
@@ -639,8 +660,34 @@ void LocalMesh::sumToPoints(
     previous_master_pts_count = 0;
     for (int master=0; master < master_colors.size(); master++) {
         // phase 3 as slave: everybody can read accumulation
-        masters_pbarriers[master].wait();                                       // 3 * cycle + 2
-        masters_pbarriers[master].arrive(1);                                    // 3 * cycle + 3
+        AcquireLauncher acquire_launcher(slaved_halo_points[master].getLRegion(),
+                halos_points[1+master].getLRegion(), pregions_halos[1+master]); // TODO tuck this funny pregion into LogicUnstruct
+        acquire_launcher.add_field(FID_GHOST_PMASWT);
+        acquire_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
+        runtime->issue_acquire(ctx, acquire_launcher);
+
+        // TODO use LogicUnstruct
+        RegionRequirement halo_req(slaved_halo_points[master].getLRegion(), READ_ONLY, EXCLUSIVE,
+                halos_points[1+master].getLRegion());
+        halo_req.add_field(FID_GHOST_PMASWT);
+        InlineLauncher halo_launcher(halo_req);
+        PhysicalRegion pregion_halo = runtime->map_region(ctx, halo_launcher);
+        DoubleAccessor acc_halo =
+                pregion_halo.get_field_accessor(FID_GHOST_PMASWT).typeify<double>();
+
+        {
+            IndexIterator itr = slaved_halo_points[master].getIterator();
+            while (itr.has_next()) {
+                ptr_t pt_ptr = itr.next();
+                pt_weighted_mass_.write(pt_ptr, acc_halo.read(pt_ptr));
+            }
+        }
+
+        ReleaseLauncher release_launcher(slaved_halo_points[master].getLRegion(),
+                halos_points[1+master].getLRegion(), pregions_halos[1+master]); // TODO tuck this funny pregion into LogicUnstruct
+        release_launcher.add_field(FID_GHOST_PMASWT);
+        release_launcher.add_arrival_barrier(masters_pbarriers[master]);        // 3 * cycle + 3
+        runtime->issue_release(ctx, release_launcher);
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 3
     }

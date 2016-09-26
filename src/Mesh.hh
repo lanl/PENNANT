@@ -31,6 +31,7 @@ public:
     LocalMesh(const InputParameters& params,
    		LogicalUnstructured& pts,
         std::vector<LogicalUnstructured>& halos_points,
+        std::vector<PhysicalRegion>& pregions_halos,
         PhaseBarrier pbarrier_as_master,
         std::vector<PhaseBarrier> masters_pbarriers,
         Context ctx, HighLevelRuntime* rt);
@@ -168,14 +169,13 @@ private:
     std::vector<PhaseBarrier> masters_pbarriers;
     int num_slaves;
     std::vector<int> master_colors;
-    std::vector<int> slaved_points_counts, slaved_points;
     std::vector<int> slave_colors;
-    std::vector<int> master_points;
 
     Context ctx;
     HighLevelRuntime* runtime;
 
     std::vector<LogicalUnstructured> halos_points;
+    std::vector<PhysicalRegion> pregions_halos;
     std::vector<LogicalUnstructured> slaved_halo_points;
 
     const int num_subregions;

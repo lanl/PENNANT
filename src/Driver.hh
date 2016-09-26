@@ -69,6 +69,7 @@ public:
             LogicalUnstructured& global_comm_zones,
             const PhysicalRegion& pts,
             std::vector<LogicalUnstructured>& halos_points,
+            std::vector<PhysicalRegion>& pregions_halos,
             Context ctx, HighLevelRuntime* rt);
 
     RunStat run();
