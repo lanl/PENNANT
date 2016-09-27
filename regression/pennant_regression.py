@@ -11,7 +11,7 @@ import sys
 import argparse
 
 EPSILON = 1.0e-11
-TOLERANCE = 1.0e-7
+TOLERANCE = 1.5e-7
 
 def read_xy_file(filename):
     try:
