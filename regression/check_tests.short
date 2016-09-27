@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+
+$fails = 0;
+
+print "\nleblanc\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/leblanc/leblanc.xy.std ~/local/regression/pennant/leblanc/leblanc.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nnoh\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/noh/noh.xy.std ~/local/regression/pennant/noh/noh.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nnohpoly\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/nohpoly/nohpoly.xy.std ~/local/regression/pennant/nohpoly/nohpoly.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nnohsmall\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/nohsmall/nohsmall.xy.std ~/local/regression/pennant/nohsmall/nohsmall.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nsedov\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/sedov/sedov.xy.std ~/local/regression/pennant/sedov/sedov.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nsedovsmall\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/sedovsmall/sedovsmall.xy.std ~/local/regression/pennant/sedovsmall/sedovsmall.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nnoh2\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/noh/noh.xy.std ~/local/regression/pennant/noh2/noh.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nsedov3\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/sedov/sedov.xy.std ~/local/regression/pennant/sedov3/sedov.xy") == 0
+	or $fails = $fails + 1;
+
+print "\nnohpoly4\n";
+system("./pennant_regression.py ~/gitlab/pennant-spmd/test/nohpoly/nohpoly.xy.std ~/local/regression/pennant/nohpoly4/nohpoly.xy") == 0
+	or $fails = $fails + 1;
+
+$fails == 0 or die "\033[31mFAIL\033[0m";
+

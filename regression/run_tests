@@ -2,13 +2,36 @@
 
 rm -rf ${HOME}/local/regression/pennant
 
-./leblanc.mac
-./noh.mac
-./nohpoly.mac
-./nohsmall.mac
-./sedov.mac
-./sedovsmall.mac
+sbatch ./leblanc
+sbatch ./noh
+sbatch ./nohpoly
+sbatch ./nohsmall
+sbatch ./sedov
+sbatch ./sedovsmall
 
-./noh2.mac
-./sedov3.mac
-./nohpoly4.mac
+sbatch ./noh2
+sbatch ./sedov3
+sbatch ./nohpoly4
+sbatch ./leblanc5
+sbatch ./nohsmall6
+sbatch ./sedovsmall7
+
+sbatch ./noh8
+sbatch ./sedov9
+sbatch ./nohpoly10
+sbatch ./leblanc11
+sbatch ./nohsmall12
+sbatch ./sedov13
+
+sbatch ./noh14
+sbatch ./nohpoly15
+sbatch ./leblanc16
+sbatch ./nohsmall17
+sbatch ./sedov18
+
+sbatch ./noh19
+sbatch ./nohpoly20
+sbatch ./leblanc21
+
+sbatch ./noh23
+sbatch ./nohpoly29

@@ -667,14 +667,12 @@ void LocalMesh::sumToPoints(
                 halos_points[0].getLRegion());
         halo_req.add_field(FID_GHOST_PMASWT);
         halo_req.add_field(FID_GHOST_PF);
-        // TODO use LogicUnstruct object
         InlineLauncher halo_launcher(halo_req);
         PhysicalRegion pregion_halo = runtime->map_region(ctx, halo_launcher);
         DoubleAccessor acc_halo =
                 pregion_halo.get_field_accessor(FID_GHOST_PMASWT).typeify<double>();
         Double2Accessor acc2_halo =
                 pregion_halo.get_field_accessor(FID_GHOST_PF).typeify<double2>();
-        // TODO just copy launch it back
         {
             IndexIterator itr = halos_points[0].getIterator();
             while (itr.has_next()) {
@@ -693,13 +691,12 @@ void LocalMesh::sumToPoints(
     for (int master=0; master < master_colors.size(); master++) {
         // phase 3 as slave: everybody can read accumulation
         AcquireLauncher acquire_launcher(slaved_halo_points[master].getLRegion(),
-                halos_points[1+master].getLRegion(), pregions_halos[1+master]); // TODO tuck this funny pregion into LogicUnstruct
+                halos_points[1+master].getLRegion(), pregions_halos[1+master]);
         acquire_launcher.add_field(FID_GHOST_PMASWT);
         acquire_launcher.add_field(FID_GHOST_PF);
         acquire_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
         runtime->issue_acquire(ctx, acquire_launcher);
 
-        // TODO use LogicUnstruct
         RegionRequirement halo_req(slaved_halo_points[master].getLRegion(), READ_ONLY, EXCLUSIVE,
                 halos_points[1+master].getLRegion());
         halo_req.add_field(FID_GHOST_PMASWT);
@@ -721,7 +718,7 @@ void LocalMesh::sumToPoints(
         }
 
         ReleaseLauncher release_launcher(slaved_halo_points[master].getLRegion(),
-                halos_points[1+master].getLRegion(), pregions_halos[1+master]); // TODO tuck this funny pregion into LogicUnstruct
+                halos_points[1+master].getLRegion(), pregions_halos[1+master]);
         release_launcher.add_field(FID_GHOST_PMASWT);
         release_launcher.add_field(FID_GHOST_PF);
         release_launcher.add_arrival_barrier(masters_pbarriers[master]);        // 3 * cycle + 3
