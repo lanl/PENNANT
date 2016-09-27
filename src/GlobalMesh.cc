@@ -49,7 +49,7 @@ void GlobalMesh::init()
 
 	Coloring ghost_pts_map;
 
-	for (int color=0; color < inputParams.directs_.ntasks_; ++color) {
+	for (int color=0; color < inputParams.directs.ntasks; ++color) {
 	    ghost_pts_map[color].points = std::set<ptr_t>(); // empty set
 		std::vector<int> master_colors, slave_colors;
 		generate_mesh.setupHaloCommunication(color, &master_colors, &slave_colors, &ghost_pts_map);

@@ -21,8 +21,8 @@ using namespace std;
 
 TTS::TTS(const InputParameters& params, Hydro* h) :
 		hydro(h),
-		alfa(params.directs_.alfa_),
-		ssmin(params.directs_.ssmin_)
+		alfa(params.directs.alfa),
+		ssmin(params.directs.ssmin)
 {
 }
 
@@ -57,7 +57,7 @@ void TTS::calcForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = mesh->map_side2zone_[s];
+        int z = mesh->map_side2zone[s];
 
         double svfacinv = zarea[z] / sarea[s];
         double srho = zr[z] * smf[s] * svfacinv;

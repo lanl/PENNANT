@@ -70,8 +70,8 @@ public:
 
     void sortZones();
 private:
-    const int num_subregions_;
-    const int mype_;
+    const int num_subregions;
+    const int mype;
 };
 
 

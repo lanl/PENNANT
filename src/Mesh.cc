@@ -34,11 +34,11 @@ LocalMesh::LocalMesh(const InputParameters& params,
         PhaseBarrier as_master,
         std::vector<PhaseBarrier> masters,
 		Context ctx, HighLevelRuntime* rt) :
-			chunk_size(params.directs_.chunk_size_),
-			subregion_xmin(params.directs_.subregion_xmin_),
-			subregion_xmax(params.directs_.subregion_xmax_),
-			subregion_ymin(params.directs_.subregion_ymin_),
-			subregion_ymax(params.directs_.subregion_ymax_),
+			chunk_size(params.directs.chunk_size),
+			subregion_xmin(params.directs.subregion_xmin),
+			subregion_xmax(params.directs.subregion_xmax),
+			subregion_ymin(params.directs.subregion_ymin),
+			subregion_ymax(params.directs.subregion_ymax),
             local_points_by_gid(ctx, rt, points.getISpace()),
             pt_x_init_by_gid(points),
 			generate_mesh(NULL),
@@ -48,8 +48,8 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			runtime(rt),
 			halos_points(halos_pts),
 			pregions_halos(pregionshalos),
-			num_subregions(params.directs_.ntasks_),
-			my_color(params.directs_.task_id_)
+			num_subregions(params.directs.ntasks),
+			my_color(params.directs.task_id)
 	{
 
     generate_mesh = new GenerateMesh(params);
@@ -74,13 +74,13 @@ void LocalMesh::init() {
     generate_mesh->generate(
             point_position_initial, zone_points_pointer_calc, zone_points_values_calc);
 
-    num_pts_ = point_position_initial.size();
-    num_sides_ = zone_points_values_calc.size();
-    num_corners_ = num_sides_;
-    num_zones_ = zone_points_pointer_calc.size() - 1;
+    num_pts = point_position_initial.size();
+    num_sides = zone_points_values_calc.size();
+    num_corners = num_sides;
+    num_zones = zone_points_pointer_calc.size() - 1;
 
-    zone_pts_ptr_ = AbstractedMemory::alloc<int>(num_zones_+1);
-    copy(zone_points_pointer_calc.begin(), zone_points_pointer_calc.end(), zone_pts_ptr_);
+    zone_pts_ptr = AbstractedMemory::alloc<int>(num_zones+1);
+    copy(zone_points_pointer_calc.begin(), zone_points_pointer_calc.end(), zone_pts_ptr);
 
     // use the cell* arrays to populate the side maps
     initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc);
@@ -97,29 +97,29 @@ void LocalMesh::init() {
 
     writeMeshStats();
 
-    edge_x = AbstractedMemory::alloc<double2>(num_edges_);
-    zone_x_ = AbstractedMemory::alloc<double2>(num_zones_);
-    pt_x0 = AbstractedMemory::alloc<double2>(num_pts_);
-    pt_x = AbstractedMemory::alloc<double2>(num_pts_);
-    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts_);
-    edge_x_pred = AbstractedMemory::alloc<double2>(num_edges_);
-    zone_x_pred = AbstractedMemory::alloc<double2>(num_zones_);
-    side_area_ = AbstractedMemory::alloc<double>(num_sides_);
-    side_vol_ = AbstractedMemory::alloc<double>(num_sides_);
-    zone_area_ = AbstractedMemory::alloc<double>(num_zones_);
-    zone_vol_ = AbstractedMemory::alloc<double>(num_zones_);
-    side_area_pred = AbstractedMemory::alloc<double>(num_sides_);
-    side_vol_pred = AbstractedMemory::alloc<double>(num_sides_);
-    zone_area_pred = AbstractedMemory::alloc<double>(num_zones_);
-    zone_vol_pred = AbstractedMemory::alloc<double>(num_zones_);
-    zone_vol0 = AbstractedMemory::alloc<double>(num_zones_);
-    side_surfp = AbstractedMemory::alloc<double2>(num_sides_);
-    edge_len = AbstractedMemory::alloc<double>(num_edges_);
-    zone_dl = AbstractedMemory::alloc<double>(num_zones_);
-    side_mass_frac = AbstractedMemory::alloc<double>(num_sides_);
+    edge_x = AbstractedMemory::alloc<double2>(num_edges);
+    zone_x = AbstractedMemory::alloc<double2>(num_zones);
+    pt_x0 = AbstractedMemory::alloc<double2>(num_pts);
+    pt_x = AbstractedMemory::alloc<double2>(num_pts);
+    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts);
+    edge_x_pred = AbstractedMemory::alloc<double2>(num_edges);
+    zone_x_pred = AbstractedMemory::alloc<double2>(num_zones);
+    side_area = AbstractedMemory::alloc<double>(num_sides);
+    side_vol = AbstractedMemory::alloc<double>(num_sides);
+    zone_area = AbstractedMemory::alloc<double>(num_zones);
+    zone_vol = AbstractedMemory::alloc<double>(num_zones);
+    side_area_pred = AbstractedMemory::alloc<double>(num_sides);
+    side_vol_pred = AbstractedMemory::alloc<double>(num_sides);
+    zone_area_pred = AbstractedMemory::alloc<double>(num_zones);
+    zone_vol_pred = AbstractedMemory::alloc<double>(num_zones);
+    zone_vol0 = AbstractedMemory::alloc<double>(num_zones);
+    side_surfp = AbstractedMemory::alloc<double2>(num_sides);
+    edge_len = AbstractedMemory::alloc<double>(num_edges);
+    zone_dl = AbstractedMemory::alloc<double>(num_zones);
+    side_mass_frac = AbstractedMemory::alloc<double>(num_sides);
 
     IndexIterator itr = pt_x_init_by_gid.getIterator();
-    point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts_);
+    point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts);
     int i = 0;
     while (itr.has_next()) {
     		ptr_t pt_ptr = itr.next();
@@ -127,7 +127,7 @@ void LocalMesh::init() {
         assert(point_local_to_globalID[i].value == generate_mesh->pointLocalToGlobalID(i));  // TODO find fastest and use that, no assert
         	i++;
     }
-    assert(i == num_pts_);
+    assert(i == num_pts);
 
     initParallel();
 
@@ -155,17 +155,17 @@ void LocalMesh::initSideMappingArrays(
         const vector<int>& cellstart,
         const vector<int>& cellnodes) {
 
-    map_side2pt1_ = AbstractedMemory::alloc<int>(num_sides_);
-    zone_pts_val_ = map_side2pt1_;
-    map_side2zone_  = AbstractedMemory::alloc<int>(num_sides_);
+    map_side2pt1 = AbstractedMemory::alloc<int>(num_sides);
+    zone_pts_val = map_side2pt1;
+    map_side2zone  = AbstractedMemory::alloc<int>(num_sides);
 
-    for (int z = 0; z < num_zones_; ++z) {
+    for (int z = 0; z < num_zones; ++z) {
         int sbase = cellstart[z];
         int size = cellstart[z+1] - sbase;
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
-            map_side2zone_[s] = z;
-            map_side2pt1_[s] = cellnodes[s];
+            map_side2zone[s] = z;
+            map_side2pt1[s] = cellnodes[s];
         } // for n
     } // for z
 }
@@ -173,14 +173,14 @@ void LocalMesh::initSideMappingArrays(
 
 void LocalMesh::initEdgeMappingArrays() {
 
-    vector<vector<int> > edgepp(num_pts_), edgepe(num_pts_);
+    vector<vector<int> > edgepp(num_pts), edgepe(num_pts);
 
-    map_side2edge_ = AbstractedMemory::alloc<int>(num_sides_);
+    map_side2edge = AbstractedMemory::alloc<int>(num_sides);
 
     int e = 0;
-    for (int s = 0; s < num_sides_; ++s) {
-        int p1 = min(map_side2pt1_[s], mapSideToPt2(s));
-        int p2 = max(map_side2pt1_[s], mapSideToPt2(s));
+    for (int s = 0; s < num_sides; ++s) {
+        int p1 = min(map_side2pt1[s], mapSideToPt2(s));
+        int p2 = max(map_side2pt1[s], mapSideToPt2(s));
 
         vector<int>& vpp = edgepp[p1];
         vector<int>& vpe = edgepe[p1];
@@ -191,40 +191,40 @@ void LocalMesh::initEdgeMappingArrays() {
             vpe.push_back(e);
             ++e;
         }
-        map_side2edge_[s] = vpe[i];
+        map_side2edge[s] = vpe[i];
     }  // for s
 
-    num_edges_ = e;
+    num_edges = e;
 
 }
 
 
 void LocalMesh::populateChunks() {
 
-    if (chunk_size == 0) chunk_size = max(num_pts_, num_sides_);
+    if (chunk_size == 0) chunk_size = max(num_pts, num_sides);
 
     // compute side chunks
     // use 'chunksize' for maximum chunksize; decrease as needed
     // to ensure that no zone has its sides split across chunk
     // boundaries
     int s1, s2 = 0;
-    while (s2 < num_sides_) {
+    while (s2 < num_sides) {
         s1 = s2;
-        s2 = min(s2 + chunk_size, num_sides_);
-        while (s2 < num_sides_ && map_side2zone_[s2] == map_side2zone_[s2-1])
+        s2 = min(s2 + chunk_size, num_sides);
+        while (s2 < num_sides && map_side2zone[s2] == map_side2zone[s2-1])
             --s2;
         side_chunks_first.push_back(s1);
         side_chunks_last.push_back(s2);
-        zone_chunks_first.push_back(map_side2zone_[s1]);
-        zone_chunks_last.push_back(map_side2zone_[s2-1] + 1);
+        zone_chunks_first.push_back(map_side2zone[s1]);
+        zone_chunks_last.push_back(map_side2zone[s2-1] + 1);
     }
     num_side_chunks = side_chunks_first.size();
 
     // compute point chunks
     int p1, p2 = 0;
-    while (p2 < num_pts_) {
+    while (p2 < num_pts) {
         p1 = p2;
-        p2 = min(p2 + chunk_size, num_pts_);
+        p2 = min(p2 + chunk_size, num_pts);
         pt_chunks_first.push_back(p1);
         pt_chunks_last.push_back(p2);
     }
@@ -232,9 +232,9 @@ void LocalMesh::populateChunks() {
 
     // compute zone chunks
     int z1, z2 = 0;
-    while (z2 < num_zones_) {
+    while (z2 < num_zones) {
         z1 = z2;
-        z2 = min(z2 + chunk_size, num_zones_);
+        z2 = min(z2 + chunk_size, num_zones);
         zone_chunk_first.push_back(z1);
         zone_chunk_last.push_back(z2);
     }
@@ -244,14 +244,14 @@ void LocalMesh::populateChunks() {
 
 
 void LocalMesh::populateInverseMap() {
-    map_pt2crn_first = AbstractedMemory::alloc<int>(num_pts_);
-    map_crn2crn_next = AbstractedMemory::alloc<int>(num_sides_);
+    map_pt2crn_first = AbstractedMemory::alloc<int>(num_pts);
+    map_crn2crn_next = AbstractedMemory::alloc<int>(num_sides);
 
-    vector<pair<int, int> > pcpair(num_sides_);
-    for (int c = 0; c < num_corners_; ++c)
-        pcpair[c] = make_pair(map_side2pt1_[c], c);
+    vector<pair<int, int> > pcpair(num_sides);
+    for (int c = 0; c < num_corners; ++c)
+        pcpair[c] = make_pair(map_side2pt1[c], c);
     sort(pcpair.begin(), pcpair.end());
-    for (int i = 0; i < num_corners_; ++i) {
+    for (int i = 0; i < num_corners; ++i) {
         int p = pcpair[i].first;
         int pp = pcpair[i+1].first;
         int pm = pcpair[i-1].first;
@@ -259,7 +259,7 @@ void LocalMesh::populateInverseMap() {
         int cp = pcpair[i+1].second;
 
         if (i == 0 || p != pm)  map_pt2crn_first[p] = c;
-        if (i+1 == num_corners_ || p != pp)
+        if (i+1 == num_corners || p != pp)
             map_crn2crn_next[c] = -1;
         else
             map_crn2crn_next[c] = cp;
@@ -270,13 +270,13 @@ void LocalMesh::populateInverseMap() {
 
 void LocalMesh::writeMeshStats() {
 
-    int64_t gnump = num_pts_;
+    int64_t gnump = num_pts;
     // make sure that boundary points aren't double-counted;
     // only count them if they are masters
     if (num_subregions > 1) gnump -= num_slaves;
-    int64_t gnumz = num_zones_;
-    int64_t gnums = num_sides_;
-    int64_t gnume = num_edges_;
+    int64_t gnumz = num_zones;
+    int64_t gnums = num_sides;
+    int64_t gnume = num_edges;
     int gnumpch = num_pt_chunks;
     int gnumzch = num_zone_chunks;
     int gnumsch = num_side_chunks;
@@ -313,7 +313,7 @@ vector<int> LocalMesh::getXPlane(const double c) {
     vector<int> mapbp;
     const double eps = 1.e-12;
 
-    for (int p = 0; p < num_pts_; ++p) {
+    for (int p = 0; p < num_pts; ++p) {
     		if (fabs(pt_x[p].x - c) < eps) {
             mapbp.push_back(p);
         }
@@ -328,7 +328,7 @@ vector<int> LocalMesh::getYPlane(const double c) {
     vector<int> mapbp;
     const double eps = 1.e-12;
 
-    for (int p = 0; p < num_pts_; ++p) {
+    for (int p = 0; p < num_pts; ++p) {
         if (fabs(pt_x[p].y - c) < eps) {
             mapbp.push_back(p);
         }
@@ -373,20 +373,20 @@ void LocalMesh::calcCtrs(const int side_chunk, const bool pred) {
     } else {
         px = pt_x;
         ex = edge_x;
-        zx = zone_x_;
+        zx = zone_x;
     }
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
-    int zfirst = map_side2zone_[sfirst];
-    int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
+    int zfirst = map_side2zone[sfirst];
+    int zlast = (slast < num_sides ? map_side2zone[slast] : num_zones);
     fill(&zx[zfirst], &zx[zlast], double2(0., 0.));
 
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = map_side2pt1_[s];
+        int p1 = map_side2pt1[s];
         int p2 = mapSideToPt2(s);
-        int e = map_side2edge_[s];
-        int z = map_side2zone_[s];
+        int e = map_side2edge[s];
+        int z = map_side2zone[s];
         ex[e] = 0.5 * (px[p1] + px[p2]);
         zx[z] += px[p1];
     }
@@ -415,26 +415,26 @@ void LocalMesh::calcVols(const int side_chunk, const bool pred) {
         zvol = zone_vol_pred;
     } else {
         px = pt_x;
-        zx = zone_x_;
-        sarea = side_area_;
-        svol = side_vol_;
-        zarea = zone_area_;
-        zvol = zone_vol_;
+        zx = zone_x;
+        sarea = side_area;
+        svol = side_vol;
+        zarea = zone_area;
+        zvol = zone_vol;
     }
 	int sfirst = side_chunks_first[side_chunk];
 	int slast = side_chunks_last[side_chunk];
 
-    int zfirst = map_side2zone_[sfirst];
-    int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
+    int zfirst = map_side2zone[sfirst];
+    int zlast = (slast < num_sides ? map_side2zone[slast] : num_zones);
     fill(&zvol[zfirst], &zvol[zlast], 0.);
     fill(&zarea[zfirst], &zarea[zlast], 0.);
 
     const double third = 1. / 3.;
     int count = 0;
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = map_side2pt1_[s];
+        int p1 = map_side2pt1[s];
         int p2 = mapSideToPt2(s);
-        int z = map_side2zone_[s];
+        int z = map_side2zone[s];
 
         // compute side volumes, sum to zone
         double sa = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
@@ -473,8 +473,8 @@ void LocalMesh::calcSideMassFracs(const int side_chunk) {
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone_[s];
-        side_mass_frac[s] = side_area_[s] / zone_area_[z];
+        int z = map_side2zone[s];
+        side_mass_frac[s] = side_area[s] / zone_area[z];
     }
 }
 
@@ -485,8 +485,8 @@ void LocalMesh::calcMedianMeshSurfVecs(const int side_chunk) {
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone_[s];
-        int e = map_side2edge_[s];
+        int z = map_side2zone[s];
+        int e = map_side2edge[s];
 
         side_surfp[s] = rotateCCW(edge_x_pred[e] - zone_x_pred[z]);
 
@@ -500,9 +500,9 @@ void LocalMesh::calcEdgeLen(const int side_chunk) {
 	int slast = side_chunks_last[side_chunk];
 
 	for (int s = sfirst; s < slast; ++s) {
-        const int p1 = map_side2pt1_[s];
+        const int p1 = map_side2pt1[s];
         const int p2 = mapSideToPt2(s);
-        const int e = map_side2edge_[s];
+        const int e = map_side2edge[s];
 
         edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
 
@@ -514,13 +514,13 @@ void LocalMesh::calcCharacteristicLen(const int side_chunk) {
     int sfirst = side_chunks_first[side_chunk];
     int slast = side_chunks_last[side_chunk];
 
-    int zfirst = map_side2zone_[sfirst];
-    int zlast = (slast < num_sides_ ? map_side2zone_[slast] : num_zones_);
+    int zfirst = map_side2zone[sfirst];
+    int zlast = (slast < num_sides ? map_side2zone[slast] : num_zones);
     fill(&zone_dl[zfirst], &zone_dl[zlast], 1.e99);
 
     for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone_[s];
-        int e = map_side2edge_[s];
+        int z = map_side2zone[s];
+        int e = map_side2edge[s];
 
         double area = side_area_pred[s];
         double base = edge_len[e];

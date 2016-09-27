@@ -51,18 +51,18 @@ struct RunStat {
 };
 
 struct TimeStep {
-	double dt_;
-	char message_[80];
+	double dt;
+	char message[80];
 	TimeStep() {
-		dt_ = std::numeric_limits<double>::max();
-		snprintf(message_, 80, "Error: uninitialized");
+		dt = std::numeric_limits<double>::max();
+		snprintf(message, 80, "Error: uninitialized");
 	}
 	TimeStep(const TimeStep &copy) {
-		dt_ = copy.dt_;
-		snprintf(message_, 80, "%s", copy.message_);
+		dt = copy.dt;
+		snprintf(message, 80, "%s", copy.message);
 	}
 	inline friend bool operator<(const TimeStep &l, const TimeStep &r) {
-		return l.dt_ < r.dt_;
+		return l.dt < r.dt;
 	}
 	inline friend bool operator>(const TimeStep &l, const TimeStep &r) {
 		return r < l;
@@ -74,7 +74,7 @@ struct TimeStep {
 		return !(l < r);
 	}
 	inline friend bool operator==(const TimeStep &l, const TimeStep &r) {
-		return l.dt_ == r.dt_;
+		return l.dt == r.dt;
 	}
 	inline friend bool operator!=(const TimeStep &l, const TimeStep &r) {
 		return !(l == r);
@@ -99,19 +99,13 @@ typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
 
 class Parallel {
 public:
-	// TODO fix these
-    //static int num_subregions() {return 1;}           // number of MPI PEs in use
-                                // (1 if not using MPI)
-    //static int mype() { return 0; }            // PE number for my rank
-                                // (0 if not using MPI)
-
     static void run(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
 
     // TODO use Legion
     static void globalSum(int& x);     // find sum over all PEs - overloaded
     static void globalSum(int64_t& x);
-    //EXport GOld stuff to be converted to Legion
+    // TODO Export Gold stuff to be converted to Legion
     static void globalSum(double& x);
     static void gather(const int x, int* y);
                                 // gather list of ints from all PEs

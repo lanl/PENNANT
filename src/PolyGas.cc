@@ -21,8 +21,8 @@ using namespace std;
 
 PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
 		hydro(h),
-		gamma(params.directs_.gamma_),
-		ssmin(params.directs_.ssmin_)
+		gamma(params.directs.gamma),
+		ssmin(params.directs.ssmin)
 {
 }
 
@@ -104,7 +104,7 @@ void PolyGas::calcForce(
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = mesh->map_side2zone_[s];
+        int z = mesh->map_side2zone[s];
         double2 sfx = -zp[z] * ssurfp[s];
         sf[s] = sfx;
 

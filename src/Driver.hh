@@ -81,8 +81,8 @@ private:
 
     DynamicCollective add_reduction;
     DynamicCollective min_reduction;
-    Context ctx_;
-    HighLevelRuntime* runtime_;
+    Context ctx;
+    HighLevelRuntime* runtime;
     const int my_color;
     LogicalUnstructured points;
     DoubleAccessor* zone_rho;

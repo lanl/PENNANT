@@ -48,14 +48,14 @@ void WriteTask::cpu_run(const Task *task,
 	//ExportGold* egold_ = new ExportGold();
     WriteXY* wxy_ = new WriteXY();
 
-    if (args.direct_input_params.write_xy_file_) {
+    if (args.direct_input_params.write_xy_file) {
 		IndexIterator zr_itr(rt, ctx, ispace_zones);
 		IndexIterator ze_itr(rt, ctx, ispace_zones);
 		IndexIterator zp_itr(rt, ctx, ispace_zones);
         cout << "Writing .xy file..." << endl;
         wxy_->write(args.probname, zone_rho, zone_energy_density, zone_pressure, zr_itr, ze_itr, zp_itr);
     }
-    if (args.direct_input_params.write_gold_file_) {
+    if (args.direct_input_params.write_gold_file) {
             cout << "Writing gold file..." << endl;
         //egold_->write(probname, cycle, time, zr, ze, zp, iterator);
     }

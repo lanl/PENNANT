@@ -31,7 +31,7 @@ void Parallel::run(InputParameters input_params,
 {
     GlobalMesh global_mesh(input_params, ctx, runtime);
     MustEpochLauncher must_epoch_launcher;
-    const int num_subregions_ = input_params.directs_.ntasks_;
+    const int num_subregions_ = input_params.directs.ntasks;
 
 	// we're going to use a must epoch launcher, so we need at least as many
     //  processors in our system as we have subregions - check that now
@@ -72,12 +72,12 @@ void Parallel::run(InputParameters input_params,
 		  args[color].pbarrier_as_master = global_mesh.phase_barriers[color];
 		  args[color].add_reduction = add_reduction;
 		  args[color].min_reduction = min_reduction;
-		  args[color].direct_input_params = input_params.directs_;
-		  args[color].direct_input_params.task_id_ = color;
-          args[color].meshtype = input_params.meshtype_;
-          args[color].probname = input_params.probname_;
-          args[color].bcx = input_params.bcx_;
-          args[color].bcy = input_params.bcy_;
+		  args[color].direct_input_params = input_params.directs;
+		  args[color].direct_input_params.task_id = color;
+          args[color].meshtype = input_params.meshtype;
+          args[color].probname = input_params.probname;
+          args[color].bcx = input_params.bcx;
+          args[color].bcy = input_params.bcy;
 
 		  std::vector<LogicalRegion> lregions_halos;
           lregions_halos.push_back(global_mesh.halos_points[color].getLRegion());
@@ -108,8 +108,8 @@ void Parallel::run(InputParameters input_params,
 
       SPMDArgs arg;
       SPMDArgsSerializer serial;
-      arg.probname = input_params.probname_;
-      arg.direct_input_params = input_params.directs_;
+      arg.probname = input_params.probname;
+      arg.direct_input_params = input_params.directs;
       serial.archive(&arg);
 
 	  WriteTask write_launcher(global_mesh.zones.getLRegion(),

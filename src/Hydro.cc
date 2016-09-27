@@ -37,19 +37,19 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
 		DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt) :
 		mesh(m),
-		cfl(params.directs_.cfl_),
-		cflv(params.directs_.cflv_),
-		rho_init(params.directs_.rho_init_),
-		energy_init(params.directs_.energy_init_),
-		rho_init_sub(params.directs_.rho_init_sub_),
-		energy_init_sub(params.directs_.energy_init_sub_),
-		vel_init_radial(params.directs_.vel_init_radial_),
-		bcx(params.bcx_),
-		bcy(params.bcy_),
-		add_reduction_(add_reduction),
-		ctx_(ctx),
-		runtime_(rt),
-		mype_(params.directs_.task_id_)
+		cfl(params.directs.cfl),
+		cflv(params.directs.cflv),
+		rho_init(params.directs.rho_init),
+		energy_init(params.directs.energy_init),
+		rho_init_sub(params.directs.rho_init_sub),
+		energy_init_sub(params.directs.energy_init_sub),
+		vel_init_radial(params.directs.vel_init_radial),
+		bcx(params.bcx),
+		bcy(params.bcy),
+		add_reduction(add_reduction),
+		ctx(ctx),
+		runtime(rt),
+		mype(params.directs.task_id)
 {
     pgas = new PolyGas(params, this);
     tts = new TTS(params, this);
@@ -80,21 +80,21 @@ void Hydro::init() {
 
     const int numpch = mesh->num_pt_chunks;
     const int numzch = mesh->num_zone_chunks;
-    const int nump = mesh->num_pts_;
-    const int numz = mesh->num_zones_;
-    const int nums = mesh->num_sides_;
+    const int nump = mesh->num_pts;
+    const int numz = mesh->num_zones;
+    const int nums = mesh->num_sides;
 
-    const double2* zx = mesh->zone_x_;
-    const double* zvol = mesh->zone_vol_;
+    const double2* zx = mesh->zone_x;
+    const double* zvol = mesh->zone_vol;
 
     // allocate arrays
     pt_vel = AbstractedMemory::alloc<double2>(nump);
     pt_vel0 = AbstractedMemory::alloc<double2>(nump);
     pt_accel = AbstractedMemory::alloc<double2>(nump);
     crnr_weighted_mass = AbstractedMemory::alloc<double>(nums);
-    zone_rho_ = AbstractedMemory::alloc<double>(numz);
-    zone_rho_pred_ = AbstractedMemory::alloc<double>(numz);
-    zone_energy_density_ = AbstractedMemory::alloc<double>(numz);
+    zone_rho = AbstractedMemory::alloc<double>(numz);
+    zone_rho_pred = AbstractedMemory::alloc<double>(numz);
+    zone_energy_density = AbstractedMemory::alloc<double>(numz);
     zone_pressure_ = AbstractedMemory::alloc<double>(numz);
     zone_mass = AbstractedMemory::alloc<double>(numz);
     zone_energy_tot = AbstractedMemory::alloc<double>(numz);
@@ -112,8 +112,8 @@ void Hydro::init() {
         int zfirst = mesh->zone_chunk_first[zch];
         int zlast = mesh->zone_chunk_last[zch];
 
-        fill(&zone_rho_[zfirst], &zone_rho_[zlast], rho_init);
-        fill(&zone_energy_density_[zfirst], &zone_energy_density_[zlast], energy_init);
+        fill(&zone_rho[zfirst], &zone_rho[zlast], rho_init);
+        fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
         fill(&zone_work_rate[zfirst], &zone_work_rate[zlast], 0.);
 
         const double& subrgn_xmin = mesh->subregion_xmin;
@@ -128,16 +128,16 @@ void Hydro::init() {
                     zx[z].x < (subrgn_xmax + eps) &&
                     zx[z].y > (subrgn_ymin - eps) &&
                     zx[z].y < (subrgn_ymax + eps)) {
-                    zone_rho_[z]  = rho_init_sub;
-                    zone_energy_density_[z] = energy_init_sub;
+                    zone_rho[z]  = rho_init_sub;
+                    zone_energy_density[z] = energy_init_sub;
                 }
             }
         }
 
         #pragma ivdep
         for (int z = zfirst; z < zlast; ++z) {
-        		zone_mass[z] = zone_rho_[z] * zvol[z];
-        		zone_energy_tot[z] = zone_energy_density_[z] * zone_mass[z];
+        		zone_mass[z] = zone_rho[z] * zvol[z];
+        		zone_energy_tot[z] = zone_energy_density[z] * zone_mass[z];
         }
     }  // for sch
 
@@ -200,7 +200,7 @@ void Hydro::doCycle(
         int zlast = mesh->zone_chunks_last[sch];
 
         // save off zone variable values from previous cycle
-        copy(&mesh->zone_vol_[zfirst], &mesh->zone_vol_[zlast], &mesh->zone_vol0[zfirst]);
+        copy(&mesh->zone_vol[zfirst], &mesh->zone_vol[zlast], &mesh->zone_vol0[zfirst]);
 
         // 1a. compute new mesh geometry
         mesh->calcCtrs(sch);
@@ -210,16 +210,16 @@ void Hydro::doCycle(
         mesh->calcCharacteristicLen(sch);
 
         // 2. compute point masses
-        calcRho(mesh->zone_vol_pred, zone_rho_pred_, zfirst, zlast);
+        calcRho(mesh->zone_vol_pred, zone_rho_pred, zfirst, zlast);
         calcCrnrMass(sfirst, slast);
 
         // 3. compute material state (half-advanced)
-        pgas->calcStateAtHalf(zone_rho_, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density_, zone_work_rate, zone_mass, dt,
+        pgas->calcStateAtHalf(zone_rho, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density, zone_work_rate, zone_mass, dt,
                 zone_pressure_, zone_sound_speed, zfirst, zlast);
 
         // 4. compute forces
         pgas->calcForce(zone_pressure_, mesh->side_surfp, side_force_pres, sfirst, slast);
-        tts->calcForce(mesh->zone_area_pred, zone_rho_pred_, zone_sound_speed, mesh->side_area_pred, mesh->side_mass_frac, mesh->side_surfp, side_force_tts,
+        tts->calcForce(mesh->zone_area_pred, zone_rho_pred, zone_sound_speed, mesh->side_area_pred, mesh->side_mass_frac, mesh->side_surfp, side_force_tts,
                 sfirst, slast);
         qcs->calcForce(side_force_visc, sfirst, slast);
         sumCrnrForce(sfirst, slast);
@@ -275,7 +275,7 @@ void Hydro::doCycle(
 
         // 8. update state variables
         calcEnergy(zfirst, zlast);
-        calcRho(mesh->zone_vol_, zone_rho_, zfirst, zlast);
+        calcRho(mesh->zone_vol, zone_rho, zfirst, zlast);
 
         // 9.  compute timestep for next cycle
         calcDtHydro(dt, zfirst, zlast);
@@ -320,9 +320,9 @@ void Hydro::calcCrnrMass(
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int s3 = mesh->mapSideToSidePrev(s);
-        int z = mesh->map_side2zone_[s];
+        int z = mesh->map_side2zone[s];
 
-        double m = zone_rho_pred_[z] * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
+        double m = zone_rho_pred[z] * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         crnr_weighted_mass[s] = m;
     }
 }
@@ -387,9 +387,9 @@ void Hydro::calcWork(
     const double dth = 0.5 * dt;
 
     for (int s = sfirst; s < slast; ++s) {
-        int p1 = mesh->map_side2pt1_[s];
+        int p1 = mesh->map_side2pt1[s];
         int p2 = mesh->mapSideToPt2(s);
-        int z = mesh->map_side2zone_[s];
+        int z = mesh->map_side2zone[s];
 
         double2 sftot = side_force_pres[s] + side_force_visc[s];
         double sd1 = dot( sftot, (pt_vel0[p1] + pt_vel[p1]));
@@ -411,7 +411,7 @@ void Hydro::calcWorkRate(
     double dtinv = 1. / dt;
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
-        double dvol = mesh->zone_vol_[z] - mesh->zone_vol0[z];
+        double dvol = mesh->zone_vol[z] - mesh->zone_vol0[z];
         zone_work_rate[z] = (zone_work[z] + zone_pressure_[z] * dvol) * dtinv;
     }
 
@@ -425,7 +425,7 @@ void Hydro::calcEnergy(
     const double fuzz = 1.e-99;
     #pragma ivdep
     for (int z = zfirst; z < zlast; ++z) {
-        zone_energy_density_[z] = zone_energy_tot[z] / (zone_mass[z] + fuzz);
+        zone_energy_density[z] = zone_energy_tot[z] / (zone_mass[z] + fuzz);
     }
 
 }
@@ -462,8 +462,8 @@ void Hydro::sumEnergy(
     double sumk = 0.; 
     for (int s = sfirst; s < slast; ++s) {
         int s3 = mesh->mapSideToSidePrev(s);
-        int p1 = mesh->map_side2pt1_[s];
-        int z = mesh->map_side2zone_[s];
+        int p1 = mesh->map_side2pt1[s];
+        int z = mesh->map_side2zone[s];
 
         double cvol = zarea[z] * px[p1].x * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);
@@ -506,7 +506,7 @@ void Hydro::calcDtVolume(
         char* msgdtrec,
         const int zfirst,
         const int zlast) {
-    const double* zvol = mesh->zone_vol_;
+    const double* zvol = mesh->zone_vol;
     const double* zvol0 = mesh->zone_vol0;
 
     double dvovmax = 1.e-99;
@@ -580,7 +580,7 @@ void Hydro::writeEnergyCheck() {
 
         double eichunk = 0.;
         double ekchunk = 0.;
-        sumEnergy(zone_energy_tot, mesh->zone_area_, mesh->zone_vol_, zone_mass, mesh->side_mass_frac,
+        sumEnergy(zone_energy_tot, mesh->zone_area, mesh->zone_vol, zone_mass, mesh->side_mass_frac,
                 mesh->pt_x, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
@@ -590,13 +590,13 @@ void Hydro::writeEnergyCheck() {
     }
 
 
-	Future future_sum = Parallel::globalSum(ei, add_reduction_, runtime_, ctx_);
+	Future future_sum = Parallel::globalSum(ei, add_reduction, runtime, ctx);
 	ei = future_sum.get_result<double>();
 
-	future_sum = Parallel::globalSum(ek, add_reduction_, runtime_, ctx_);
+	future_sum = Parallel::globalSum(ek, add_reduction, runtime, ctx);
 	ek = future_sum.get_result<double>();
 
-    if (mype_ == 0) {
+    if (mype == 0) {
         cout << scientific << setprecision(6);
         cout << "Energy check:  "
              << "total energy  = " << setw(14) << ei + ek << endl;
@@ -613,14 +613,14 @@ void Hydro::copyZonesToLegion(
         DoubleAccessor*  pressure_acc,
         IndexSpace ispace_zones)
 {
-    IndexIterator zone_itr(runtime_,ctx_, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
+    IndexIterator zone_itr(runtime,ctx, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
     int z = 0;
     while (zone_itr.has_next()) {
         ptr_t zone_ptr = zone_itr.next();
-        rho_acc->write(zone_ptr, zone_rho_[z]);
-        energy_density_acc->write(zone_ptr, zone_energy_density_[z]);
+        rho_acc->write(zone_ptr, zone_rho[z]);
+        energy_density_acc->write(zone_ptr, zone_energy_density[z]);
         pressure_acc->write(zone_ptr, zone_pressure_[z]);
         z++;
     }
-    assert(z == mesh->num_zones_);
+    assert(z == mesh->num_zones);
 }

@@ -21,13 +21,13 @@ using namespace std;
 
 
 GenerateMesh::GenerateMesh(const InputParameters& input_params) :
-	meshtype(input_params.meshtype_),
-	global_nzones_x(input_params.directs_.nzones_x_),
-	global_nzones_y(input_params.directs_.nzones_y_),
-	len_x(input_params.directs_.len_x_),
-	len_y(input_params.directs_.len_y_),
-	num_subregions(input_params.directs_.ntasks_),
-	my_color(input_params.directs_.task_id_)
+	meshtype(input_params.meshtype),
+	global_nzones_x(input_params.directs.nzones_x),
+	global_nzones_y(input_params.directs.nzones_y),
+	len_x(input_params.directs.len_x),
+	len_y(input_params.directs.len_y),
+	num_subregions(input_params.directs.ntasks),
+	my_color(input_params.directs.task_id)
 {
     calcPartitions();
 	calcLocalConstants(my_color);

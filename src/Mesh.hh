@@ -47,50 +47,48 @@ public:
     // mesh variables
     // (See documentation for more details on the mesh
     //  data structures...)
-    int num_pts_, num_edges_, num_zones_, num_sides_, num_corners_;
-                       // number of points, edges, zones,
-                       // sides, corners, resp.
+    int num_pts, num_edges, num_zones, num_sides, num_corners;
     int num_bad_sides;       // number of bad sides (negative volume)
 
     inline int mapSideToSideNext(const int &s) const
     {
-    	const int z = map_side2zone_[s];
-    	const int sbase = zone_pts_ptr_[z];
-    	const int slast = zone_pts_ptr_[z+1];
+    	const int z = map_side2zone[s];
+    	const int sbase = zone_pts_ptr[z];
+    	const int slast = zone_pts_ptr[z+1];
     	const int snext = (s + 1 == slast ? sbase : s + 1);
     	return snext;
     }
     inline int mapSideToSidePrev(const int &s) const
     {
-    	const int z = map_side2zone_[s];
-    	const int sbase = zone_pts_ptr_[z];
-    	const int slast = zone_pts_ptr_[z+1];
+    	const int z = map_side2zone[s];
+    	const int sbase = zone_pts_ptr[z];
+    	const int slast = zone_pts_ptr[z+1];
     	const int sprev = (s == sbase ? slast : s) - 1;
     	return sprev;
     }
     inline int mapSideToPt2(const int &s) const
     {
-    	return map_side2pt1_[mapSideToSideNext(s)];
+    	return map_side2pt1[mapSideToSideNext(s)];
     }
-    int* map_side2zone_;        // map: side -> zone
-    int* map_side2edge_;        // map: side -> edge
+    int* map_side2zone;        // map: side -> zone
+    int* map_side2edge;        // map: side -> edge
 
     inline int zoneNPts(const int &i) const
-    {return zone_pts_ptr_[i+1] - zone_pts_ptr_[i];}        // number of points in zone
-    int* map_side2pt1_;     // maps: side -> points 1 and 2
+    {return zone_pts_ptr[i+1] - zone_pts_ptr[i];}        // number of points in zone
+    int* map_side2pt1;     // maps: side -> points 1 and 2
     // Compressed Row Storage (CRS) of zone to points/sides mapping
-    int* zone_pts_val_;     // := map_side2pt1_
-    int* zone_pts_ptr_;
+    int* zone_pts_val;     // := map_side2pt1_
+    int* zone_pts_ptr;
 
-    double2* zone_x_;       // zone center coordinates
+    double2* zone_x;       // zone center coordinates
     double2* edge_x_pred;      // edge ctr coords, middle of cycle
     double2* zone_x_pred;      // zone ctr coords, middle of cycle
     double2* pt_x0;      // point coords, start of cycle
     double2* pt_x;
     double2* pt_x_pred;
 
-    double* zone_area_;
-    double* zone_vol_;
+    double* zone_area;
+    double* zone_vol;
     double* side_area_pred;    // side area, middle of cycle
     double* zone_area_pred;    // zone area, middle of cycle
     double* zone_vol_pred;     // zone volume, middle of cycle
@@ -161,8 +159,8 @@ private:
     int* map_crn2crn_next;    // map:  corner -> next corner
 
     double2* edge_x;       // edge center coordinates
-    double* side_area_;
-    double* side_vol_;
+    double* side_area;
+    double* side_vol;
     double* side_vol_pred;     // side volume, middle of cycle
 
     PhaseBarrier pbarrier_as_master;

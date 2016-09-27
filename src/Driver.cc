@@ -79,11 +79,11 @@ RunStat DriverTask::cpu_run(const Task *task,
     args_serializer.restore(&args);
 
     InputParameters params;
-    params.directs_ = args.direct_input_params;
-    params.meshtype_ = args.meshtype;
-    params.probname_ = args.probname;
-    params.bcx_ = args.bcx;
-	params.bcy_ = args.bcy;
+    params.directs = args.direct_input_params;
+    params.meshtype = args.meshtype;
+    params.probname = args.probname;
+    params.bcx = args.bcx;
+	params.bcy = args.bcy;
 
     // For some reason Legion explodes if I do this in the Hydro object or use LogicalUnstructured
     DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR); // TODO can I do this in driver object?
@@ -113,18 +113,18 @@ Driver::Driver(const InputParameters& params,
         std::vector<LogicalUnstructured>& halos_points,
         std::vector<PhysicalRegion>& pregions_halos,
         Context ctx, HighLevelRuntime* rt)
-        : probname(params.probname_),
-		  tstop(params.directs_.tstop_),
-		  cstop(params.directs_.cstop_),
-		  dtmax(params.directs_.dtmax_),
-		  dtinit(params.directs_.dtinit_),
-		  dtfac(params.directs_.dtfac_),
-		  dtreport(params.directs_.dtreport_),
+        : probname(params.probname),
+		  tstop(params.directs.tstop),
+		  cstop(params.directs.cstop),
+		  dtmax(params.directs.dtmax),
+		  dtinit(params.directs.dtinit),
+		  dtfac(params.directs.dtfac),
+		  dtreport(params.directs.dtreport),
 		  add_reduction(add_reduct),
 		  min_reduction(min_reduct),
-		  ctx_(ctx),
-		  runtime_(rt),
-		  my_color(params.directs_.task_id_),
+		  ctx(ctx),
+		  runtime(rt),
+		  my_color(params.directs.task_id),
           points(ctx, rt, pts),
           zone_rho(zone_rho),
           zone_energy_density(zone_energy_density),
@@ -133,8 +133,8 @@ Driver::Driver(const InputParameters& params,
 {
     mesh = new LocalMesh(params, points, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
-    		    ctx_, runtime_);
-    hydro = new Hydro(params, mesh, add_reduction, ctx_, runtime_);
+    		    ctx, runtime);
+    hydro = new Hydro(params, mesh, add_reduction, ctx, runtime);
 }
 
 RunStat Driver::run() {
@@ -258,13 +258,13 @@ void Driver::calcGlobalDt() {
     hydro->getDtHydro(dt, msgdt);
 
 	TimeStep recommend;
-	recommend.dt_ = dt;
-	snprintf(recommend.message_, 80, "%s", msgdt.c_str());
-	Future future_min = Parallel::globalMin(recommend, min_reduction, runtime_, ctx_);
+	recommend.dt = dt;
+	snprintf(recommend.message, 80, "%s", msgdt.c_str());
+	Future future_min = Parallel::globalMin(recommend, min_reduction, runtime, ctx);
 
 	TimeStep ts = future_min.get_result<TimeStep>();
-	dt = ts.dt_;
-	msgdt = string(ts.message_);
+	dt = ts.dt;
+	msgdt = string(ts.message);
 
 }
 

@@ -174,18 +174,18 @@ public:
             DoubleAccessor*  zone_pressure,
             IndexSpace ispace_zones);
 
-	double* zone_rho_;             // zone density // TODO make private
-    double* zone_rho_pred_;        // zone density, middle of cycle
-	double* zone_energy_density_;  // zone specific internal energy
+	double* zone_rho;             // zone density // TODO make private
+    double* zone_rho_pred;        // zone density, middle of cycle
+	double* zone_energy_density;  // zone specific internal energy
     // (energy per unit mass)  // TODO make private
 	double* zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void allocateZoneFields();
 
-    DynamicCollective add_reduction_;
-    Context ctx_;
-    HighLevelRuntime* runtime_;
-    const int mype_;
+    DynamicCollective add_reduction;
+    Context ctx;
+    HighLevelRuntime* runtime;
+    const int mype;
 
 }; // class Hydro
 
