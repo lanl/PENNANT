@@ -53,32 +53,3 @@ LD_FLAGS	?=
 
 include $(LG_RT_DIR)/runtime.mk
 
-src/Driver.o: src/Driver.hh src/Parallel.hh src/Mesh.hh src/Hydro.hh
-src/ExportGold.o: src/ExportGold.hh src/Parallel.hh src/Vec2.hh src/Mesh.hh
-src/GenerateMesh.o: src/GenerateMesh.hh src/Parallel.hh src/Vec2.hh \
-	src/InputParameters.hh src/Parallel.hh
-src/GlobalMesh.o: src/GlobalMesh.hh src/GenerateMesh.hh
-src/Hydro.o: src/Hydro.hh src/Parallel.hh src/Memory.hh src/Mesh.hh \
-	src/PolyGas.hh src/TTS.hh src/QCS.hh src/HydroBC.hh \
-	src/InputParameters.hh
-src/HydroBC.o: src/HydroBC.hh src/Memory.hh src/Mesh.hh src/Vec2.hh \
-	src/Parallel.hh
-src/InputFile.o: src/InputFile.hh
-src/Memory.o: src/Memory.hh
-src/Mesh.o: src/Mesh.hh src/Vec2.hh src/Memory.hh src/Parallel.hh \
-	src/WriteXY.hh src/ExportGold.hh src/GenerateMesh.hh src/Vec2.hh \
-	src/InputParameters.hh
-src/Parallel.o: src/Parallel.hh src/Vec2.hh src/AddReductionOp.hh \
-	src/Driver.hh src/MinReductionOp.hh src/GlobalMesh.hh
-src/PolyGas.o: src/PolyGas.hh src/Memory.hh src/Hydro.hh src/Mesh.hh \
-	src/Vec2.hh src/InputParameters.hh src/Parallel.hh
-src/QCS.o: src/QCS.hh src/Memory.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh \
-	src/InputParameters.hh
-src/TTS.o: src/TTS.hh src/Vec2.hh src/Mesh.hh src/Hydro.hh \
-	src/InputParameters.hh src/Parallel.hh
-src/WriteXY.o: src/WriteXY.hh src/Parallel.hh src/Mesh.hh
-src/WriteTask.o: src/WriteTask.hh src/Parallel.hh
-src/main.o: src/Parallel.hh src/InputParameters.hh src/InputFile.hh \
-	src/AddReductionOp.hh src/MinReductionOp.hh src/Driver.hh \
-	src/WriteTask.hh
-

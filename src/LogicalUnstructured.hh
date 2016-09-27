@@ -24,16 +24,18 @@ public:
     void partition(Coloring map, bool disjoint);
     template <typename TYPE>
       RegionAccessor<AccessorType::Generic, TYPE> getRegionAccessor(FieldID FID);
-    IndexIterator getIterator() const { assert(ispaceID != NULL); return  IndexIterator(runtime,ctx, ispace);}
-    IndexSpace getISpace() const { assert(ispaceID != NULL); return ispace;}
-    LogicalRegion getLRegion() const {assert(lregionID != NULL); return lregion;}
-    LogicalPartition getLPart() const {assert(lpartID != NULL); return lpart;}
+    IndexIterator getIterator() const { assert(ispaceID != nullptr); return  IndexIterator(runtime,ctx, ispace);}
+    IndexSpace getISpace() const { assert(ispaceID != nullptr); return ispace;}
+    LogicalRegion getLRegion() const {assert(lregionID != nullptr); return lregion;}
+    LogicalPartition getLPart() const {assert(lpartID != nullptr); return lpart;}
     LogicalRegion getLRegion(Color color) const
     {
-        assert(lpartID != NULL);
+        assert(lpartID != nullptr);
         return runtime->get_logical_subregion_by_color(ctx, lpart, color);
     }
     PhysicalRegion getPRegion();
+    PhysicalRegion getRawPRegion() {return pregion;}
+    void setPRegion(PhysicalRegion region) {pregion = region;}
     IndexSpace getSubspace(Color color);
     IndexIterator getSubspaceIterator(Color color) { getSubspace(color); return  IndexIterator(runtime,ctx, subspace);}
 private:
