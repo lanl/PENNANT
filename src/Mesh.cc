@@ -21,8 +21,8 @@
 #include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
 #include "Vec2.hh"
-#include "Memory.hh"
 #include "GenerateMesh.hh"
+#include "Memory.hh"
 
 using namespace std;
 
@@ -49,7 +49,11 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			halos_points(halos_pts),
 			pregions_halos(pregionshalos),
 			num_subregions(params.directs.ntasks),
-			my_color(params.directs.task_id)
+			my_color(params.directs.task_id),
+            zones(ctx, rt),
+            sides(ctx, rt),
+            edges(ctx, rt),
+            points(ctx, rt)
 	{
 
     generate_mesh = new GenerateMesh(params);
@@ -97,26 +101,53 @@ void LocalMesh::init() {
 
     writeMeshStats();
 
-    edge_x = AbstractedMemory::alloc<double2>(num_edges);
-    zone_x = AbstractedMemory::alloc<double2>(num_zones);
-    pt_x0 = AbstractedMemory::alloc<double2>(num_pts);
-    pt_x = AbstractedMemory::alloc<double2>(num_pts);
-    pt_x_pred = AbstractedMemory::alloc<double2>(num_pts);
-    edge_x_pred = AbstractedMemory::alloc<double2>(num_edges);
-    zone_x_pred = AbstractedMemory::alloc<double2>(num_zones);
-    side_area = AbstractedMemory::alloc<double>(num_sides);
-    side_vol = AbstractedMemory::alloc<double>(num_sides);
-    zone_area = AbstractedMemory::alloc<double>(num_zones);
-    zone_vol = AbstractedMemory::alloc<double>(num_zones);
-    side_area_pred = AbstractedMemory::alloc<double>(num_sides);
-    side_vol_pred = AbstractedMemory::alloc<double>(num_sides);
-    zone_area_pred = AbstractedMemory::alloc<double>(num_zones);
-    zone_vol_pred = AbstractedMemory::alloc<double>(num_zones);
-    zone_vol0 = AbstractedMemory::alloc<double>(num_zones);
-    side_surfp = AbstractedMemory::alloc<double2>(num_sides);
-    edge_len = AbstractedMemory::alloc<double>(num_edges);
-    zone_dl = AbstractedMemory::alloc<double>(num_zones);
-    side_mass_frac = AbstractedMemory::alloc<double>(num_sides);
+    zones.addField<double2>(FID_ZX);
+    zones.addField<double2>(FID_ZXP);
+    zones.addField<double>(FID_ZAREA);
+    zones.addField<double>(FID_ZVOL);
+    zones.addField<double>(FID_ZAREAP);
+    zones.addField<double>(FID_ZVOLP);
+    zones.addField<double>(FID_ZVOL0);
+    zones.addField<double>(FID_ZDL);
+    zones.allocate(num_zones);
+    zone_x = zones.getRawPtr<double2>(FID_ZX);
+    zone_x_pred = zones.getRawPtr<double2>(FID_ZXP);
+    zone_area = zones.getRawPtr<double>(FID_ZAREA);
+    zone_vol = zones.getRawPtr<double>(FID_ZVOL);
+    zone_area_pred = zones.getRawPtr<double>(FID_ZAREAP);
+    zone_vol_pred = zones.getRawPtr<double>(FID_ZVOLP);
+    zone_vol0 = zones.getRawPtr<double>(FID_ZVOL0);
+    zone_dl = zones.getRawPtr<double>(FID_ZDL);
+
+    edges.addField<double2>(FID_EX);
+    edges.addField<double2>(FID_EXP);
+    edges.addField<double>(FID_ELEN);
+    edges.allocate(num_edges);
+    edge_x = edges.getRawPtr<double2>(FID_EX);
+    edge_x_pred = edges.getRawPtr<double2>(FID_EXP);
+    edge_len = edges.getRawPtr<double>(FID_ELEN);
+
+    points.addField<double2>(FID_PX0);
+    points.addField<double2>(FID_PX);
+    points.addField<double2>(FID_PXP);
+    points.allocate(num_pts);
+    pt_x0 = points.getRawPtr<double2>(FID_PX0);
+    pt_x = points.getRawPtr<double2>(FID_PX);
+    pt_x_pred = points.getRawPtr<double2>(FID_PXP);
+
+    sides.addField<double>(FID_SAREA);
+    sides.addField<double>(FID_SVOL);
+    sides.addField<double>(FID_SAREAP);
+    sides.addField<double>(FID_SVOLP);
+    sides.addField<double2>(FID_SSURFP);
+    sides.addField<double>(FID_SMF);
+    sides.allocate(num_sides);
+    side_area = sides.getRawPtr<double>(FID_SAREA);
+    side_vol = sides.getRawPtr<double>(FID_SVOL);
+    side_area_pred = sides.getRawPtr<double>(FID_SAREAP);
+    side_vol_pred = sides.getRawPtr<double>(FID_SVOLP);
+    side_surfp = sides.getRawPtr<double2>(FID_SSURFP);
+    side_mass_frac = sides.getRawPtr<double>(FID_SMF);
 
     IndexIterator itr = pt_x_init_by_gid.getIterator();
     point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts);

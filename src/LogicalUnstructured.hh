@@ -19,7 +19,7 @@ public:
     virtual ~LogicalUnstructured();
     template <typename TYPE>
       void addField(FieldID FID);
-    void allocate(int nElements);
+    virtual void allocate(int nElements);
     void allocate();
     void partition(Coloring map, bool disjoint);
     template <typename TYPE>
@@ -38,7 +38,7 @@ public:
     void setPRegion(PhysicalRegion region) {pregion = region;}
     IndexSpace getSubspace(Color color);
     IndexIterator getSubspaceIterator(Color color) { getSubspace(color); return  IndexIterator(runtime,ctx, subspace);}
-private:
+protected:
     void addField(unsigned int FID);
     bool destroy_ispace;
     IndexSpaceID* ispaceID;

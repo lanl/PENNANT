@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "InputParameters.hh"
+#include "LogicalStructured.hh"
 #include "LogicalUnstructured.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
@@ -175,6 +176,11 @@ private:
     std::vector<LogicalUnstructured> halos_points;
     std::vector<PhysicalRegion> pregions_halos;
     std::vector<LogicalUnstructured> slaved_halo_points;
+
+    LogicalStructured zones;
+    LogicalStructured sides;
+    LogicalStructured edges;
+    LogicalStructured points;
 
     const int num_subregions;
     const int my_color;
