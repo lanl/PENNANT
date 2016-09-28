@@ -601,16 +601,24 @@ void LocalMesh::initParallel() {
     num_slaves = slaved_points.size();
 
     unsigned previous_master_pts_count = 0;
+    Coloring all_slaved_pts_map;
     for (unsigned  master = 0; master < slaved_points_counts.size(); master++) {
         Coloring my_slaved_pts_map;
-        for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++)
+        for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++) {
             my_slaved_pts_map[1+master].points.insert(
                     point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value);
-
+            all_slaved_pts_map[1+master].points.insert(
+                    point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value);
+        }
         previous_master_pts_count += slaved_points_counts[master];
         halos_points[1+master].partition(my_slaved_pts_map, true);
         slaved_halo_points.push_back(LogicalUnstructured(ctx, runtime, halos_points[1+master].getLRegion(1+master)));
     }
+
+    if (slaved_points_counts.size() > 0)
+        local_points_by_gid.partition(all_slaved_pts_map, true);
+    for (unsigned  master = 0; master < slaved_points_counts.size(); master++)
+        local_slaved_halo.push_back(LogicalUnstructured(ctx, runtime, local_points_by_gid.getLRegion(1+master)));
 
     slaved_points_counts.resize(0);
     master_points_counts.resize(0);
@@ -734,24 +742,27 @@ void LocalMesh::sumToPoints(
         acquire_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
         runtime->issue_acquire(ctx, acquire_launcher);
 
-        RegionRequirement halo_req(slaved_halo_points[master].getLRegion(), READ_ONLY, EXCLUSIVE,
-                halos_points[1+master].getLRegion());
-        halo_req.add_field(FID_GHOST_PMASWT);
-        halo_req.add_field(FID_GHOST_PF);
-        InlineLauncher halo_launcher(halo_req);
-        PhysicalRegion pregion_halo = runtime->map_region(ctx, halo_launcher);
-        DoubleAccessor acc_halo =
-                pregion_halo.get_field_accessor(FID_GHOST_PMASWT).typeify<double>();
-        Double2Accessor acc2_halo =
-                pregion_halo.get_field_accessor(FID_GHOST_PF).typeify<double2>();
-
         {
-            IndexIterator itr = slaved_halo_points[master].getIterator();
-            while (itr.has_next()) {
-                ptr_t pt_ptr = itr.next();
-                pt_weighted_mass_.write(pt_ptr, acc_halo.read(pt_ptr));
-                pt_force_.write(pt_ptr, acc2_halo.read(pt_ptr));
-            }
+          CopyLauncher copy_launcher;
+          copy_launcher.add_copy_requirements(
+                  RegionRequirement(slaved_halo_points[master].getLRegion(), READ_ONLY,
+                          EXCLUSIVE, halos_points[1+master].getLRegion()),
+                  RegionRequirement(local_slaved_halo[master].getLRegion(), READ_WRITE, EXCLUSIVE,
+                          local_points_by_gid.getLRegion()));
+          copy_launcher.add_dst_field(0, FID_PMASWT);
+          copy_launcher.add_src_field(0, FID_GHOST_PMASWT);
+          runtime->issue_copy_operation(ctx, copy_launcher);
+        }
+        {
+          CopyLauncher copy_launcher;
+          copy_launcher.add_copy_requirements(
+                  RegionRequirement(slaved_halo_points[master].getLRegion(), READ_ONLY,
+                          EXCLUSIVE, halos_points[1+master].getLRegion()),
+                  RegionRequirement(local_slaved_halo[master].getLRegion(), READ_WRITE, EXCLUSIVE,
+                          local_points_by_gid.getLRegion()));
+          copy_launcher.add_dst_field(0, FID_PF);
+          copy_launcher.add_src_field(0, FID_GHOST_PF);
+          runtime->issue_copy_operation(ctx, copy_launcher);
         }
 
         ReleaseLauncher release_launcher(slaved_halo_points[master].getLRegion(),
