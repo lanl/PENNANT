@@ -49,6 +49,10 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
 		add_reduction(add_reduction),
 		ctx(ctx),
 		runtime(rt),
+        zones(ctx, rt),
+        sides_and_corners(ctx, rt),
+        edges(ctx, rt),
+        points(ctx, rt),
 		mype(params.directs.task_id)
 {
     pgas = new PolyGas(params, this);
@@ -88,24 +92,31 @@ void Hydro::init() {
     const double* zvol = mesh->zone_vol;
 
     // allocate arrays
-    pt_vel = AbstractedMemory::alloc<double2>(nump);
-    pt_vel0 = AbstractedMemory::alloc<double2>(nump);
-    pt_accel = AbstractedMemory::alloc<double2>(nump);
-    crnr_weighted_mass = AbstractedMemory::alloc<double>(nums);
-    zone_rho = AbstractedMemory::alloc<double>(numz);
-    zone_rho_pred = AbstractedMemory::alloc<double>(numz);
-    zone_energy_density = AbstractedMemory::alloc<double>(numz);
-    zone_pressure_ = AbstractedMemory::alloc<double>(numz);
-    zone_mass = AbstractedMemory::alloc<double>(numz);
-    zone_energy_tot = AbstractedMemory::alloc<double>(numz);
-    zone_work = AbstractedMemory::alloc<double>(numz);
-    zone_work_rate = AbstractedMemory::alloc<double>(numz);
-    zone_sound_speed = AbstractedMemory::alloc<double>(numz);
-    zone_dvel = AbstractedMemory::alloc<double>(numz);
-    side_force_pres = AbstractedMemory::alloc<double2>(nums);
-    side_force_visc = AbstractedMemory::alloc<double2>(nums);
-    side_force_tts = AbstractedMemory::alloc<double2>(nums);
-    crnr_force_tot = AbstractedMemory::alloc<double2>(nums);
+    allocateFields();
+
+    points.allocate(nump);
+    pt_vel = points.getRawPtr<double2>(FID_PU);
+    pt_vel0 = points.getRawPtr<double2>(FID_PU0);
+    pt_accel = points.getRawPtr<double2>(FID_PAP);
+
+    sides_and_corners.allocate(nums);
+    crnr_weighted_mass = sides_and_corners.getRawPtr<double>(FID_CMASWT);
+    side_force_pres = sides_and_corners.getRawPtr<double2>(FID_SFP);
+    side_force_visc = sides_and_corners.getRawPtr<double2>(FID_SFQ);
+    side_force_tts = sides_and_corners.getRawPtr<double2>(FID_SFT);
+    crnr_force_tot = sides_and_corners.getRawPtr<double2>(FID_CFTOT);
+
+    zones.allocate(numz);
+    zone_rho = zones.getRawPtr<double>(FID_ZR);
+    zone_rho_pred = zones.getRawPtr<double>(FID_ZRP);
+    zone_energy_density = zones.getRawPtr<double>(FID_ZE);
+    zone_pressure_ = zones.getRawPtr<double>(FID_ZP);
+    zone_mass = zones.getRawPtr<double>(FID_ZM);
+    zone_energy_tot = zones.getRawPtr<double>(FID_ZETOT);
+    zone_work = zones.getRawPtr<double>(FID_ZW);
+    zone_work_rate = zones.getRawPtr<double>(FID_ZWR);
+    zone_sound_speed = zones.getRawPtr<double>(FID_ZSS);
+    zone_dvel = zones.getRawPtr<double>(FID_ZDU);
 
     // initialize hydro vars
     for (int zch = 0; zch < numzch; ++zch) {
@@ -154,6 +165,27 @@ void Hydro::init() {
 
 }
 
+void Hydro::allocateFields()
+{
+    points.addField<double2>(FID_PU);
+    points.addField<double2>(FID_PU0);
+    points.addField<double2>(FID_PAP);
+    sides_and_corners.addField<double>(FID_CMASWT);
+    sides_and_corners.addField<double2>(FID_SFP);
+    sides_and_corners.addField<double2>(FID_SFQ);
+    sides_and_corners.addField<double2>(FID_SFT);
+    sides_and_corners.addField<double2>(FID_CFTOT);
+    zones.addField<double>(FID_ZR);
+    zones.addField<double>(FID_ZRP);
+    zones.addField<double>(FID_ZE);
+    zones.addField<double>(FID_ZP);
+    zones.addField<double>(FID_ZM);
+    zones.addField<double>(FID_ZETOT);
+    zones.addField<double>(FID_ZW);
+    zones.addField<double>(FID_ZWR);
+    zones.addField<double>(FID_ZSS);
+    zones.addField<double>(FID_ZDU);
+}
 
 void Hydro::initRadialVel(
         const double vel,

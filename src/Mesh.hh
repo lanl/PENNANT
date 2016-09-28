@@ -202,6 +202,8 @@ private:
 
     void calcSideMassFracs(const int side_chunk);
 
+    void  allocateFields();
+
     // helper routines for sumToPoints
     template <typename T>
     void sumOnProc(

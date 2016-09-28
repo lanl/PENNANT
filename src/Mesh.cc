@@ -101,14 +101,8 @@ void LocalMesh::init() {
 
     writeMeshStats();
 
-    zones.addField<double2>(FID_ZX);
-    zones.addField<double2>(FID_ZXP);
-    zones.addField<double>(FID_ZAREA);
-    zones.addField<double>(FID_ZVOL);
-    zones.addField<double>(FID_ZAREAP);
-    zones.addField<double>(FID_ZVOLP);
-    zones.addField<double>(FID_ZVOL0);
-    zones.addField<double>(FID_ZDL);
+    allocateFields();
+
     zones.allocate(num_zones);
     zone_x = zones.getRawPtr<double2>(FID_ZX);
     zone_x_pred = zones.getRawPtr<double2>(FID_ZXP);
@@ -119,28 +113,16 @@ void LocalMesh::init() {
     zone_vol0 = zones.getRawPtr<double>(FID_ZVOL0);
     zone_dl = zones.getRawPtr<double>(FID_ZDL);
 
-    edges.addField<double2>(FID_EX);
-    edges.addField<double2>(FID_EXP);
-    edges.addField<double>(FID_ELEN);
     edges.allocate(num_edges);
     edge_x = edges.getRawPtr<double2>(FID_EX);
     edge_x_pred = edges.getRawPtr<double2>(FID_EXP);
     edge_len = edges.getRawPtr<double>(FID_ELEN);
 
-    points.addField<double2>(FID_PX0);
-    points.addField<double2>(FID_PX);
-    points.addField<double2>(FID_PXP);
     points.allocate(num_pts);
     pt_x0 = points.getRawPtr<double2>(FID_PX0);
     pt_x = points.getRawPtr<double2>(FID_PX);
     pt_x_pred = points.getRawPtr<double2>(FID_PXP);
 
-    sides.addField<double>(FID_SAREA);
-    sides.addField<double>(FID_SVOL);
-    sides.addField<double>(FID_SAREAP);
-    sides.addField<double>(FID_SVOLP);
-    sides.addField<double2>(FID_SSURFP);
-    sides.addField<double>(FID_SMF);
     sides.allocate(num_sides);
     side_area = sides.getRawPtr<double>(FID_SAREA);
     side_vol = sides.getRawPtr<double>(FID_SVOL);
@@ -181,6 +163,30 @@ void LocalMesh::init() {
 
 }
 
+
+void LocalMesh::allocateFields()
+{
+    zones.addField<double2>(FID_ZX);
+    zones.addField<double2>(FID_ZXP);
+    zones.addField<double>(FID_ZAREA);
+    zones.addField<double>(FID_ZVOL);
+    zones.addField<double>(FID_ZAREAP);
+    zones.addField<double>(FID_ZVOLP);
+    zones.addField<double>(FID_ZVOL0);
+    zones.addField<double>(FID_ZDL);
+    edges.addField<double2>(FID_EX);
+    edges.addField<double2>(FID_EXP);
+    edges.addField<double>(FID_ELEN);
+    points.addField<double2>(FID_PX0);
+    points.addField<double2>(FID_PX);
+    points.addField<double2>(FID_PXP);
+    sides.addField<double>(FID_SAREA);
+    sides.addField<double>(FID_SVOL);
+    sides.addField<double>(FID_SAREAP);
+    sides.addField<double>(FID_SVOLP);
+    sides.addField<double2>(FID_SSURFP);
+    sides.addField<double>(FID_SMF);
+}
 
 void LocalMesh::initSideMappingArrays(
         const vector<int>& cellstart,

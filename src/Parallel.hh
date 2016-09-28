@@ -40,15 +40,27 @@ enum ZoneFields {
 	FID_ZVOLP,
 	FID_ZVOL0,
 	FID_ZDL,
+	FID_ZRP,
+	FID_ZM,
+	FID_ZETOT,
+	FID_ZW,
+	FID_ZWR,
+	FID_ZSS,
+	FID_ZDU,
 };
 
-enum SideField {
+enum SidesAndCornersFields {
     FID_SAREA,
     FID_SVOL,
     FID_SAREAP,
     FID_SVOLP,
     FID_SSURFP,
     FID_SMF,
+    FID_CMASWT,
+    FID_SFP,
+    FID_SFQ,
+    FID_SFT,
+    FID_CFTOT,
 };
 
 enum EdgeFields {
@@ -64,7 +76,10 @@ enum PointFields {
 	FID_GHOST_PMASWT,
 	FID_PX0,
 	FID_PX,
-	FID_PXP,
+    FID_PXP,
+    FID_PU,
+    FID_PU0,
+    FID_PAP,
 };
 
 enum ZonePtsCRSFields {

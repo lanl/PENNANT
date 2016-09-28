@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "InputParameters.hh"
+#include "LogicalStructured.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
 
@@ -180,11 +181,15 @@ public:
     // (energy per unit mass)  // TODO make private
 	double* zone_pressure_;        // zone pressure  // TODO make private
 private:
-	void allocateZoneFields();
+	void  allocateFields();
 
     DynamicCollective add_reduction;
     Context ctx;
     HighLevelRuntime* runtime;
+    LogicalStructured zones;
+    LogicalStructured sides_and_corners;
+    LogicalStructured edges;
+    LogicalStructured points;
     const int mype;
 
 }; // class Hydro
