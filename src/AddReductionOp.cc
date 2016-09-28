@@ -3,6 +3,12 @@
  *
  *  Created on: Aug 4, 2016
  *      Author: jgraham
+ *
+ * Copyright (c) 2016, Los Alamos National Security, LLC.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style open-source
+ * license; see top-level LICENSE file for full license text.
+ *
  */
 
 #include "AddReductionOp.hh"
@@ -42,6 +48,4 @@ AddReductionOp::fold<false>(RHS &rhs1, RHS rhs2) {
         newval.as_T = oldval.as_T + rhs2;
     } while (!__sync_bool_compare_and_swap(target, oldval.as_int, newval.as_int));
 }
-
-
 

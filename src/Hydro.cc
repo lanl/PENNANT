@@ -385,7 +385,7 @@ void Hydro::calcAccel(
     const double fuzz = 1.e-99;
 
     #pragma ivdep
-    for (int p = pfirst; p < plast; ++p) {  // TODO pf and pmass use gid
+    for (int p = pfirst; p < plast; ++p) {
     		ptr_t pt_ptr = mesh->point_local_to_globalID[p];
         pa[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
     }

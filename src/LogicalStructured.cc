@@ -3,6 +3,12 @@
  *
  *  Created on: Sep 8, 2016
  *      Author: jgraham
+ *
+ * Copyright (c) 2016, Los Alamos National Security, LLC.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style open-source
+ * license; see top-level LICENSE file for full license text.
+ *
  */
 
 
@@ -60,7 +66,6 @@ double2* LogicalStructured::getRawPtr<double2>(FieldID FID)
     getPRegion();
 
     double2 *mData = nullptr;
-    size_t mLength = 0;
 
     Double2Accessor tAcc = pregion.get_field_accessor(FID).typeify<double2>();
     Domain tDom = runtime->get_index_space_domain(
@@ -68,7 +73,6 @@ double2* LogicalStructured::getRawPtr<double2>(FieldID FID)
     Rect<1> subrect;
     ByteOffset inOffsets[1];
     auto subGridBounds = tDom.get_rect<1>();
-    mLength = subGridBounds.volume();
 
     mData = tAcc.template raw_rect_ptr<1>(
                 subGridBounds, subrect, inOffsets);
@@ -89,7 +93,6 @@ double* LogicalStructured::getRawPtr<double>(FieldID FID)
     getPRegion();
 
     double *mData = nullptr;
-    size_t mLength = 0;
 
     DoubleAccessor tAcc = pregion.get_field_accessor(FID).typeify<double>();
     Domain tDom = runtime->get_index_space_domain(
@@ -97,7 +100,6 @@ double* LogicalStructured::getRawPtr<double>(FieldID FID)
     Rect<1> subrect;
     ByteOffset inOffsets[1];
     auto subGridBounds = tDom.get_rect<1>();
-    mLength = subGridBounds.volume();
 
     mData = tAcc.template raw_rect_ptr<1>(
                 subGridBounds, subrect, inOffsets);
@@ -118,7 +120,6 @@ int* LogicalStructured::getRawPtr<int>(FieldID FID)
     getPRegion();
 
     int *mData = nullptr;
-    size_t mLength = 0;
 
     IntAccessor tAcc = pregion.get_field_accessor(FID).typeify<int>();
     Domain tDom = runtime->get_index_space_domain(
@@ -126,7 +127,6 @@ int* LogicalStructured::getRawPtr<int>(FieldID FID)
     Rect<1> subrect;
     ByteOffset inOffsets[1];
     auto subGridBounds = tDom.get_rect<1>();
-    mLength = subGridBounds.volume();
 
     mData = tAcc.template raw_rect_ptr<1>(
                 subGridBounds, subrect, inOffsets);

@@ -3,6 +3,12 @@
  *
  *  Created on: Sep 8, 2016
  *      Author: jgraham
+ *
+ * Copyright (c) 2016, Los Alamos National Security, LLC.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style open-source
+ * license; see top-level LICENSE file for full license text.
+ *
  */
 
 

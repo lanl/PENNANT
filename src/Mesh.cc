@@ -48,12 +48,12 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			runtime(rt),
 			halos_points(halos_pts),
 			pregions_halos(pregionshalos),
-			num_subregions(params.directs.ntasks),
-			my_color(params.directs.task_id),
             zones(ctx, rt),
             sides(ctx, rt),
             edges(ctx, rt),
-            points(ctx, rt)
+            points(ctx, rt),
+            num_subregions(params.directs.ntasks),
+            my_color(params.directs.task_id)
 	{
 
     generate_mesh = new GenerateMesh(params);

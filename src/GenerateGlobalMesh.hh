@@ -3,6 +3,12 @@
  *
  *  Created on: Aug 16, 2016
  *      Author: jgraham
+ *
+ * Copyright (c) 2016, Los Alamos National Security, LLC.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style open-source
+ * license; see top-level LICENSE file for full license text.
+ *
  */
 
 #ifndef SRC_GENERATEGLOBALMESH_HH_

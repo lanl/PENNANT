@@ -4,9 +4,9 @@ Charles R. Ferenbaugh
 Los Alamos National Laboratory
 cferenba@lanl.gov
 
-Version 0.9 -- February 2016
+Version 0.95 -- September 2016
 LA-CC-12-021
-https://github.com/losalamos/PENNANT
+https://github.com/gshipman/pennant-legion/tree/spmdv2
 
 
 Description:
@@ -21,6 +21,9 @@ PENNANT distribution.
 
 
 Version Log:
+
+0.95, September 2016:
+     Legion-SPMD version
 
 0.9, February 2016:
      Added leblancx64 problem.  Added energy check diagnostic

@@ -3,6 +3,12 @@
  *
  *  Created on: Aug 4, 2016
  *      Author: jgraham
+ *
+ * Copyright (c) 2016, Los Alamos National Security, LLC.
+ * All rights reserved.
+ * Use of this source code is governed by a BSD-style open-source
+ * license; see top-level LICENSE file for full license text.
+ *
  */
 
 #include "MinReductionOp.hh"
@@ -52,3 +58,4 @@ MinReductionOp::fold<false>(RHS &rhs1, RHS rhs2) {
     if (rhs1.dt == rhs2.dt)
     	snprintf(rhs1.message, 80, "%s", rhs2.message);
 }
+
