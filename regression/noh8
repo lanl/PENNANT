@@ -4,8 +4,6 @@
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
 export GASNET_USE_XRC=0
-export OMPI_MCA_mpi_paffinity_alone=0 
-export OMPI_MCA_rmaps_base_loadbalance=1
 export OMPI_MCA_btl="sm,openib,self"
 export OMPI_MCA_mpi_warn_on_fork=0
 export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
@@ -16,4 +14,4 @@ mkdir -p ${HOME}/local/regression/pennant/noh8
 cd ${HOME}/local/regression/pennant/noh8
 cp ${HOME}/gitlab/pennant-spmd//pennant . 
 cp ${HOME}/gitlab/pennant-spmd/test/noh/noh.pnt  . 
-/home/jgraham/opt/gasnet/1.24.0-hack/bin/gasnetrun_ibv -n 8 ./pennant 8 noh.pnt -ll:cpu 8
+mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 8 noh.pnt -ll:cpu 8

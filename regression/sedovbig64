@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N4 --constraint="ib_fdr,e5-2660_v3"
+#SBATCH -N8 --constraint="ib_fdr,e5-2660_v3"
 
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
@@ -14,4 +14,4 @@ cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/sedovbig/sedovbig
 cp ${HOME}/gitlab/pennant-spmd/pennant .
 cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
 
-mpirun -n 4 --map-by ppr:1:node --bind-to none ./pennant 24 ./sedovbig.pnt -ll:cpu 18 2>&1 | tee sedovbig.4x8
+mpirun -n 8 --map-by ppr:1:node --bind-to none ./pennant 24 ./sedovbig.pnt -ll:cpu 18 2>&1 | tee sedovbig.8x8

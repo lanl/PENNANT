@@ -4,16 +4,14 @@
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
 export GASNET_USE_XRC=0
-export OMPI_MCA_mpi_paffinity_alone=0 
-export OMPI_MCA_rmaps_base_loadbalance=1
 export OMPI_MCA_btl="sm,openib,self"
 export OMPI_MCA_mpi_warn_on_fork=0
 export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.24.0-hack/lib/:$LD_LIBRARY_PATH
 export GASNET_BACKTRACE=1  
 
 
-mkdir -p ${HOME}/local/regression/pennant/nohpoly4  #${SLURM_JOB_ID}
-cd ${HOME}/local/regression/pennant/nohpoly4  #${SLURM_JOB_ID}
+mkdir -p ${HOME}/local/regression/pennant/nohpoly4
+cd ${HOME}/local/regression/pennant/nohpoly4
 cp ${HOME}/gitlab/pennant-spmd//pennant . 
 cp ${HOME}/gitlab/pennant-spmd/test/nohpoly/nohpoly.pnt  . 
-/home/jgraham/opt/gasnet/1.24.0-hack/bin/gasnetrun_ibv -n 4 -spawner=mpi ./pennant 4 nohpoly.pnt -ll:cpu 4
+mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 4 nohpoly.pnt -ll:cpu 4

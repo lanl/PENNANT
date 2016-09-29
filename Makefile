@@ -14,7 +14,7 @@
 #
 
 LG_RT_DIR := ${HOME}/github/legion/runtime
-GASNET_ROOT= ${HOME}/opt/gasnet/1.24.0-hack
+GASNET_ROOT= ${HOME}/opt/gasnet/1.26.4
 GASNET=$(GASNET_ROOT)
 CONDUIT=ibv
 USE_GASNET=1
@@ -43,7 +43,8 @@ INC_FLAGS	?=
 CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-variable -D__STDC_FORMAT_MACROS -DDISABLE_BARRIER_MIGRATION
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?=
+LD_FLAGS	?= -L/usr/lib64 -lpmi2
+LEGION_LD_FLAGS	?= -L/usr/lib64 -lpmi2
 
 ###########################################################################
 #
