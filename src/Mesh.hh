@@ -176,7 +176,7 @@ private:
     std::vector<LogicalUnstructured> halos_points;
     std::vector<PhysicalRegion> pregions_halos;
     std::vector<LogicalUnstructured> slaved_halo_points;
-    std::vector<LogicalUnstructured> local_slaved_halo;
+    std::vector<LogicalUnstructured> local_halos_points;
 
     LogicalStructured zones;
     LogicalStructured sides;
