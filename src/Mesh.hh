@@ -109,8 +109,7 @@ public:
     std::vector<int> pt_chunks_first;    // start/stop index for point chunks
     std::vector<int> pt_chunks_last;
     int num_zone_chunks;                    // number of zone chunks
-    std::vector<int> zone_chunk_first;    // start/stop index for zone chunks
-    std::vector<int> zone_chunk_last;
+    std::vector<int> zone_chunk_CRS;    // start/stop index for zone chunks
 
 
     // find plane with constant x, y value
@@ -147,6 +146,7 @@ public:
 
     LogicalUnstructured local_points_by_gid;
     ptr_t* point_local_to_globalID;
+    LogicalStructured zones;
 
 private:
 
@@ -178,7 +178,6 @@ private:
     std::vector<LogicalUnstructured> slaved_halo_points;
     std::vector<LogicalUnstructured> local_halos_points;
 
-    LogicalStructured zones;
     LogicalStructured sides;
     LogicalStructured edges;
     LogicalStructured points;

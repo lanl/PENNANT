@@ -57,8 +57,7 @@ public:
     std::vector<double> bcx;    // x values of x-plane fixed boundaries
     std::vector<double> bcy;    // y values of y-plane fixed boundaries
 
-    double dt_recommend;               // maximum timestep for hydro
-    char dt_recommend_mesg[80];          // message:  reason for dtrec
+    TimeStep recommend;
 
     double2* pt_vel;       // point velocity
     double2* pt_vel0;      // point velocity, start of cycle
@@ -84,7 +83,7 @@ public:
             const int pfirst,
             const int plast);
 
-    void doCycle(const double dt);
+    TimeStep doCycle(const double dt);
 
     void advPosHalf(
             const double dt,
@@ -143,31 +142,9 @@ public:
             const int sfirst,
             const int slast);
 
-    void calcDtCourant(
-            double& dtrec,
-            char* msgdtrec,
-            const int zfirst,
-            const int zlast);
-
-    void calcDtVolume(
-            const double dtlast,
-            double& dtrec,
-            char* msgdtrec,
-            const int zfirst,
-            const int zlast);
-
-    void calcDtHydro(
-            const double dtlast,
-            const int zfirst,
-            const int zlast);
-
-    void getDtHydro(
-            double& dtnew,
-            std::string& msgdtnew);
+    void writeEnergyCheck();
 
     void resetDtHydro();
-
-    void writeEnergyCheck();
 
     void copyZonesToLegion(
             DoubleAccessor* zone_rho,

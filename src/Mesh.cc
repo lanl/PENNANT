@@ -40,6 +40,7 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			subregion_ymin(params.directs.subregion_ymin),
 			subregion_ymax(params.directs.subregion_ymax),
             local_points_by_gid(ctx, rt, points.getISpace()),
+            zones(ctx, rt),
             pt_x_init_by_gid(points),
 			generate_mesh(NULL),
 	        pbarrier_as_master(as_master),
@@ -48,7 +49,6 @@ LocalMesh::LocalMesh(const InputParameters& params,
 			runtime(rt),
 			halos_points(halos_pts),
 			pregions_halos(pregionshalos),
-            zones(ctx, rt),
             sides(ctx, rt),
             edges(ctx, rt),
             points(ctx, rt),
@@ -268,14 +268,13 @@ void LocalMesh::populateChunks() {
     num_pt_chunks = pt_chunks_first.size();
 
     // compute zone chunks
-    int z1, z2 = 0;
+    int z2 = 0;
+    zone_chunk_CRS.push_back(z2);
     while (z2 < num_zones) {
-        z1 = z2;
         z2 = min(z2 + chunk_size, num_zones);
-        zone_chunk_first.push_back(z1);
-        zone_chunk_last.push_back(z2);
+        zone_chunk_CRS.push_back(z2);
     }
-    num_zone_chunks = zone_chunk_first.size();
+    num_zone_chunks = zone_chunk_CRS.size() - 1;
 
 }
 

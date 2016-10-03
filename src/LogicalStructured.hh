@@ -21,6 +21,7 @@
 class LogicalStructured : public LogicalUnstructured {
 public:
     LogicalStructured(Context ctx, HighLevelRuntime *runtime);
+    LogicalStructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion);
     void allocate(int nElements);
     template <typename TYPE>
       TYPE* getRawPtr(FieldID FID);

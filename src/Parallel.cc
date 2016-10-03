@@ -319,31 +319,52 @@ static size_t archiveVector(std::vector<Type> vec, void* bit_stream)
     return size_size + vec_size;
 }
 
-void SPMDArgsSerializer::archive(SPMDArgs* args)
+void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 {
-    assert(args != nullptr);
-    spmd_args = args;
+    assert(spmd_args != nullptr);
 
     bit_stream_size = 2 * sizeof(DynamicCollective) + sizeof(DirectInputParameters)
             + sizeof(PhaseBarrier) + 5 * sizeof(size_t)
-            + (args->meshtype.length()  + 1 + args->probname.length() + 1) * sizeof(char)
-            + (args->bcx.size() + args->bcy.size()) * sizeof(double)
-            + args->masters_pbarriers.size() * sizeof(PhaseBarrier);
+            + (spmd_args->meshtype.length()  + 1 + spmd_args->probname.length() + 1) * sizeof(char)
+            + (spmd_args->bcx.size() + spmd_args->bcy.size()) * sizeof(double)
+            + spmd_args->masters_pbarriers.size() * sizeof(PhaseBarrier);
     bit_stream = malloc(bit_stream_size);
     free_bit_stream = true;
 
     unsigned char *serialized = (unsigned char*)(bit_stream);
 
     size_t stream_size = 0;
-    stream_size += archiveScalar(args->add_reduction, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(args->min_reduction, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(args->direct_input_params, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(args->pbarrier_as_master, (void*)(serialized+stream_size));
-    stream_size += archiveString(args->meshtype, (void*)(serialized+stream_size));
-    stream_size += archiveString(args->probname, (void*)(serialized+stream_size));
-    stream_size += archiveVector(args->bcx, (void*)(serialized+stream_size));
-    stream_size += archiveVector(args->bcy, (void*)(serialized+stream_size));
-    stream_size += archiveVector(args->masters_pbarriers, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(spmd_args->add_reduction, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(spmd_args->min_reduction, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(spmd_args->direct_input_params, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(spmd_args->pbarrier_as_master, (void*)(serialized+stream_size));
+    stream_size += archiveString(spmd_args->meshtype, (void*)(serialized+stream_size));
+    stream_size += archiveString(spmd_args->probname, (void*)(serialized+stream_size));
+    stream_size += archiveVector(spmd_args->bcx, (void*)(serialized+stream_size));
+    stream_size += archiveVector(spmd_args->bcy, (void*)(serialized+stream_size));
+    stream_size += archiveVector(spmd_args->masters_pbarriers, (void*)(serialized+stream_size));
+
+    assert(stream_size == bit_stream_size);
+}
+
+
+void HydroTask2ArgsSerializer::archive(HydroTask2Args* hydro_args)
+{
+    assert(hydro_args != nullptr);
+
+    bit_stream_size = 3 * sizeof(double) + sizeof(int)
+            + sizeof(size_t) + hydro_args->zone_chunk_CRS.size() * sizeof(int);
+    bit_stream = malloc(bit_stream_size);
+    free_bit_stream = true;
+
+    unsigned char *serialized = (unsigned char*)(bit_stream);
+
+    size_t stream_size = 0;
+    stream_size += archiveScalar(hydro_args->dtlast, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(hydro_args->cfl, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(hydro_args->cflv, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(hydro_args->num_zone_chunks, (void*)(serialized+stream_size));
+    stream_size += archiveVector(hydro_args->zone_chunk_CRS, (void*)(serialized+stream_size));
 
     assert(stream_size == bit_stream_size);
 }
@@ -391,40 +412,55 @@ static size_t restoreVector(std::vector<Type>* vec, void* bit_stream)
 }
 
 
-void SPMDArgsSerializer::restore(SPMDArgs* args)
+void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 {
-    assert(args != nullptr);
+    assert(spmd_args != nullptr);
     assert(bit_stream != nullptr);
-    spmd_args = args;
 
     unsigned char *serialized_args = (unsigned char *) bit_stream;
 
     bit_stream_size = 0;
-    bit_stream_size += restoreScalar(&(args->add_reduction), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(args->min_reduction), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(args->direct_input_params), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(args->pbarrier_as_master), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreString(&(args->meshtype), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreString(&(args->probname), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(args->bcx), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(args->bcy), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(args->masters_pbarriers), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(spmd_args->add_reduction), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(spmd_args->min_reduction), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(spmd_args->direct_input_params), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(spmd_args->pbarrier_as_master), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreString(&(spmd_args->meshtype), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreString(&(spmd_args->probname), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(spmd_args->bcx), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(spmd_args->bcy), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(spmd_args->masters_pbarriers), (void*)(serialized_args + bit_stream_size));
 }
 
 
-void* SPMDArgsSerializer::getBitStream()
+void HydroTask2ArgsSerializer::restore(HydroTask2Args* hydro_args)
+{
+    assert(hydro_args != nullptr);
+    assert(bit_stream != nullptr);
+
+    unsigned char *serialized_args = (unsigned char *) bit_stream;
+
+    bit_stream_size = 0;
+    bit_stream_size += restoreScalar(&(hydro_args->dtlast), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(hydro_args->cfl), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(hydro_args->cflv), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(hydro_args->num_zone_chunks), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(hydro_args->zone_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+}
+
+
+void* ArgsSerializer::getBitStream()
 {
     return bit_stream;
 }
 
 
-size_t SPMDArgsSerializer::getBitStreamSize()
+size_t ArgsSerializer::getBitStreamSize()
 {
     return bit_stream_size;
 }
 
 
-void SPMDArgsSerializer::setBitStream(void* stream)
+void ArgsSerializer::setBitStream(void* stream)
 {
     bit_stream = stream;
 };

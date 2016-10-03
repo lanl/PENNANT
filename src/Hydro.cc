@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <limits>
 
+#include "HydroTask2.hh"
 #include "Memory.hh"
 #include "Mesh.hh"
 #include "PolyGas.hh"
@@ -120,8 +121,8 @@ void Hydro::init() {
 
     // initialize hydro vars
     for (int zch = 0; zch < numzch; ++zch) {
-        int zfirst = mesh->zone_chunk_first[zch];
-        int zlast = mesh->zone_chunk_last[zch];
+        int zfirst = mesh->zone_chunk_CRS[zch];
+        int zlast = mesh->zone_chunk_CRS[zch+1];
 
         fill(&zone_rho[zfirst], &zone_rho[zlast], rho_init);
         fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
@@ -160,8 +161,6 @@ void Hydro::init() {
         else
             fill(&pt_vel[pfirst], &pt_vel[plast], double2(0., 0.));
     }  // for pch
-
-    resetDtHydro();
 
 }
 
@@ -204,7 +203,94 @@ void Hydro::initRadialVel(
 }
 
 
-void Hydro::doCycle(
+
+static void calcDtCourant(
+        double& dtrec,
+        char* msgdtrec,
+        const int zfirst,
+        const int zlast,
+        const double* zdl,
+        const double* zone_dvel,
+        const double* zone_sound_speed,
+        const double cfl)
+{
+    const double fuzz = 1.e-99;
+    double dtnew = 1.e99;
+    int zmin = -1;
+    for (int z = zfirst; z < zlast; ++z) {
+        double cdu = std::max(zone_dvel[z], std::max(zone_sound_speed[z], fuzz));
+        double zdthyd = zdl[z] * cfl / cdu;
+        zmin = (zdthyd < dtnew ? z : zmin);
+        dtnew = (zdthyd < dtnew ? zdthyd : dtnew);
+    }
+
+    if (dtnew < dtrec) {
+        dtrec = dtnew;
+        snprintf(msgdtrec, 80, "Hydro Courant limit for z = %d", zmin);
+    }
+
+}
+
+
+static void calcDtVolume(
+        const double dtlast,
+        double& dtrec,
+        char* msgdtrec,
+        const int zfirst,
+        const int zlast,
+        const double* zvol,
+        const double* zvol0,
+        const double cflv)
+{
+    double dvovmax = 1.e-99;
+    int zmax = -1;
+    for (int z = zfirst; z < zlast; ++z) {
+        double zdvov = abs((zvol[z] - zvol0[z]) / zvol0[z]);
+        zmax = (zdvov > dvovmax ? z : zmax);
+        dvovmax = (zdvov > dvovmax ? zdvov : dvovmax);
+    }
+    double dtnew = dtlast * cflv / dvovmax;
+    if (dtnew < dtrec) {
+        dtrec = dtnew;
+        snprintf(msgdtrec, 80, "Hydro dV/V limit for z = %d", zmax);
+    }
+
+}
+
+
+static void calcDtHydro(
+        const double dtlast,
+        const int zfirst,
+        const int zlast,
+        const double* zone_dl,
+        const double* zone_dvel,
+        const double* zone_sound_speed,
+        const double cfl,
+        const double* zone_vol,
+        const double* zone_vol0,
+        const double cflv,
+        TimeStep& recommend)
+{
+    double dtchunk = 1.e99;
+    char msgdtchunk[80];
+
+    calcDtCourant(dtchunk, msgdtchunk, zfirst, zlast,
+            zone_dl, zone_dvel, zone_sound_speed, cfl);
+    calcDtVolume(dtlast, dtchunk, msgdtchunk, zfirst, zlast,
+            zone_vol, zone_vol0, cflv);
+    if (dtchunk < recommend.dt) {
+        {
+            // redundant test needed to avoid race condition
+            if (dtchunk < recommend.dt) {
+                recommend.dt = dtchunk;
+                strncpy(recommend.message, msgdtchunk, 80);
+            }
+        }
+    }
+
+}
+
+TimeStep Hydro::doCycle(
             const double dt) {
 
     const int num_pt_chunks = mesh->num_pt_chunks;
@@ -280,8 +366,6 @@ void Hydro::doCycle(
         advPosFull(dt, pfirst, plast);
     }  // for pch
 
-    resetDtHydro();
-
     for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst = mesh->side_chunks_first[sch];
         int slast = mesh->side_chunks_last[sch];
@@ -299,8 +383,8 @@ void Hydro::doCycle(
     mesh->checkBadSides();
 
     for (int zch = 0; zch < mesh->num_zone_chunks; ++zch) {
-        int zfirst = mesh->zone_chunk_first[zch];
-        int zlast = mesh->zone_chunk_last[zch];
+        int zfirst = mesh->zone_chunk_CRS[zch];
+        int zlast = mesh->zone_chunk_CRS[zch+1];
 
         // 7a. compute work rate
         calcWorkRate(dt, zfirst, zlast);
@@ -308,11 +392,35 @@ void Hydro::doCycle(
         // 8. update state variables
         calcEnergy(zfirst, zlast);
         calcRho(mesh->zone_vol, zone_rho, zfirst, zlast);
-
-        // 9.  compute timestep for next cycle
-        calcDtHydro(dt, zfirst, zlast);
     }  // for zch
 
+    resetDtHydro();
+
+    for (int zch = 0; zch < mesh->num_zone_chunks; ++zch) {
+        int zfirst = mesh->zone_chunk_CRS[zch];
+        int zlast = mesh->zone_chunk_CRS[zch+1];
+        // 9.  compute timestep for next cycle
+        calcDtHydro(dt, zfirst, zlast,
+                mesh->zone_dl, zone_dvel, zone_sound_speed, cfl,
+                mesh->zone_vol, mesh->zone_vol0, cflv, recommend);
+    }  // for zch
+
+    // 9.  compute timestep for next cycle
+/*    HydroTask2Args args;
+    args.dtlast = dt;
+    args.cfl = cfl;
+    args.cflv = cflv;
+    args.num_zone_chunks = mesh->num_zone_chunks;
+    args.zone_chunk_CRS = mesh->zone_chunk_CRS;
+    HydroTask2ArgsSerializer serial;
+    serial.archive(&args);
+
+    HydroTask2 hydro2_launcher(mesh->zones.getLRegion(),
+            zones.getLRegion(),
+            serial.getBitStream(), serial.getBitStreamSize());
+    Future future = runtime->execute_task(ctx, hydro2_launcher);
+    TimeStep recommend = future.get_result<TimeStep>();*/
+    return recommend;
 }
 
 
@@ -506,98 +614,13 @@ void Hydro::sumEnergy(
 
 }
 
-
-void Hydro::calcDtCourant(
-        double& dtrec,
-        char* msgdtrec,
-        const int zfirst,
-        const int zlast) {
-    const double* zdl = mesh->zone_dl;
-
-    const double fuzz = 1.e-99;
-    double dtnew = 1.e99;
-    int zmin = -1;
-    for (int z = zfirst; z < zlast; ++z) {
-        double cdu = max(zone_dvel[z], max(zone_sound_speed[z], fuzz));
-        double zdthyd = zdl[z] * cfl / cdu;
-        zmin = (zdthyd < dtnew ? z : zmin);
-        dtnew = (zdthyd < dtnew ? zdthyd : dtnew);
-    }
-
-    if (dtnew < dtrec) {
-        dtrec = dtnew;
-        snprintf(msgdtrec, 80, "Hydro Courant limit for z = %d", zmin);
-    }
-
-}
-
-
-void Hydro::calcDtVolume(
-        const double dtlast,
-        double& dtrec,
-        char* msgdtrec,
-        const int zfirst,
-        const int zlast) {
-    const double* zvol = mesh->zone_vol;
-    const double* zvol0 = mesh->zone_vol0;
-
-    double dvovmax = 1.e-99;
-    int zmax = -1;
-    for (int z = zfirst; z < zlast; ++z) {
-        double zdvov = abs((zvol[z] - zvol0[z]) / zvol0[z]);
-        zmax = (zdvov > dvovmax ? z : zmax);
-        dvovmax = (zdvov > dvovmax ? zdvov : dvovmax);
-    }
-    double dtnew = dtlast * cflv / dvovmax;
-    if (dtnew < dtrec) {
-        dtrec = dtnew;
-        snprintf(msgdtrec, 80, "Hydro dV/V limit for z = %d", zmax);
-    }
-
-}
-
-
-void Hydro::calcDtHydro(
-        const double dtlast,
-        const int zfirst,
-        const int zlast) {
-
-    double dtchunk = 1.e99;
-    char msgdtchunk[80];
-
-    calcDtCourant(dtchunk, msgdtchunk, zfirst, zlast);
-    calcDtVolume(dtlast, dtchunk, msgdtchunk, zfirst, zlast);
-    if (dtchunk < dt_recommend) {
-        {
-            // redundant test needed to avoid race condition
-            if (dtchunk < dt_recommend) {
-                dt_recommend = dtchunk;
-                strncpy(dt_recommend_mesg, msgdtchunk, 80);
-            }
-        }
-    }
-
-}
-
-
-void Hydro::getDtHydro(
-        double& dtnew,
-        string& msgdtnew) {
-
-    if (dt_recommend < dtnew) {
-        dtnew = dt_recommend;
-        msgdtnew = string(dt_recommend_mesg);
-    }
-
-}
-
-
 void Hydro::resetDtHydro() {
 
-    dt_recommend = 1.e99;
-    strcpy(dt_recommend_mesg, "Hydro default");
+    recommend.dt = 1.e99;
+    strcpy(recommend.message, "Hydro default");
 
 }
+
 
 
 void Hydro::writeEnergyCheck() {
@@ -622,11 +645,11 @@ void Hydro::writeEnergyCheck() {
     }
 
 
-	Future future_sum = Parallel::globalSum(ei, add_reduction, runtime, ctx);
-	ei = future_sum.get_result<double>();
+    Future future_sum = Parallel::globalSum(ei, add_reduction, runtime, ctx);
+    ei = future_sum.get_result<double>();
 
-	future_sum = Parallel::globalSum(ek, add_reduction, runtime, ctx);
-	ek = future_sum.get_result<double>();
+    future_sum = Parallel::globalSum(ek, add_reduction, runtime, ctx);
+    ek = future_sum.get_result<double>();
 
     if (mype == 0) {
         cout << scientific << setprecision(6);
@@ -636,8 +659,7 @@ void Hydro::writeEnergyCheck() {
              << ", kinetic = " << setw(14) << ek << ")" << endl;
     }
 
- }
-
+}
 
 void Hydro::copyZonesToLegion(
         DoubleAccessor* rho_acc,

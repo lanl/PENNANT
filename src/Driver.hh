@@ -78,6 +78,7 @@ public:
 private:
     LocalMesh *mesh;
     Hydro *hydro;
+    TimeStep dt_hydro;
 
     DynamicCollective add_reduction;
     DynamicCollective min_reduction;

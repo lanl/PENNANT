@@ -125,7 +125,8 @@ struct TimeStep {
 enum TaskIDs {
 	TOP_LEVEL_TASK_ID,
 	DRIVER_TASK_ID,
-	WRITE_TASK_ID,
+    HYDRO_TASK2_ID,
+    WRITE_TASK_ID,
 	GLOBAL_SUM_TASK_ID,
 	GLOBAL_MIN_TASK_ID,
     ADD_REDOP_ID,
@@ -193,21 +194,37 @@ struct SPMDArgs {
 	std::vector<PhaseBarrier> masters_pbarriers;
 };
 
-class SPMDArgsSerializer {
+class ArgsSerializer {
 public:
-    SPMDArgsSerializer() {spmd_args = nullptr; bit_stream = nullptr; bit_stream_size = 0; free_bit_stream = false;}
-    ~SPMDArgsSerializer() {if (free_bit_stream) free(bit_stream);}
-    void archive(SPMDArgs* spmd_args);
+    ArgsSerializer() {bit_stream = nullptr; bit_stream_size = 0; free_bit_stream = false;}
+    ~ArgsSerializer() {if (free_bit_stream) free(bit_stream);}
     void* getBitStream();
     size_t getBitStreamSize();
-
-    void restore(SPMDArgs* spmd_args);
     void setBitStream(void* bit_stream);
-private:
-    SPMDArgs* spmd_args;
+protected:
     void* bit_stream;
     size_t bit_stream_size;
     bool free_bit_stream;
+};
+
+class SPMDArgsSerializer : public ArgsSerializer {
+public:
+    void archive(SPMDArgs* spmd_args);
+    void restore(SPMDArgs* spmd_args);
+};
+
+struct HydroTask2Args {
+    double dtlast;
+    double cfl;
+    double cflv;
+    int num_zone_chunks;
+    std::vector<int> zone_chunk_CRS;
+};
+
+class HydroTask2ArgsSerializer : public ArgsSerializer {
+public:
+    void archive(HydroTask2Args* hydro_task2_args);
+    void restore(HydroTask2Args* hydro_task2_args);
 };
 
 enum Variants {

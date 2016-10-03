@@ -163,7 +163,7 @@ RunStat Driver::run() {
         calcGlobalDt();
 
         // begin hydro cycle
-        hydro->doCycle(dt);
+        dt_hydro = hydro->doCycle(dt);
 
         run_stat.time += dt;
 
@@ -255,7 +255,10 @@ void Driver::calcGlobalDt() {
     }
 
     // compare to hydro dt
-    hydro->getDtHydro(dt, msgdt);
+    if (dt_hydro.dt < dt) {
+        dt = dt_hydro.dt;
+        msgdt = string(dt_hydro.message);
+    }
 
 	TimeStep recommend;
 	recommend.dt = dt;

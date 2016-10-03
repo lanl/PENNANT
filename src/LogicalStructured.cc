@@ -22,6 +22,12 @@ LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime) :
 {
 }
 
+
+LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion) :
+    LogicalUnstructured(ctx, runtime, pregion)
+{
+}
+
 void LogicalStructured::allocate(int nStrucs)
 {
     assert( (nStrucs > 0) && (fIDs.size() > 0) && (!pregion.is_mapped())
