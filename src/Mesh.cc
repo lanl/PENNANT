@@ -717,8 +717,6 @@ void LocalMesh::sumToPoints(
 
     if (slave_colors.size() > 0) {
         // phase 3 as master: everybody can read accumulation
-        pbarrier_as_master.wait();                                              // 3 * cycle + 2
-
         {
           CopyLauncher copy_launcher;
           copy_launcher.add_copy_requirements(
@@ -728,6 +726,7 @@ void LocalMesh::sumToPoints(
                           local_points_by_gid.getLRegion()));
           copy_launcher.add_dst_field(0, FID_PMASWT);
           copy_launcher.add_src_field(0, FID_GHOST_PMASWT);
+          copy_launcher.add_wait_barrier(pbarrier_as_master);
           runtime->issue_copy_operation(ctx, copy_launcher);
         }
         {
@@ -739,6 +738,7 @@ void LocalMesh::sumToPoints(
                           local_points_by_gid.getLRegion()));
           copy_launcher.add_dst_field(0, FID_PF);
           copy_launcher.add_src_field(0, FID_GHOST_PF);
+          copy_launcher.add_wait_barrier(pbarrier_as_master);
           runtime->issue_copy_operation(ctx, copy_launcher);
         }
 
