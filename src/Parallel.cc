@@ -243,7 +243,6 @@ Future Parallel::globalSum(double local_value,
   launcher.set_predicate_false_result(TaskArgument(&zero, sizeof(zero)));
   Future f = runtime->execute_task(ctx, launcher);
   runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
-  f.get_result<double>();
   dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
   Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
   return ff2;
@@ -267,7 +266,6 @@ Future Parallel::globalMin(TimeStep local_value,
   launcher.set_predicate_false_result(TaskArgument(&max, sizeof(max)));
   Future f = runtime->execute_task(ctx, launcher);
   runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
-  f.get_result<TimeStep>();
   dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
   Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
   return ff2;
