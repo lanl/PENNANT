@@ -394,19 +394,8 @@ TimeStep Hydro::doCycle(
         calcRho(mesh->zone_vol, zone_rho, zfirst, zlast);
     }  // for zch
 
-    resetDtHydro();
-
-    for (int zch = 0; zch < mesh->num_zone_chunks; ++zch) {
-        int zfirst = mesh->zone_chunk_CRS[zch];
-        int zlast = mesh->zone_chunk_CRS[zch+1];
-        // 9.  compute timestep for next cycle
-        calcDtHydro(dt, zfirst, zlast,
-                mesh->zone_dl, zone_dvel, zone_sound_speed, cfl,
-                mesh->zone_vol, mesh->zone_vol0, cflv, recommend);
-    }  // for zch
-
     // 9.  compute timestep for next cycle
-/*    HydroTask2Args args;
+    HydroTask2Args args;
     args.dtlast = dt;
     args.cfl = cfl;
     args.cflv = cflv;
@@ -419,7 +408,7 @@ TimeStep Hydro::doCycle(
             zones.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
     Future future = runtime->execute_task(ctx, hydro2_launcher);
-    TimeStep recommend = future.get_result<TimeStep>();*/
+    TimeStep recommend = future.get_result<TimeStep>();
     return recommend;
 }
 
@@ -613,14 +602,6 @@ void Hydro::sumEnergy(
     ek += sumk * 2 * M_PI;
 
 }
-
-void Hydro::resetDtHydro() {
-
-    recommend.dt = 1.e99;
-    strcpy(recommend.message, "Hydro default");
-
-}
-
 
 
 void Hydro::writeEnergyCheck() {

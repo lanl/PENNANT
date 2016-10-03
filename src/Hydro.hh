@@ -57,8 +57,6 @@ public:
     std::vector<double> bcx;    // x values of x-plane fixed boundaries
     std::vector<double> bcy;    // y values of y-plane fixed boundaries
 
-    TimeStep recommend;
-
     double2* pt_vel;       // point velocity
     double2* pt_vel0;      // point velocity, start of cycle
     double2* pt_accel;      // point acceleration
@@ -143,8 +141,6 @@ public:
             const int slast);
 
     void writeEnergyCheck();
-
-    void resetDtHydro();
 
     void copyZonesToLegion(
             DoubleAccessor* zone_rho,

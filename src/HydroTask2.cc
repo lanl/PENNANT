@@ -14,6 +14,7 @@
 #include "HydroTask2.hh"
 
 #include<algorithm>
+#include<cmath>
 
 #include "LogicalStructured.hh"
 
@@ -75,7 +76,7 @@ static void calcDtVolume(
     double dvovmax = 1.e-99;
     int zmax = -1;
     for (int z = zfirst; z < zlast; ++z) {
-        double zdvov = abs((zvol[z] - zvol0[z]) / zvol0[z]);
+        double zdvov = std::abs((zvol[z] - zvol0[z]) / zvol0[z]);
         zmax = (zdvov > dvovmax ? z : zmax);
         dvovmax = (zdvov > dvovmax ? zdvov : dvovmax);
     }
