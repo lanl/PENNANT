@@ -21,8 +21,8 @@
 #include <sstream>
 #include <iomanip>
 
-#include "Mesh.hh"
 #include "Hydro.hh"
+#include "LocalMesh.hh"
 
 using namespace std;
 

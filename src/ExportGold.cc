@@ -18,8 +18,8 @@
 #include <cstdlib>
 #include <numeric>
 
+#include "LocalMesh.hh"
 #include "Vec2.hh"
-#include "Mesh.hh"
 
 using namespace std;
 

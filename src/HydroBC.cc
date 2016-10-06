@@ -12,30 +12,17 @@
 
 #include "HydroBC.hh"
 
+#include "LocalMesh.hh"
 #include "Memory.hh"
-#include "Mesh.hh"
 
 using namespace std;
 
 
-HydroBC::HydroBC(
-        LocalMesh* msh,
-        const double2 v,
-        const vector<int>& mbp)
-    : mesh(msh), numb(mbp.size()), vfix(v) {
-
-    mapbp = AbstractedMemory::alloc<int>(numb);
-    copy(mbp.begin(), mbp.end(), mapbp);
-
-    mesh->getPlaneChunks(numb, mapbp, pchbfirst, pchblast);
-
-}
-
-
-HydroBC::~HydroBC() {}
-
-
+/*static*/
 void HydroBC::applyFixedBC(
+        const GenerateMesh* generate_mesh,
+        const double2 vfix,
+        const vector<int>& mapbp,
         double2* pu,
         Double2Accessor& pf,
         const int bfirst,
@@ -44,7 +31,7 @@ void HydroBC::applyFixedBC(
     #pragma ivdep
     for (int b = bfirst; b < blast; ++b) {
         int p = mapbp[b];
-        ptr_t pt_ptr = mesh->point_local_to_globalID[p];
+        ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(p));
 
         pu[p] = project(pu[p], vfix);
         double2 old_pf = pf.read(pt_ptr);

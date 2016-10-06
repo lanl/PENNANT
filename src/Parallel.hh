@@ -61,6 +61,9 @@ enum SidesAndCornersFields {
     FID_SFQ,
     FID_SFT,
     FID_CFTOT,
+    FID_SMAP_SIDE_TO_PT1,
+    FID_SMAP_SIDE_TO_ZONE,
+    FID_SMAP_SIDE_TO_EDGE,
 };
 
 enum EdgeFields {
@@ -125,7 +128,7 @@ struct TimeStep {
 enum TaskIDs {
 	TOP_LEVEL_TASK_ID,
 	DRIVER_TASK_ID,
-    HYDRO_TASK2_ID,
+    CORRECTOR_TASK_ID,
     WRITE_TASK_ID,
 	GLOBAL_SUM_TASK_ID,
 	GLOBAL_MIN_TASK_ID,
@@ -141,6 +144,7 @@ typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
 
 class Parallel {
 public:
+
     static void run(InputParameters input_params,
     		Context ctx, HighLevelRuntime *runtime);
 
@@ -213,18 +217,27 @@ public:
     void restore(SPMDArgs* spmd_args);
 };
 
-struct HydroTask2Args {
-    double dtlast;
+struct CorrectorTaskArgs {
+    double dt;
     double cfl;
     double cflv;
-    int num_zone_chunks;
+    int num_points;
+    int num_sides;
+    int num_zones;
+    int my_color;
+    int num_subregions;
+    int nzones_x, nzones_y;
     std::vector<int> zone_chunk_CRS;
+    std::vector<int> side_chunk_CRS;
+    std::vector<int> point_chunk_CRS;
+    std::string meshtype;
+    std::vector<double> bcx, bcy;
 };
 
-class HydroTask2ArgsSerializer : public ArgsSerializer {
+class CorrectorTaskArgsSerializer : public ArgsSerializer {
 public:
-    void archive(HydroTask2Args* hydro_task2_args);
-    void restore(HydroTask2Args* hydro_task2_args);
+    void archive(CorrectorTaskArgs* hydro_task2_args);
+    void restore(CorrectorTaskArgs* hydro_task2_args);
 };
 
 enum Variants {

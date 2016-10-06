@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "GenerateMesh.hh"
 #include "InputParameters.hh"
 #include "LogicalStructured.hh"
 #include "Parallel.hh"
@@ -45,7 +46,6 @@ public:
     PolyGas* pgas;
     TTS* tts;
     QCS* qcs;
-    std::vector<HydroBC*> bcs;
 
     double cfl;                 // Courant number, limits timestep
     double cflv;                // volume change limit for timestep
@@ -88,8 +88,13 @@ public:
             const int pfirst,
             const int plast);
 
-    void advPosFull(
+    static void advPosFull(
             const double dt,
+            const double2* pt_vel0,
+            const double2* pt_accel,
+            const double2* pt_x0,
+            double2* pt_vel,
+            double2* pt_x,
             const int pfirst,
             const int plast);
 
@@ -101,27 +106,50 @@ public:
             const int sfirst,
             const int slast);
 
-    void calcAccel(
+    static void calcAccel(
+            const GenerateMesh* generate_mesh,
+            const Double2Accessor pf,
+            const DoubleAccessor pmass,
+            double2* pt_accel,
             const int pfirst,
             const int plast);
 
-    void calcRho(
+    static void calcRho(
             const double* zvol,
+            const double* zm,
             double* zr,
             const int zfirst,
             const int zlast);
 
-    void calcWork(
+    static void calcWork(
             const double dt,
-            const int sfirst,
-            const int slast);
+            const int* map_side2pt1,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const double2* side_force_pres,
+            const double2* side_force_visc,
+            const double2* pt_vel,
+            const double2* pt_vel0,
+            const double2* pt_x_pred,
+            double* zone_energy_tot,
+            double* zone_work,
+            const int side_first,
+            const int side_last);
 
-    void calcWorkRate(
+    static void calcWorkRate(
             const double dt,
+            const double* zone_vol,
+            const double* zone_vol0,
+            const double* zone_work,
+            const double* zone_pressure,
+            double* zone_work_rate,
             const int zfirst,
             const int zlast);
 
-    void calcEnergy(
+    static void calcEnergy(
+            const double* zone_energy_tot,
+            const double* zone_mass,
+            double* zone_energy_density,
             const int zfirst,
             const int zlast);
 
@@ -139,6 +167,39 @@ public:
             const int zlast,
             const int sfirst,
             const int slast);
+
+    static void calcDtCourant(
+            double& dtrec,
+            char* msgdtrec,
+            const int zfirst,
+            const int zlast,
+            const double* zdl,
+            const double* zone_dvel,
+            const double* zone_sound_speed,
+            const double cfl);
+
+    static void calcDtVolume(
+            const double dtlast,
+            double& dtrec,
+            char* msgdtrec,
+            const int zfirst,
+            const int zlast,
+            const double* zvol,
+            const double* zvol0,
+            const double cflv);
+
+    static void calcDtHydro(
+            const double dtlast,
+            const int zfirst,
+            const int zlast,
+            const double* zone_dl,
+            const double* zone_dvel,
+            const double* zone_sound_speed,
+            const double cfl,
+            const double* zone_vol,
+            const double* zone_vol0,
+            const double cflv,
+            TimeStep& recommend);
 
     void writeEnergyCheck();
 
@@ -163,7 +224,8 @@ private:
     LogicalStructured sides_and_corners;
     LogicalStructured edges;
     LogicalStructured points;
-    const int mype;
+    const InputParameters params;
+    const int my_color;
 
 }; // class Hydro
 

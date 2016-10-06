@@ -15,8 +15,8 @@
 #include <cassert>
 #include <cmath>
 #include "Hydro.hh"
+#include "LocalMesh.hh"
 #include "Memory.hh"
-#include "Mesh.hh"
 #include "Vec2.hh"
 
 using namespace std;

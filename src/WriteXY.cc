@@ -15,7 +15,7 @@
 #include <fstream>
 #include <iomanip>
 
-#include "Mesh.hh"
+#include "LocalMesh.hh"
 
 using namespace std;
 

@@ -14,7 +14,7 @@
 
 #include "Memory.hh"
 #include "Hydro.hh"
-#include "Mesh.hh"
+#include "LocalMesh.hh"
 
 using namespace std;
 

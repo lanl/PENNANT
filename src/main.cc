@@ -18,8 +18,8 @@
 
 #include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
+#include "CorrectorTask.hh"
 #include "Driver.hh"
-#include "HydroTask2.hh"
 #include "InputFile.hh"
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
@@ -80,9 +80,9 @@ int main(int argc, char **argv)
             Processor::LOC_PROC, true/*single*/, true/*index*/,
             AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
 
-    HighLevelRuntime::register_legion_task<TimeStep, HydroTask2::cpu_run>(HYDRO_TASK2_ID,
+    HighLevelRuntime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(CORRECTOR_TASK_ID,
             Processor::LOC_PROC, true/*single*/, true/*index*/,
-            AUTO_GENERATE_ID, TaskConfigOptions(HydroTask2::CPU_BASE_LEAF), HydroTask2::TASK_NAME);
+            AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF), CorrectorTask::TASK_NAME);
 
 	TaskHelper::register_cpu_variants<WriteTask>();
 

@@ -15,6 +15,7 @@
 
 #include <vector>
 
+#include "GenerateMesh.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
 
@@ -25,23 +26,10 @@ class LocalMesh;
 class HydroBC {
 public:
 
-    // associated mesh object
-    LocalMesh* mesh;
-
-    int numb;                      // number of bdy points
-    double2 vfix;                  // vector perp. to fixed plane
-    int* mapbp;                    // map: bdy point -> point
-    std::vector<int> pchbfirst;    // start/stop index for bdy pt chunks
-    std::vector<int> pchblast;
-
-    HydroBC(
-            LocalMesh* msh,
-            const double2 v,
-            const std::vector<int>& mbp);
-
-    ~HydroBC();
-
-    void applyFixedBC(
+    static void applyFixedBC(
+            const GenerateMesh* generate_mesh,
+            const double2 vfix,
+            const std::vector<int>& mapbp,
             double2* pu,
             Double2Accessor& pf,
             const int bfirst,

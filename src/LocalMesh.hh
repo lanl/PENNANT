@@ -1,5 +1,5 @@
 /*
- * Mesh.hh
+ * LocalMesh.hh
  *
  *  Created on: Jan 5, 2012
  *      Author: cferenba
@@ -10,21 +10,18 @@
  * license; see top-level LICENSE file for full license text.
  */
 
-#ifndef MESH_HH_
-#define MESH_HH_
+#ifndef LOCALMESH_HH_
+#define LOCALMESH_HH_
 
 #include <string>
 #include <vector>
 
+#include "GenerateMesh.hh"
 #include "InputParameters.hh"
 #include "LogicalStructured.hh"
 #include "LogicalUnstructured.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
-
-// forward declarations
-class InputFile;
-class GenerateMesh;
 
 class LocalMesh {
 public:
@@ -49,15 +46,28 @@ public:
     // (See documentation for more details on the mesh
     //  data structures...)
     int num_pts, num_edges, num_zones, num_sides, num_corners;
-    int num_bad_sides;       // number of bad sides (negative volume)
+
+    static inline int mapSideToSideNext(const int &s,
+            const int* map_side2zone,
+            const int* zone_pts_ptr)
+    {
+        const int z = map_side2zone[s];
+        const int sbase = zone_pts_ptr[z];
+        const int slast = zone_pts_ptr[z+1];
+        const int snext = (s + 1 == slast ? sbase : s + 1);
+        return snext;
+    }
+    static inline int mapSideToPt2(const int &s,
+            const int* map_side2pt1,
+            const int* map_side2zone,
+            const int* zone_pts_ptr)
+    {
+        return map_side2pt1[LocalMesh::mapSideToSideNext(s, map_side2zone, zone_pts_ptr)];
+    }
 
     inline int mapSideToSideNext(const int &s) const
     {
-    	const int z = map_side2zone[s];
-    	const int sbase = zone_pts_ptr[z];
-    	const int slast = zone_pts_ptr[z+1];
-    	const int snext = (s + 1 == slast ? sbase : s + 1);
-    	return snext;
+    	return mapSideToSideNext(s, map_side2zone, zone_pts_ptr);
     }
     inline int mapSideToSidePrev(const int &s) const
     {
@@ -69,13 +79,15 @@ public:
     }
     inline int mapSideToPt2(const int &s) const
     {
-    	return map_side2pt1[mapSideToSideNext(s)];
+        return mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
     }
     int* map_side2zone;        // map: side -> zone
     int* map_side2edge;        // map: side -> edge
 
     inline int zoneNPts(const int &i) const
-    {return zone_pts_ptr[i+1] - zone_pts_ptr[i];}        // number of points in zone
+    {return zoneNPts(i, zone_pts_ptr);}
+    static inline int zoneNPts(const int &i, const int* zone_pts_ptr)
+    {return zone_pts_ptr[i+1] - zone_pts_ptr[i];}
     int* map_side2pt1;     // maps: side -> points 1 and 2
     // Compressed Row Storage (CRS) of zone to points/sides mapping
     int* zone_pts_val;     // := map_side2pt1_
@@ -100,38 +112,72 @@ public:
     double* side_mass_frac;       // side mass fraction
     double* zone_dl;       // zone characteristic length
 
-    int num_side_chunks;                    // number of side chunks
-    std::vector<int> side_chunks_first;    // start/stop index for side chunks
-    std::vector<int> side_chunks_last;
-    std::vector<int> zone_chunks_first;    // start/stop index for zone chunks
-    std::vector<int> zone_chunks_last;
-    int num_pt_chunks;                    // number of point chunks
-    std::vector<int> pt_chunks_first;    // start/stop index for point chunks
-    std::vector<int> pt_chunks_last;
-    int num_zone_chunks;                    // number of zone chunks
-    std::vector<int> zone_chunk_CRS;    // start/stop index for zone chunks
+    inline int num_side_chunks() { return side_chunks_CRS.size() - 1;}
+    std::vector<int> side_chunks_CRS;    // start/stop index for side chunks, compressed row storage
+    inline int side_zone_chunks_first(int s)
+    { return side_zone_chunks_first(s, map_side2zone, side_chunks_CRS); }
+    static inline int side_zone_chunks_first(int s,
+            const int* map_side2zone,
+            const std::vector<int> side_chunks_CRS)
+    { return map_side2zone[side_chunks_CRS[s]]; }
+    inline int side_zone_chunks_last(int s)
+    { return side_zone_chunks_last(s, map_side2zone, side_chunks_CRS); }
+    static inline int side_zone_chunks_last(int s,
+            const int* map_side2zone,
+            const std::vector<int> side_chunks_CRS)
+    { return map_side2zone[side_chunks_CRS[s+1]-1] + 1; }
+    inline int num_pt_chunks() { return pt_chunks_CRS.size() - 1;}
+    std::vector<int> pt_chunks_CRS;    // start/stop index for point chunks, compressed row storage
+    inline int num_zone_chunks() { return zone_chunks_CRS.size() - 1;}
+    std::vector<int> zone_chunks_CRS;    // start/stop index for zone chunks, compressed row storage
 
 
     // find plane with constant x, y value
-    std::vector<int> getXPlane(const double c);
-    std::vector<int> getYPlane(const double c);
+    static std::vector<int> getXPlane(
+            const double c,
+            const int num_pts,
+            const double2 *pt_x);
+    static std::vector<int> getYPlane(
+            const double c,
+            const int num_pts,
+            const double2 *pt_x);
 
     // compute chunks for a given plane
-    void getPlaneChunks(
-            const int numb,
-            const int* mapbp,
+    static void getPlaneChunks(
+            const std::vector<int>& mapbp,
+            const std::vector<int> pt_chunks_CRS,
             std::vector<int>& pchbfirst,
             std::vector<int>& pchblast);
 
     // compute edge, zone centers
-    void calcCtrs(const int side_chunk, const bool pred=true);
+    static void calcCtrs(
+            const int sfirst,
+            const int slast,
+            const double2* px,
+            const int* map_side2zone,
+            const int num_sides,
+            const int num_zones,
+            const int* map_side2pt1,
+            const int* map_side2edge,
+            const int* zone_pts_ptr,
+            double2* ex,
+            double2* zx);
 
     // compute side, corner, zone volumes
-    void calcVols(const int side_chunk, const bool pred=true);
-
-    // check to see if previous volume computation had any
-    // sides with negative volumes
-    void checkBadSides();
+    static void calcVols(
+            const int sfirst,
+            const int slast,
+            const double2* px,
+            const double2* zx,
+            const int* map_side2zone,
+            const int num_sides,
+            const int num_zones,
+            const int* map_side2pt1,
+            const int* zone_pts_ptr,
+            double* sarea,
+            double* svol,
+            double* zarea,
+            double* zvol);
 
     void calcMedianMeshSurfVecs(const int side_chunk);
 
@@ -146,7 +192,16 @@ public:
 
     LogicalUnstructured local_points_by_gid;
     ptr_t* point_local_to_globalID;
+    LogicalStructured zone_pts;
     LogicalStructured zones;
+    LogicalStructured sides;
+    LogicalStructured points;
+    LogicalStructured edges;
+
+    double2* edge_x;       // edge center coordinates
+    double* side_area;
+    double* side_vol;
+    double* side_vol_pred;     // side volume, middle of cycle
 
 private:
 
@@ -158,11 +213,6 @@ private:
     // point-to-corner inverse map is stored as a linked list...
     int* map_pt2crn_first;   // map:  point -> first corner
     int* map_crn2crn_next;    // map:  corner -> next corner
-
-    double2* edge_x;       // edge center coordinates
-    double* side_area;
-    double* side_vol;
-    double* side_vol_pred;     // side volume, middle of cycle
 
     PhaseBarrier pbarrier_as_master;
     std::vector<PhaseBarrier> masters_pbarriers;
@@ -178,12 +228,8 @@ private:
     std::vector<LogicalUnstructured> slaved_halo_points;
     std::vector<LogicalUnstructured> local_halos_points;
 
-    LogicalStructured sides;
-    LogicalStructured edges;
-    LogicalStructured points;
-
     const int num_subregions;
-    const int my_color;
+    const int my_color; // TODO not used?
 
     void init();
 
@@ -210,8 +256,8 @@ private:
             const T* cvar,
 			RegionAccessor<AccessorType::Generic, T>& pvar);
 
-}; // class Mesh
+}; // class LocalMesh
 
 
 
-#endif /* MESH_HH_ */
+#endif /* LOCALMESH_HH_ */

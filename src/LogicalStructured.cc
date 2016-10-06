@@ -88,6 +88,7 @@ double2* LogicalStructured::getRawPtr<double2>(FieldID FID)
             !offsetsAreDense<1, double2>(subGridBounds, inOffsets)) {
         // Signifies that something went south.
         mData = nullptr;
+        assert(mData != nullptr);
     }
     return mData;
 }
@@ -115,6 +116,7 @@ double* LogicalStructured::getRawPtr<double>(FieldID FID)
             !offsetsAreDense<1, double>(subGridBounds, inOffsets)) {
         // Signifies that something went south.
         mData = nullptr;
+        assert(mData != nullptr);
     }
     return mData;
 }
@@ -142,6 +144,7 @@ int* LogicalStructured::getRawPtr<int>(FieldID FID)
             !offsetsAreDense<1, int>(subGridBounds, inOffsets)) {
         // Signifies that something went south.
         mData = nullptr;
+        assert(mData != nullptr);
     }
     return mData;
 }

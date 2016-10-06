@@ -13,8 +13,8 @@
 #include "TTS.hh"
 
 #include "Vec2.hh"
-#include "Mesh.hh"
 #include "Hydro.hh"
+#include "LocalMesh.hh"
 
 using namespace std;
 
