@@ -64,6 +64,7 @@ enum SidesAndCornersFields {
     FID_SMAP_SIDE_TO_PT1,
     FID_SMAP_SIDE_TO_ZONE,
     FID_SMAP_SIDE_TO_EDGE,
+    FID_MAP_CRN2CRN_NEXT,
 };
 
 enum EdgeFields {
@@ -83,6 +84,7 @@ enum PointFields {
     FID_PU,
     FID_PU0,
     FID_PAP,
+    FID_MAP_PT2CRN_FIRST,
 };
 
 enum ZonePtsCRSFields {
@@ -127,8 +129,9 @@ struct TimeStep {
 
 enum TaskIDs {
 	TOP_LEVEL_TASK_ID,
-	DRIVER_TASK_ID,
     CORRECTOR_TASK_ID,
+    DRIVER_TASK_ID,
+    HALO_TASK_ID,
     WRITE_TASK_ID,
 	GLOBAL_SUM_TASK_ID,
 	GLOBAL_MIN_TASK_ID,

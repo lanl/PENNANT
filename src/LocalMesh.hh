@@ -185,10 +185,17 @@ public:
 
     void calcCharacteristicLen(const int side_chunk);
 
-    // sum corner variables to points (double or double2)
-    void sumToPoints(
+    void sumCornersToPoints(LogicalStructured& sides_and_corners, CorrectorTaskArgsSerializer& serial);
+
+    static void sumOnProc(
             const double* corner_mass,
-            const double2* corner_force);
+            const double2* corner_force,
+            const std::vector<int> pt_chunks_CRS,
+            const int* map_pt2crn_first,
+            const int* map_crn2crn_next,
+            const GenerateMesh* generate_mesh,
+            DoubleAccessor pt_weighted_mass,
+            Double2Accessor pt_force);
 
     LogicalUnstructured local_points_by_gid;
     ptr_t* point_local_to_globalID;
@@ -249,12 +256,6 @@ private:
     void calcSideMassFracs(const int side_chunk);
 
     void  allocateFields();
-
-    // helper routines for sumToPoints
-    template <typename T>
-    void sumOnProc(
-            const T* cvar,
-			RegionAccessor<AccessorType::Generic, T>& pvar);
 
 }; // class LocalMesh
 

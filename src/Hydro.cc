@@ -250,9 +250,6 @@ TimeStep Hydro::doCycle(
         sumCrnrForce(sfirst, slast);
     }  // for sch
 
-    // sum corner masses, forces to points
-    mesh->sumToPoints(crnr_weighted_mass, crnr_force_tot);
-
     CorrectorTaskArgs args;  // TODO all but dt out from loop?
     args.dt = dt;
     args.cfl = cfl;
@@ -272,6 +269,9 @@ TimeStep Hydro::doCycle(
     args.bcy = bcy;
     CorrectorTaskArgsSerializer serial;
     serial.archive(&args);
+
+    // sum corner masses, forces to points
+    mesh->sumCornersToPoints(sides_and_corners, serial);
 
     CorrectorTask corrector_launcher(mesh->zones.getLRegion(),
             mesh->sides.getLRegion(),

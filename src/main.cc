@@ -20,6 +20,7 @@
 #include "Add2ReductionOp.hh"
 #include "CorrectorTask.hh"
 #include "Driver.hh"
+#include "HaloTask.hh"
 #include "InputFile.hh"
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
@@ -84,7 +85,9 @@ int main(int argc, char **argv)
             Processor::LOC_PROC, true/*single*/, true/*index*/,
             AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF), CorrectorTask::TASK_NAME);
 
-	TaskHelper::register_cpu_variants<WriteTask>();
+    TaskHelper::register_cpu_variants<HaloTask>();
+
+    TaskHelper::register_cpu_variants<WriteTask>();
 
 	HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
 			Processor::LOC_PROC, true/*single*/, true/*index*/,

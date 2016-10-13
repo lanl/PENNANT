@@ -1,5 +1,5 @@
 /*
- * HydroTask2.cc
+ * CorrectorTask.cc
  *
  *  Created on: Oct 3, 2016
  *      Author: jgraham
@@ -12,9 +12,6 @@
  */
 
 #include "CorrectorTask.hh"
-
-#include<algorithm>
-#include<cmath>
 
 #include "Hydro.hh"
 #include "HydroBC.hh"
@@ -83,7 +80,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_field(13/*idx*/, FID_PMASWT);
 }
 
-/*static*/ const char * const CorrectorTask::TASK_NAME = "HydroTask2";
+/*static*/ const char * const CorrectorTask::TASK_NAME = "CorrectorTask";
 
 
 /*static*/

@@ -20,9 +20,10 @@
 
 #include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
-#include "Vec2.hh"
 #include "GenerateMesh.hh"
+#include "HaloTask.hh"
 #include "Memory.hh"
+#include "Vec2.hh"
 
 using namespace std;
 
@@ -110,6 +111,7 @@ void LocalMesh::init() {
     map_side2pt1 = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
     map_side2zone = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
+    map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
 
 
     // use the cell* arrays to populate the side maps
@@ -123,7 +125,13 @@ void LocalMesh::init() {
 
     populateChunks();
 
-    populateInverseMap();   // for corner-to-point gathers TODO still used?
+    points.allocate(num_pts);
+    pt_x0 = points.getRawPtr<double2>(FID_PX0);
+    pt_x = points.getRawPtr<double2>(FID_PX);
+    pt_x_pred = points.getRawPtr<double2>(FID_PXP);
+    map_pt2crn_first = points.getRawPtr<int>(FID_MAP_PT2CRN_FIRST);
+
+    populateInverseMap();   // for corner-to-point gathers
 
     writeMeshStats();
 
@@ -131,11 +139,6 @@ void LocalMesh::init() {
     edge_x = edges.getRawPtr<double2>(FID_EX);
     edge_x_pred = edges.getRawPtr<double2>(FID_EXP);
     edge_len = edges.getRawPtr<double>(FID_ELEN);
-
-    points.allocate(num_pts);
-    pt_x0 = points.getRawPtr<double2>(FID_PX0);
-    pt_x = points.getRawPtr<double2>(FID_PX);
-    pt_x_pred = points.getRawPtr<double2>(FID_PXP);
 
     IndexIterator itr = pt_x_init_by_gid.getIterator();
     point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts);
@@ -191,6 +194,8 @@ void LocalMesh::allocateFields()
     points.addField<double2>(FID_PX0);
     points.addField<double2>(FID_PX);
     points.addField<double2>(FID_PXP);
+    points.addField<int>(FID_MAP_PT2CRN_FIRST);
+    sides.addField<int>(FID_MAP_CRN2CRN_NEXT);
     sides.addField<double>(FID_SAREA);
     sides.addField<double>(FID_SVOL);
     sides.addField<double>(FID_SAREAP);
@@ -283,8 +288,6 @@ void LocalMesh::populateChunks() {
 
 
 void LocalMesh::populateInverseMap() {
-    map_pt2crn_first = AbstractedMemory::alloc<int>(num_pts);
-    map_crn2crn_next = AbstractedMemory::alloc<int>(num_sides);
 
     vector<pair<int, int> > pcpair(num_sides);
     for (int c = 0; c < num_corners; ++c)
@@ -553,23 +556,31 @@ void LocalMesh::calcCharacteristicLen(const int side_chunk) {
 }
 
 
-template <typename T>
 void LocalMesh::sumOnProc(
-        const T* cvar,
-	    RegionAccessor<AccessorType::Generic, T>& pvar) {
-
-    for (int pch = 0; pch < num_pt_chunks(); ++pch) {
-        int pfirst = pt_chunks_CRS[pch];
-        int plast = pt_chunks_CRS[pch+1];
-        for (int p = pfirst; p < plast; ++p) {
-        		ptr_t pt_ptr = point_local_to_globalID[p];
-            T x = T();
-            for (int c = map_pt2crn_first[p]; c >= 0; c = map_crn2crn_next[c]) {
-                x += cvar[c];
+        const double* corner_mass,
+        const double2* corner_force,
+	    const std::vector<int> pt_chunks_CRS,
+	    const int* map_pt2crn_first,
+	    const int* map_crn2crn_next,
+	    const GenerateMesh* generate_mesh,
+	    DoubleAccessor pt_weighted_mass,
+	    Double2Accessor pt_force)
+{
+    for (int point_chunk = 0; point_chunk < (pt_chunks_CRS.size()-1); ++point_chunk) {
+        int pfirst = pt_chunks_CRS[point_chunk];
+        int plast = pt_chunks_CRS[point_chunk+1];
+        for (int point = pfirst; point < plast; ++point) {
+        		ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(point));
+            double mass = double();
+            double2 force = double2();
+            for (int corner = map_pt2crn_first[point]; corner >= 0; corner = map_crn2crn_next[corner]) {
+                mass += corner_mass[corner];
+                force += corner_force[corner];
             }
-            pvar.write(pt_ptr, x);
-        }  // for p
-    }  // for pch
+            pt_weighted_mass.write(pt_ptr, mass);
+            pt_force.write(pt_ptr, force);
+        }
+    }
 
 }
 
@@ -623,14 +634,15 @@ void LocalMesh::initParallel() {
 }
 
 
-void LocalMesh::sumToPoints(
-        const double* corner_mass,
-        const double2* corner_force)
+void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
+        CorrectorTaskArgsSerializer& serial)
 {
-    DoubleAccessor pt_weighted_mass_ = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
-    Double2Accessor pt_force_ = local_points_by_gid.getRegionAccessor<double2>(FID_PF);
-    sumOnProc(corner_mass, pt_weighted_mass_);
-    sumOnProc(corner_force, pt_force_);
+    HaloTask halo_launcher(sides.getLRegion(),
+            points.getLRegion(),
+            local_points_by_gid.getLRegion(),
+            sides_and_corners.getLRegion(),
+            serial.getBitStream(), serial.getBitStreamSize());
+    runtime->execute_task(ctx, halo_launcher);
 
     if (slave_colors.size() > 0) {
         // phase 1 as master: master copies partial result in; slaves may not access data
@@ -734,13 +746,6 @@ void LocalMesh::sumToPoints(
 
     for (int master=0; master < master_colors.size(); master++) {
         // phase 3 as slave: everybody can read accumulation
-        AcquireLauncher acquire_launcher(slaved_halo_points[master].getLRegion(),
-                halos_points[1+master].getLRegion(), pregions_halos[1+master]);
-        acquire_launcher.add_field(FID_GHOST_PMASWT);
-        acquire_launcher.add_field(FID_GHOST_PF);
-        acquire_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
-        runtime->issue_acquire(ctx, acquire_launcher);
-
         {
           CopyLauncher copy_launcher;
           copy_launcher.add_copy_requirements(
@@ -750,6 +755,7 @@ void LocalMesh::sumToPoints(
                           local_points_by_gid.getLRegion()));
           copy_launcher.add_dst_field(0, FID_PMASWT);
           copy_launcher.add_src_field(0, FID_GHOST_PMASWT);
+          copy_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
           runtime->issue_copy_operation(ctx, copy_launcher);
         }
         {
@@ -761,16 +767,10 @@ void LocalMesh::sumToPoints(
                           local_points_by_gid.getLRegion()));
           copy_launcher.add_dst_field(0, FID_PF);
           copy_launcher.add_src_field(0, FID_GHOST_PF);
+          copy_launcher.add_wait_barrier(masters_pbarriers[master]);           // 3 * cycle + 2
           runtime->issue_copy_operation(ctx, copy_launcher);
         }
-
-        ReleaseLauncher release_launcher(slaved_halo_points[master].getLRegion(),
-                halos_points[1+master].getLRegion(), pregions_halos[1+master]);
-        release_launcher.add_field(FID_GHOST_PMASWT);
-        release_launcher.add_field(FID_GHOST_PF);
-        release_launcher.add_arrival_barrier(masters_pbarriers[master]);        // 3 * cycle + 3
-        release_launcher.add_arrival_barrier(masters_pbarriers[master]);        // 3 * cycle + 3
-        runtime->issue_release(ctx, release_launcher);
+        masters_pbarriers[master].arrive(2);                                    // 3 * cycle + 3
         masters_pbarriers[master] =
                 runtime->advance_phase_barrier(ctx, masters_pbarriers[master]); // 3 * cycle + 3
     }
