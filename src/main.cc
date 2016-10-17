@@ -25,6 +25,7 @@
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
 #include "Parallel.hh"
+#include "PredictorTask.hh"
 #include "WriteTask.hh"
 
 
@@ -77,15 +78,17 @@ int main(int argc, char **argv)
 			Processor::LOC_PROC, true/*single*/, false/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
 
-    HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(DRIVER_TASK_ID,
-            Processor::LOC_PROC, true/*single*/, true/*index*/,
-            AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
-
     HighLevelRuntime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(CORRECTOR_TASK_ID,
             Processor::LOC_PROC, true/*single*/, true/*index*/,
             AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF), CorrectorTask::TASK_NAME);
 
+    HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(DRIVER_TASK_ID,
+            Processor::LOC_PROC, true/*single*/, true/*index*/,
+            AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
+
     TaskHelper::register_cpu_variants<HaloTask>();
+
+    TaskHelper::register_cpu_variants<PredictorTask>();
 
     TaskHelper::register_cpu_variants<WriteTask>();
 
@@ -199,7 +202,7 @@ InputParameters parseInputFile(InputFile *inp) {
     value.bcy = inp->getDoubleList("bcy", vector<double>());
     direct_values.gamma = inp->getDouble("gamma", 5. / 3.);
     direct_values.ssmin = inp->getDouble("ssmin", 0.);
-    direct_values.alfa = inp->getDouble("alfa", 0.5);
+    direct_values.alpha = inp->getDouble("alfa", 0.5);
     direct_values.qgamma = inp->getDouble("qgamma", 5. / 3.);
     direct_values.q1 = inp->getDouble("q1", 0.);
     direct_values.q2 = inp->getDouble("q2", 2.);

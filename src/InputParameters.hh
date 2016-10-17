@@ -42,7 +42,7 @@ struct DirectInputParameters {
     double vel_init_radial;        // initial velocity in radial direction
     double gamma;                  // coeff. for ideal gas equation
     double ssmin;                  // minimum sound speed for gas
-    double alfa;                   // alpha coefficient for TTS model
+    double alpha;                   // alpha coefficient for TTS model
     double qgamma;                 // gamma coefficient for Q model
     double q1, q2;                // linear and quadratic coefficients
                                     // for Q model

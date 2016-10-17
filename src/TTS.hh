@@ -13,27 +13,13 @@
 #ifndef TTS_HH_
 #define TTS_HH_
 
-#include "InputParameters.hh"
 #include "Vec2.hh"
-
-// forward declarations
-class InputFile;
-class Hydro;
 
 
 class TTS {
 public:
 
-    // parent hydro object
-    Hydro* hydro;
-
-    double alfa;                   // alpha coefficient for TTS model
-    double ssmin;                  // minimum sound speed
-
-    TTS(const InputParameters& params, Hydro* h);
-    ~TTS();
-
-void calcForce(
+static void calcForce(
         const double* zarea,
         const double* zr,
         const double* zss,
@@ -42,7 +28,10 @@ void calcForce(
         const double2* ssurfp,
         double2* sf,
         const int sfirst,
-        const int slast);
+        const int slast,
+        const int* map_side2zone,
+        const double ssmin,
+        const double alfa);
 
 }; // class TTS
 

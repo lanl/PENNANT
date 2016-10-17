@@ -13,60 +13,105 @@
 #ifndef QCS_HH_
 #define QCS_HH_
 
-#include "InputParameters.hh"
 #include "Vec2.hh"
-
-// forward declarations
-class InputFile;
-class Hydro;
 
 
 class QCS {
 public:
 
-    // parent hydro object
-    Hydro* hydro;
-
-    double qgamma;                 // gamma coefficient for Q model
-    double q1, q2;                 // linear and quadratic coefficients
-                                   // for Q model
-
-    QCS(const InputParameters& params, Hydro* h);
-    ~QCS();
-
-    void calcForce(
+    static void calcForce(
             double2* sf,
             const int sfirst,
-            const int slast);
+            const int slast,
+            const int nums,
+            const int numz,
+            const double2* pu,
+            const double2* ex,
+            const double2* zx,
+            const double* elen,
+            const int* map_side2zone,
+            const int* map_side2pt1,
+            const int* zone_pts_ptr,
+            const int* map_side2edge,
+            const double2* pt_x_pred,
+            const double* zrp,
+            const double* zss,
+            const double qgamma,
+            const double q1,
+            const double q2,
+            int zfirst,
+            int zlast,
+            double* zdu);
 
-    void setCornerDiv(
+    static void setCornerDiv(
             double* c0area,
             double* c0div,
             double* c0evol,
             double* c0du,
             double* c0cos,
             const int sfirst,
-            const int slast);
+            const int slast,
+            const int nums,
+            const int numz,
+            const double2* pu,
+            const double2* ex,
+            const double2* zx,
+            const double* elen,
+            const int* map_side2zone,
+            const int* map_side2pt1,
+            const int* zone_pts_ptr,
+            const double2* pt_x_pred,
+            const int* map_side2edge);
 
-    void setQCnForce(
+    static void setQCnForce(
             const double* c0div,
             const double* c0du,
             const double* c0evol,
             double2* c0qe,
             const int sfirst,
-            const int slast);
+            const int slast,
+            const double2* pu,
+            const double* zrp,
+            const double* zss,
+            const double* elen,
+            const double qgamma,
+            const double q1,
+            const double q2,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const int* map_side2pt1,
+            const int* map_side2edge);
 
-    void setForce(
+    static void setForce(
             const double* c0area,
             const double2* c0qe,
             double* c0cos,
             double2* sfqq,
             const int sfirst,
-            const int slast);
+            const int slast,
+            const double* elen,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const int* map_side2edge);
 
-    void setVelDiff(
+    static void setVelDiff(
             const int sfirst,
-            const int slast);
+            const int slast,
+            const int nums,
+            const int numz,
+            int zfirst,
+            int zlast,
+            const double2* pu,
+            const double* zss,
+            double* zdu,
+            const double* elen,
+            const double2* pt_x_pred,
+            const int* map_side2pt1,
+            const int* map_side2zone,
+            const int* map_side2edge,
+            const int* zone_pts_ptr,
+            const double q1,
+            const double q2);
 
 };  // class QCS
 

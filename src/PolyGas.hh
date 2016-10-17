@@ -24,16 +24,7 @@ class Hydro;
 class PolyGas {
 public:
 
-    // parent hydro object
-    Hydro* hydro;
-
-    double gamma;                  // coeff. for ideal gas equation
-    double ssmin;                  // minimum sound speed for gas
-
-    PolyGas(const InputParameters& params, Hydro* h);
-    ~PolyGas();
-
-    void calcStateAtHalf(
+    static void calcStateAtHalf(
             const double* zr0,
             const double* zvolp,
             const double* zvol0,
@@ -44,23 +35,28 @@ public:
             double* zp,
             double* zss,
             const int zfirst,
-            const int zlast);
+            const int zlast,
+            const double gamma,
+            const double ssmin);
 
-    void calcEOS(
+    static void calcEOS(
             const double* zr,
             const double* ze,
             double* zp,
             double* z0per,
             double* zss,
             const int zfirst,
-            const int zlast);
+            const int zlast,
+            const double gamma,
+            const double ssmin);
 
-    void calcForce(
+    static void calcForce(
             const double* zp,
             const double2* ssurfp,
             double2* sf,
             const int sfirst,
-            const int slast);
+            const int slast,
+            const int* map_side2zone);
 
 };  // class PolyGas
 

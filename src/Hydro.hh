@@ -23,29 +23,18 @@
 #include "Vec2.hh"
 
 // forward declarations
-class InputFile;
 class LocalMesh;
-class PolyGas;
-class TTS;
-class QCS;
-class HydroBC;
 
-// TODO making all member variables public is not encapsulation
+// TODO making more member variables private
 class Hydro {
 public:
 
     Hydro(const InputParameters& params, LocalMesh* m,
     		DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt);
-    ~Hydro();
 
     // associated mesh object
     LocalMesh* mesh;
-
-    // children of this object
-    PolyGas* pgas;
-    TTS* tts;
-    QCS* qcs;
 
     double cfl;                 // Courant number, limits timestep
     double cflv;                // volume change limit for timestep
@@ -83,10 +72,13 @@ public:
 
     TimeStep doCycle(const double dt);
 
-    void advPosHalf(
+    static void advPosHalf(
             const double dt,
             const int pfirst,
-            const int plast);
+            const int plast,
+            const double2* pt_x0,
+            const double2* pt_vel0,
+            double2* pt_x_pred);
 
     static void advPosFull(
             const double dt,
@@ -98,13 +90,25 @@ public:
             const int pfirst,
             const int plast);
 
-    void calcCrnrMass(
+    static void calcCrnrMass(
             const int sfirst,
-            const int slast);
+            const int slast,
+            const double* zone_area_pred,
+            const double* side_mass_frac,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const double* zone_rho_pred,
+            double* crnr_weighted_mass);
 
-    void sumCrnrForce(
+    static void sumCrnrForce(
+            const double2* side_force_pres,
+            const double2* side_force_visc,
+            const double2* side_force_tts,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
             const int sfirst,
-            const int slast);
+            const int slast,
+            double2* crnr_force_tot);
 
     static void calcAccel(
             const GenerateMesh* generate_mesh,

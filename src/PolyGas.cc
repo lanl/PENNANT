@@ -13,20 +13,11 @@
 #include "PolyGas.hh"
 
 #include "Memory.hh"
-#include "Hydro.hh"
-#include "LocalMesh.hh"
 
 using namespace std;
 
 
-PolyGas::PolyGas(const InputParameters& params, Hydro* h) :
-		hydro(h),
-		gamma(params.directs.gamma),
-		ssmin(params.directs.ssmin)
-{
-}
-
-
+/*static*/
 void PolyGas::calcStateAtHalf(
         const double* zr0,
         const double* zvolp,
@@ -38,14 +29,16 @@ void PolyGas::calcStateAtHalf(
         double* zp,
         double* zss,
         const int zfirst,
-        const int zlast) {
+        const int zlast,
+        const double gamma,
+        const double ssmin) {
 
     double* z0per = AbstractedMemory::alloc<double>(zlast - zfirst);
 
     const double dth = 0.5 * dt;
 
     // compute EOS at beginning of time step
-    calcEOS(zr0, ze, zp, z0per, zss, zfirst, zlast);
+    calcEOS(zr0, ze, zp, z0per, zss, zfirst, zlast, gamma, ssmin);
 
     // now advance pressure to the half-step
     #pragma ivdep
@@ -64,6 +57,7 @@ void PolyGas::calcStateAtHalf(
 }
 
 
+/*static*/
 void PolyGas::calcEOS(
         const double* zr,
         const double* ze,
@@ -71,7 +65,9 @@ void PolyGas::calcEOS(
         double* z0per,
         double* zss,
         const int zfirst,
-        const int zlast) {
+        const int zlast,
+        const double gamma,
+        const double ssmin) {
 
     const double gm1 = gamma - 1.;
     const double ss2 = max(ssmin * ssmin, 1.e-99);
@@ -93,18 +89,18 @@ void PolyGas::calcEOS(
 }
 
 
+/*static*/
 void PolyGas::calcForce(
         const double* zp,
         const double2* ssurfp,
         double2* sf,
         const int sfirst,
-        const int slast) {
-
-    const LocalMesh* mesh = hydro->mesh;
+        const int slast,
+        const int* map_side2zone) {
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = mesh->map_side2zone[s];
+        int z = map_side2zone[s];
         double2 sfx = -zp[z] * ssurfp[s];
         sf[s] = sfx;
 

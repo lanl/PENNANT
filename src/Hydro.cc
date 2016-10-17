@@ -24,12 +24,11 @@
 #include <limits>
 
 #include "CorrectorTask.hh"
-#include "Memory.hh"
-#include "PolyGas.hh"
-#include "TTS.hh"
-#include "QCS.hh"
 #include "HydroBC.hh"
 #include "LocalMesh.hh"
+#include "Memory.hh"
+#include "PredictorTask.hh"
+
 
 using namespace std;
 
@@ -57,18 +56,7 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
         params(params),
 		my_color(params.directs.task_id)
 {
-    pgas = new PolyGas(params, this);
-    tts = new TTS(params, this);
-    qcs = new QCS(params, this);
-
     init();
-}
-
-
-Hydro::~Hydro() {
-
-    delete tts;
-    delete qcs;
 }
 
 
@@ -195,62 +183,9 @@ void Hydro::initRadialVel(
 
 
 TimeStep Hydro::doCycle(
-            const double dt) {
-
-    const int num_pt_chunks = mesh->num_pt_chunks();
-    const int num_side_chunks = mesh->num_side_chunks();
-
-    // Begin hydro cycle
-    for (int pt_chunk = 0; pt_chunk < num_pt_chunks; ++pt_chunk) {
-        int pt_first = mesh->pt_chunks_CRS[pt_chunk];
-        int pt_last = mesh->pt_chunks_CRS[pt_chunk+1];
-
-        // save off point variable values from previous cycle
-        copy(&mesh->pt_x[pt_first], &mesh->pt_x[pt_last], &mesh->pt_x0[pt_first]);
-        copy(&pt_vel[pt_first], &pt_vel[pt_last], &pt_vel0[pt_first]);
-
-        // ===== Predictor step =====
-        // 1. advance mesh to center of time step
-        advPosHalf(dt, pt_first, pt_last);
-    } // for pch
-
-    for (int sch = 0; sch < num_side_chunks; ++sch) {
-        int sfirst = mesh->side_chunks_CRS[sch];
-        int slast = mesh->side_chunks_CRS[sch+1];
-        int zfirst = mesh->side_zone_chunks_first(sch);
-        int zlast = mesh->side_zone_chunks_last(sch);
-
-        // save off zone variable values from previous cycle
-        copy(&mesh->zone_vol[zfirst], &mesh->zone_vol[zlast], &mesh->zone_vol0[zfirst]);
-
-        // 1a. compute new mesh geometry
-        LocalMesh::calcCtrs(sfirst, slast, mesh->pt_x_pred,
-                mesh->map_side2zone, mesh->num_sides, mesh->num_zones, mesh->map_side2pt1, mesh->map_side2edge, mesh->zone_pts_ptr,
-                mesh->edge_x_pred, mesh->zone_x_pred);
-        LocalMesh::calcVols(sfirst, slast, mesh->pt_x_pred, mesh->zone_x_pred,
-                mesh->map_side2zone, mesh->num_sides, mesh->num_zones, mesh->map_side2pt1, mesh->zone_pts_ptr,
-                mesh->side_area_pred, mesh->side_vol_pred, mesh->zone_area_pred, mesh->zone_vol_pred);
-        mesh->calcMedianMeshSurfVecs(sch);
-        mesh->calcEdgeLen(sch);
-        mesh->calcCharacteristicLen(sch);
-
-        // 2. compute point masses
-        calcRho(mesh->zone_vol_pred, zone_mass, zone_rho_pred, zfirst, zlast);
-        calcCrnrMass(sfirst, slast);
-
-        // 3. compute material state (half-advanced)
-        pgas->calcStateAtHalf(zone_rho, mesh->zone_vol_pred, mesh->zone_vol0, zone_energy_density, zone_work_rate, zone_mass, dt,
-                zone_pressure_, zone_sound_speed, zfirst, zlast);
-
-        // 4. compute forces
-        pgas->calcForce(zone_pressure_, mesh->side_surfp, side_force_pres, sfirst, slast);
-        tts->calcForce(mesh->zone_area_pred, zone_rho_pred, zone_sound_speed, mesh->side_area_pred, mesh->side_mass_frac, mesh->side_surfp, side_force_tts,
-                sfirst, slast);
-        qcs->calcForce(side_force_visc, sfirst, slast);
-        sumCrnrForce(sfirst, slast);
-    }  // for sch
-
-    CorrectorTaskArgs args;  // TODO all but dt out from loop?
+            const double dt)
+{
+    DoCycleTasksArgs args;  // TODO all but dt out from doCycle?
     args.dt = dt;
     args.cfl = cfl;
     args.cflv = cflv;
@@ -267,8 +202,25 @@ TimeStep Hydro::doCycle(
     args.my_color = my_color;
     args.bcx = bcx;
     args.bcy = bcy;
-    CorrectorTaskArgsSerializer serial;
+    args.qgamma = params.directs.qgamma;
+    args.q1 = params.directs.q1;
+    args.q2 = params.directs.q2;
+    args.ssmin = params.directs.ssmin;
+    args.alpha = params.directs.alpha;
+    args.gamma = params.directs.gamma;
+    DoCycleTasksArgsSerializer serial;
     serial.archive(&args);
+
+    PredictorTask predictor_launcher(mesh->zones.getLRegion(),
+            mesh->sides.getLRegion(),
+            mesh->zone_pts.getLRegion(),
+            mesh->points.getLRegion(),
+            mesh->edges.getLRegion(),
+            zones.getLRegion(),
+            sides_and_corners.getLRegion(),
+            points.getLRegion(),
+            serial.getBitStream(), serial.getBitStreamSize());
+    runtime->execute_task(ctx, predictor_launcher);
 
     // sum corner masses, forces to points
     mesh->sumCornersToPoints(sides_and_corners, serial);
@@ -289,16 +241,20 @@ TimeStep Hydro::doCycle(
 }
 
 
+/*static*/
 void Hydro::advPosHalf(
         const double dt,
         const int pfirst,
-        const int plast) {
-
+        const int plast,
+        const double2* pt_x0,
+        const double2* pt_vel0,
+        double2* pt_x_pred)
+{
     double dth = 0.5 * dt;
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        mesh->pt_x_pred[p] = mesh->pt_x0[p] + pt_vel0[p] * dth;
+        pt_x_pred[p] = pt_x0[p] + pt_vel0[p] * dth;
     }
 }
 
@@ -323,30 +279,42 @@ void Hydro::advPosFull(
 }
 
 
+/*static*/
 void Hydro::calcCrnrMass(
         const int sfirst,
-        const int slast) {
-    const double* zarea = mesh->zone_area_pred;
-    const double* side_mass_frac = mesh->side_mass_frac;
-
+        const int slast,
+        const double* zone_area_pred,
+        const double* side_mass_frac,
+        const int* map_side2zone,
+        const int* zone_pts_ptr,
+        const double* zone_rho_pred,
+        double* crnr_weighted_mass)
+{
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapSideToSidePrev(s);
-        int z = mesh->map_side2zone[s];
+        int s3 = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
+        int z = map_side2zone[s];
 
-        double m = zone_rho_pred[z] * zarea[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
+        double m = zone_rho_pred[z] * zone_area_pred[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         crnr_weighted_mass[s] = m;
     }
 }
 
 
+/*static*/
 void Hydro::sumCrnrForce(
+        const double2* side_force_pres,
+        const double2* side_force_visc,
+        const double2* side_force_tts,
+        const int* map_side2zone,
+        const int* zone_pts_ptr,
         const int sfirst,
-        const int slast) {
+        const int slast,
+        double2* crnr_force_tot) {
 
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapSideToSidePrev(s);
+        int s3 = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
 
         double2 f = (side_force_pres[s] + side_force_visc[s] + side_force_tts[s]) -
                     (side_force_pres[s3] + side_force_visc[s3] + side_force_tts[s3]);

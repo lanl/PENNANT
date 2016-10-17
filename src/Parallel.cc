@@ -348,11 +348,11 @@ void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 }
 
 
-void CorrectorTaskArgsSerializer::archive(CorrectorTaskArgs* corrector_args)
+void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* corrector_args)
 {
     assert(corrector_args != nullptr);
 
-    bit_stream_size = 3 * sizeof(double) + 7 * sizeof(int)
+    bit_stream_size = 9 * sizeof(double) + 7 * sizeof(int)
         + sizeof(size_t) + corrector_args->zone_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + corrector_args->side_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + corrector_args->point_chunk_CRS.size() * sizeof(int)
@@ -375,6 +375,12 @@ void CorrectorTaskArgsSerializer::archive(CorrectorTaskArgs* corrector_args)
     stream_size += archiveScalar(corrector_args->nzones_y, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->num_subregions, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->my_color, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->qgamma, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->q1, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->q2, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->ssmin, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->alpha, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->gamma, (void*)(serialized+stream_size));
     stream_size += archiveVector(corrector_args->zone_chunk_CRS, (void*)(serialized+stream_size));
     stream_size += archiveVector(corrector_args->side_chunk_CRS, (void*)(serialized+stream_size));
     stream_size += archiveVector(corrector_args->point_chunk_CRS, (void*)(serialized+stream_size));
@@ -448,7 +454,7 @@ void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 }
 
 
-void CorrectorTaskArgsSerializer::restore(CorrectorTaskArgs* corrector_args)
+void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* corrector_args)
 {
     assert(corrector_args != nullptr);
     assert(bit_stream != nullptr);
@@ -466,6 +472,12 @@ void CorrectorTaskArgsSerializer::restore(CorrectorTaskArgs* corrector_args)
     bit_stream_size += restoreScalar(&(corrector_args->nzones_y), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->num_subregions), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->my_color), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->qgamma), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->q1), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->q2), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->ssmin), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->alpha), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->gamma), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreVector(&(corrector_args->zone_chunk_CRS), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreVector(&(corrector_args->side_chunk_CRS), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreVector(&(corrector_args->point_chunk_CRS), (void*)(serialized_args + bit_stream_size));

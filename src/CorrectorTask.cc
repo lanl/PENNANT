@@ -164,8 +164,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     LogicalStructured mesh_write_points(ctx, runtime, regions[12]);
     double2* pt_x = mesh_write_points.getRawPtr<double2>(FID_PX);
 
-    CorrectorTaskArgs args;
-    CorrectorTaskArgsSerializer args_serializer;
+    DoCycleTasksArgs args;
+    DoCycleTasksArgsSerializer args_serializer;
     args_serializer.setBitStream(task->args);
     args_serializer.restore(&args);
 
@@ -177,9 +177,9 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     input_params.directs.task_id = args.my_color;
     GenerateMesh* generate_mesh = new GenerateMesh(input_params);
 
-    for (int pch = 0; pch < (args.point_chunk_CRS.size()-1); ++pch) {
-        int pfirst = args.point_chunk_CRS[pch];
-        int plast = args.point_chunk_CRS[pch+1];
+    for (int pt_chunk = 0; pt_chunk < (args.point_chunk_CRS.size()-1); ++pt_chunk) {
+        int pfirst = args.point_chunk_CRS[pt_chunk];
+        int plast = args.point_chunk_CRS[pt_chunk+1];
 
         // 4a. apply boundary conditions
         const double2 vfixx = double2(1., 0.);
@@ -190,8 +190,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
             std::vector<int> mapbp = LocalMesh::getXPlane(args.bcx[x], args.num_points, pt_x);
 
             LocalMesh::getPlaneChunks(mapbp, args.point_chunk_CRS, pchbfirst, pchblast);
-            int bfirst = pchbfirst[pch];
-            int blast = pchblast[pch];
+            int bfirst = pchbfirst[pt_chunk];
+            int blast = pchblast[pt_chunk];
             HydroBC::applyFixedBC(generate_mesh, vfixx, mapbp,
                     pt_vel0, point_force, bfirst, blast);
         }
@@ -201,8 +201,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
             std::vector<int> mapbp = LocalMesh::getYPlane(args.bcy[y], args.num_points, pt_x);
 
             LocalMesh::getPlaneChunks(mapbp, args.point_chunk_CRS, pchbfirst, pchblast);
-            int bfirst = pchbfirst[pch];
-            int blast = pchblast[pch];
+            int bfirst = pchbfirst[pt_chunk];
+            int blast = pchblast[pt_chunk];
             HydroBC::applyFixedBC(generate_mesh, vfixy, mapbp,
                     pt_vel0, point_force, bfirst, blast);
         }

@@ -68,8 +68,8 @@ void HaloTask::cpu_run(const Task *task,
     DoubleAccessor pt_weighted_mass = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
     Double2Accessor pt_force = local_points_by_gid.getRegionAccessor<double2>(FID_PF);
 
-    CorrectorTaskArgs args;
-    CorrectorTaskArgsSerializer args_serializer;
+    DoCycleTasksArgs args;
+    DoCycleTasksArgsSerializer args_serializer;
     args_serializer.setBitStream(task->args);
     args_serializer.restore(&args);
 

@@ -504,29 +504,39 @@ void LocalMesh::calcSideMassFracs(const int side_chunk) {
 }
 
 
-void LocalMesh::calcMedianMeshSurfVecs(const int side_chunk) {
-	int sfirst = side_chunks_CRS[side_chunk];
-	int slast = side_chunks_CRS[side_chunk+1];
-
+/*static*/
+void LocalMesh::calcMedianMeshSurfVecs(
+        const int sfirst,
+        const int slast,
+        const int* map_side2zone,
+        const int* map_side2edge,
+        const double2* edge_x_pred,
+        const double2* zone_x_pred,
+        double2* side_surfp)
+{
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
         int z = map_side2zone[s];
         int e = map_side2edge[s];
-
         side_surfp[s] = rotateCCW(edge_x_pred[e] - zone_x_pred[z]);
-
     }
-
 }
 
 
-void LocalMesh::calcEdgeLen(const int side_chunk) {
-	int sfirst = side_chunks_CRS[side_chunk];
-	int slast = side_chunks_CRS[side_chunk+1];
-
+/*static*/
+void LocalMesh::calcEdgeLen(
+        const int sfirst,
+        const int slast,
+        const int* map_side2pt1,
+        const int* map_side2edge,
+        const int* map_side2zone,
+        const int* zone_pts_ptr,
+        const double2* pt_x_pred,
+        double* edge_len)
+{
 	for (int s = sfirst; s < slast; ++s) {
         const int p1 = map_side2pt1[s];
-        const int p2 = mapSideToPt2(s);
+        const int p2 = mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
         const int e = map_side2edge[s];
 
         edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
@@ -535,10 +545,19 @@ void LocalMesh::calcEdgeLen(const int side_chunk) {
 }
 
 
-void LocalMesh::calcCharacteristicLen(const int side_chunk) {
-    int sfirst = side_chunks_CRS[side_chunk];
-    int slast = side_chunks_CRS[side_chunk+1];
-
+/*static*/
+void LocalMesh::calcCharacteristicLen(
+        const int sfirst,
+        const int slast,
+        const int* map_side2zone,
+        const int* map_side2edge,
+        const int* zone_pts_ptr,
+        const double* side_area_pred,
+        const double* edge_len,
+        const int num_sides,
+        const int num_zones,
+        double* zone_dl)
+{
     int zfirst = map_side2zone[sfirst];
     int zlast = (slast < num_sides ? map_side2zone[slast] : num_zones);
     fill(&zone_dl[zfirst], &zone_dl[zlast], 1.e99);
@@ -549,7 +568,7 @@ void LocalMesh::calcCharacteristicLen(const int side_chunk) {
 
         double area = side_area_pred[s];
         double base = edge_len[e];
-        double fac = (zoneNPts(z) == 3 ? 3. : 4.);
+        double fac = (zoneNPts(z, zone_pts_ptr) == 3 ? 3. : 4.);
         double sdl = fac * area / base;
         zone_dl[z] = min(zone_dl[z], sdl);
     }
@@ -635,7 +654,7 @@ void LocalMesh::initParallel() {
 
 
 void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
-        CorrectorTaskArgsSerializer& serial)
+        DoCycleTasksArgsSerializer& serial)
 {
     HaloTask halo_launcher(sides.getLRegion(),
             points.getLRegion(),

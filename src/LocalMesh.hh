@@ -71,11 +71,17 @@ public:
     }
     inline int mapSideToSidePrev(const int &s) const
     {
-    	const int z = map_side2zone[s];
-    	const int sbase = zone_pts_ptr[z];
-    	const int slast = zone_pts_ptr[z+1];
-    	const int sprev = (s == sbase ? slast : s) - 1;
-    	return sprev;
+        return mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
+    }
+    static inline int mapSideToSidePrev(const int &s,
+            const int* map_side2zone,
+            const int* zone_pts_ptr)
+    {
+        const int z = map_side2zone[s];
+        const int sbase = zone_pts_ptr[z];
+        const int slast = zone_pts_ptr[z+1];
+        const int sprev = (s == sbase ? slast : s) - 1;
+        return sprev;
     }
     inline int mapSideToPt2(const int &s) const
     {
@@ -179,13 +185,38 @@ public:
             double* zarea,
             double* zvol);
 
-    void calcMedianMeshSurfVecs(const int side_chunk);
+    static void calcMedianMeshSurfVecs(
+            const int sfirst,
+            const int slast,
+            const int* map_side2zone,
+            const int* map_side2edge,
+            const double2* edge_x_pred,
+            const double2* zone_x_pred,
+            double2* side_surfp);
 
-    void calcEdgeLen(const int side_chunk);
+    static void calcEdgeLen(
+            const int sfirst,
+            const int slast,
+            const int* map_side2pt1,
+            const int* map_side2edge,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const double2* pt_x_pred,
+            double* edge_len);
 
-    void calcCharacteristicLen(const int side_chunk);
+    static void calcCharacteristicLen(
+            const int sfirst,
+            const int slast,
+            const int* map_side2zone,
+            const int* map_side2edge,
+            const int* zone_pts_ptr,
+            const double* side_area_pred,
+            const double* edge_len,
+            const int num_sides,
+            const int num_zones,
+            double* zone_dl);
 
-    void sumCornersToPoints(LogicalStructured& sides_and_corners, CorrectorTaskArgsSerializer& serial);
+    void sumCornersToPoints(LogicalStructured& sides_and_corners, DoCycleTasksArgsSerializer& serial);
 
     static void sumOnProc(
             const double* corner_mass,

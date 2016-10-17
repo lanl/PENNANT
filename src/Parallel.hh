@@ -132,6 +132,7 @@ enum TaskIDs {
     CORRECTOR_TASK_ID,
     DRIVER_TASK_ID,
     HALO_TASK_ID,
+    PREDICTOR_TASK_ID,
     WRITE_TASK_ID,
 	GLOBAL_SUM_TASK_ID,
 	GLOBAL_MIN_TASK_ID,
@@ -220,7 +221,7 @@ public:
     void restore(SPMDArgs* spmd_args);
 };
 
-struct CorrectorTaskArgs {
+struct DoCycleTasksArgs {
     double dt;
     double cfl;
     double cflv;
@@ -230,6 +231,8 @@ struct CorrectorTaskArgs {
     int my_color;
     int num_subregions;
     int nzones_x, nzones_y;
+    double qgamma, q1, q2;
+    double ssmin, alpha, gamma;
     std::vector<int> zone_chunk_CRS;
     std::vector<int> side_chunk_CRS;
     std::vector<int> point_chunk_CRS;
@@ -237,10 +240,10 @@ struct CorrectorTaskArgs {
     std::vector<double> bcx, bcy;
 };
 
-class CorrectorTaskArgsSerializer : public ArgsSerializer {
+class DoCycleTasksArgsSerializer : public ArgsSerializer {
 public:
-    void archive(CorrectorTaskArgs* hydro_task2_args);
-    void restore(CorrectorTaskArgs* hydro_task2_args);
+    void archive(DoCycleTasksArgs* hydro_task2_args);
+    void restore(DoCycleTasksArgs* hydro_task2_args);
 };
 
 enum Variants {

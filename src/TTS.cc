@@ -12,22 +12,9 @@
 
 #include "TTS.hh"
 
-#include "Vec2.hh"
-#include "Hydro.hh"
-#include "LocalMesh.hh"
+#include<algorithm>
 
 using namespace std;
-
-
-TTS::TTS(const InputParameters& params, Hydro* h) :
-		hydro(h),
-		alfa(params.directs.alfa),
-		ssmin(params.directs.ssmin)
-{
-}
-
-
-TTS::~TTS() {}
 
 
 void TTS::calcForce(
@@ -39,7 +26,10 @@ void TTS::calcForce(
         const double2* ssurfp,
         double2* sf,
         const int sfirst,
-        const int slast) {
+        const int slast,
+        const int* map_side2zone,
+        const double ssmin,
+        const double alfa) {
 
     //  Side density:
     //    srho = sm/sv = zr (sm/zm) / (sv/zv)
@@ -53,11 +43,9 @@ void TTS::calcForce(
     //    Notes: smf stores (sm/zm)
     //           svfac stores (sv/zv)
 
-    const LocalMesh* mesh = hydro->mesh;
-
     #pragma ivdep
     for (int s = sfirst; s < slast; ++s) {
-        int z = mesh->map_side2zone[s];
+        int z = map_side2zone[s];
 
         double svfacinv = zarea[z] / sarea[s];
         double srho = zr[z] * smf[s] * svfacinv;
