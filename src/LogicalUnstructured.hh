@@ -39,6 +39,7 @@ public:
         assert(lpartID != nullptr);
         return runtime->get_logical_subregion_by_color(ctx, lpart, color);
     }
+    void unMapPRegion();
     PhysicalRegion getPRegion();
     PhysicalRegion getRawPRegion() {return pregion;}
     void setPRegion(PhysicalRegion region) {pregion = region;}

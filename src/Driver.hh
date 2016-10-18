@@ -29,8 +29,6 @@ public:
 	DriverTask(int my_color,
 			LogicalRegion my_zones,
 			LogicalRegion all_zones,
-			LogicalRegion my_pts,
-			LogicalRegion all_pts,
 			std::vector<LogicalRegion> halo_pts,
 			void *args, const size_t &size);
 	static const char * const TASK_NAME;
@@ -63,11 +61,8 @@ public:
             DynamicCollective min_reduction,
             PhaseBarrier pbarrier_as_master,
             std::vector<PhaseBarrier> masters_pbarriers,
-            DoubleAccessor* zone_rho,
-            DoubleAccessor* zone_energy_density,
-            DoubleAccessor* zone_pressure,
-            LogicalUnstructured& global_comm_zones,
-            const PhysicalRegion& pts,
+            const PhysicalRegion& zones,
+            IndexSpace pts,
             std::vector<LogicalUnstructured>& halos_points,
             std::vector<PhysicalRegion>& pregions_halos,
             Context ctx, HighLevelRuntime* rt);
@@ -85,11 +80,7 @@ private:
     Context ctx;
     HighLevelRuntime* runtime;
     const int my_color;
-    LogicalUnstructured points;
-    DoubleAccessor* zone_rho;
-    DoubleAccessor* zone_energy_density;
-    DoubleAccessor* zone_pressure;
-    IndexSpace ispace_zones;
+    LogicalUnstructured global_zones;
 };  // class Driver
 
 

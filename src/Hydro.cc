@@ -68,35 +68,23 @@ void Hydro::init() {
     const int numz = mesh->num_zones;
     const int nums = mesh->num_sides;
 
-    const double2* zx = mesh->zone_x;
-    const double* zvol = mesh->zone_vol;
+    const double2* zx = mesh->zones.getRawPtr<double2>(FID_ZX);
+    const double* zvol = mesh->zones.getRawPtr<double>(FID_ZVOL);
 
     // allocate arrays
     allocateFields();
 
     points.allocate(nump);
-    pt_vel = points.getRawPtr<double2>(FID_PU);
-    pt_vel0 = points.getRawPtr<double2>(FID_PU0);
-    pt_accel = points.getRawPtr<double2>(FID_PAP);
+    double2* pt_vel = points.getRawPtr<double2>(FID_PU);
 
     sides_and_corners.allocate(nums);
-    crnr_weighted_mass = sides_and_corners.getRawPtr<double>(FID_CMASWT);
-    side_force_pres = sides_and_corners.getRawPtr<double2>(FID_SFP);
-    side_force_visc = sides_and_corners.getRawPtr<double2>(FID_SFQ);
-    side_force_tts = sides_and_corners.getRawPtr<double2>(FID_SFT);
-    crnr_force_tot = sides_and_corners.getRawPtr<double2>(FID_CFTOT);
 
     zones.allocate(numz);
-    zone_rho = zones.getRawPtr<double>(FID_ZR);
-    zone_rho_pred = zones.getRawPtr<double>(FID_ZRP);
-    zone_energy_density = zones.getRawPtr<double>(FID_ZE);
-    zone_pressure_ = zones.getRawPtr<double>(FID_ZP);
-    zone_mass = zones.getRawPtr<double>(FID_ZM);
-    zone_energy_tot = zones.getRawPtr<double>(FID_ZETOT);
-    zone_work = zones.getRawPtr<double>(FID_ZW);
-    zone_work_rate = zones.getRawPtr<double>(FID_ZWR);
-    zone_sound_speed = zones.getRawPtr<double>(FID_ZSS);
-    zone_dvel = zones.getRawPtr<double>(FID_ZDU);
+    double* zone_rho = zones.getRawPtr<double>(FID_ZR);
+    double* zone_energy_density = zones.getRawPtr<double>(FID_ZE);
+    double* zone_mass = zones.getRawPtr<double>(FID_ZM);
+    double* zone_energy_tot = zones.getRawPtr<double>(FID_ZETOT);
+    double* zone_work_rate = zones.getRawPtr<double>(FID_ZWR);
 
     // initialize hydro vars
     for (int zch = 0; zch < numzch; ++zch) {
@@ -136,11 +124,15 @@ void Hydro::init() {
         int pfirst = mesh->pt_chunks_CRS[pch];
         int plast = mesh->pt_chunks_CRS[pch+1];
         if (vel_init_radial != 0.)
-            initRadialVel(vel_init_radial, pfirst, plast);
+            initRadialVel(vel_init_radial, pfirst, plast, pt_vel);
         else
             fill(&pt_vel[pfirst], &pt_vel[plast], double2(0., 0.));
     }  // for pch
 
+    points.unMapPRegion();
+    sides_and_corners.unMapPRegion();
+    zones.unMapPRegion();
+    mesh->zones.unMapPRegion();
 }
 
 void Hydro::allocateFields()
@@ -168,17 +160,22 @@ void Hydro::allocateFields()
 void Hydro::initRadialVel(
         const double vel,
         const int pfirst,
-        const int plast) {
+        const int plast,
+        double2* pt_vel)
+{
     const double eps = 1.e-12;
+
+    double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
 
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
-        double pmag = length(mesh->pt_x[p]);
+        double pmag = length(pt_x[p]);
         if (pmag > eps)
-            pt_vel[p] = vel * mesh->pt_x[p] / pmag;
+            pt_vel[p] = vel * pt_x[p] / pmag;
         else
             pt_vel[p] = double2(0., 0.);
     }
+    mesh->points.unMapPRegion();
 }
 
 
@@ -457,6 +454,10 @@ void Hydro::sumEnergy(
     // multiply by 2\pi for cylindrical geometry
     ei += sumi * 2 * M_PI;
 
+    int* map_side2pt1 = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
+    int* map_side2zone = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
+    int* zone_pts_ptr = mesh->zone_pts.getRawPtr<int>(FID_ZONE_PTS_PTR);
+
     // compute kinetic energy
     // in each individual zone:
     // zone ke = zone mass * (volume-weighted average of .5 * u ^ 2)
@@ -464,9 +465,9 @@ void Hydro::sumEnergy(
     //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]
     double sumk = 0.; 
     for (int s = sfirst; s < slast; ++s) {
-        int s3 = mesh->mapSideToSidePrev(s);
-        int p1 = mesh->map_side2pt1[s];
-        int z = mesh->map_side2zone[s];
+        int s3 = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
+        int p1 = map_side2pt1[s];
+        int z = map_side2zone[s];
 
         double cvol = zarea[z] * px[p1].x * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
         double cke = zm[z] * cvol / zvol[z] * 0.5 * length2(pu[p1]);
@@ -475,6 +476,8 @@ void Hydro::sumEnergy(
     // multiply by 2\pi for cylindrical geometry
     ek += sumk * 2 * M_PI;
 
+    mesh->sides.unMapPRegion();
+    mesh->zone_pts.unMapPRegion();
 }
 
 
@@ -570,25 +573,39 @@ void Hydro::calcDtHydro(
 
 void Hydro::writeEnergyCheck() {
 
+
+    const double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
+    const int* map_side2zone = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
+    const double* side_mass_frac = mesh->sides.getRawPtr<double>(FID_SMF);
+    const double* zone_area = mesh->zones.getRawPtr<double>(FID_ZAREA);
+    const double* zone_vol = mesh->zones.getRawPtr<double>(FID_ZVOL);
+    const double* zone_energy_tot = zones.getRawPtr<double>(FID_ZETOT);
+    const double* zone_mass = zones.getRawPtr<double>(FID_ZM);
+    const double2* pt_vel = points.getRawPtr<double2>(FID_PU);
+
     double ei = 0.;
     double ek = 0.;
     for (int sch = 0; sch < mesh->num_side_chunks(); ++sch) {
         int sfirst = mesh->side_chunks_CRS[sch];
         int slast = mesh->side_chunks_CRS[sch+1];
-        int zfirst = mesh->side_zone_chunks_first(sch);
-        int zlast = mesh->side_zone_chunks_last(sch);
+        int zfirst = LocalMesh::side_zone_chunks_first(sch, map_side2zone, mesh->side_chunks_CRS);
+        int zlast = LocalMesh::side_zone_chunks_last(sch, map_side2zone, mesh->side_chunks_CRS);
 
         double eichunk = 0.;
         double ekchunk = 0.;
-        sumEnergy(zone_energy_tot, mesh->zone_area, mesh->zone_vol, zone_mass, mesh->side_mass_frac,
-                mesh->pt_x, pt_vel, eichunk, ekchunk,
+        sumEnergy(zone_energy_tot, zone_area, zone_vol, zone_mass, side_mass_frac,
+                pt_x, pt_vel, eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
             ei += eichunk;
             ek += ekchunk;
         }
     }
-
+    points.unMapPRegion();
+    zones.unMapPRegion();
+    mesh->points.unMapPRegion();
+    mesh->sides.unMapPRegion();
+    mesh->zones.unMapPRegion();
 
     Future future_sum = Parallel::globalSum(ei, add_reduction, runtime, ctx);
     ei = future_sum.get_result<double>();
@@ -606,20 +623,30 @@ void Hydro::writeEnergyCheck() {
 
 }
 
-void Hydro::copyZonesToLegion(
-        DoubleAccessor* rho_acc,
-        DoubleAccessor*  energy_density_acc,
-        DoubleAccessor*  pressure_acc,
-        IndexSpace ispace_zones)
+
+void Hydro::copyZonesToLegion(LogicalUnstructured& global_zones)
 {
+    IndexSpace ispace_zones = global_zones.getISpace();
+    DoubleAccessor rho_acc = global_zones.getRegionAccessor<double>(FID_ZR);
+    DoubleAccessor energy_density_acc = global_zones.getRegionAccessor<double>(FID_ZE);
+    DoubleAccessor pressure_acc = global_zones.getRegionAccessor<double>(FID_ZP);
+
+    const double* zone_rho = zones.getRawPtr<double>(FID_ZR);
+    const double* zone_energy_density = zones.getRawPtr<double>(FID_ZE);
+    const double* zone_pressure_ = zones.getRawPtr<double>(FID_ZP);
+
     IndexIterator zone_itr(runtime,ctx, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
     int z = 0;
     while (zone_itr.has_next()) {
         ptr_t zone_ptr = zone_itr.next();
-        rho_acc->write(zone_ptr, zone_rho[z]);
-        energy_density_acc->write(zone_ptr, zone_energy_density[z]);
-        pressure_acc->write(zone_ptr, zone_pressure_[z]);
+        rho_acc.write(zone_ptr, zone_rho[z]);
+        energy_density_acc.write(zone_ptr, zone_energy_density[z]);
+        pressure_acc.write(zone_ptr, zone_pressure_[z]);
         z++;
     }
+
+    global_zones.unMapPRegion();
+    zones.unMapPRegion();
+
     assert(z == mesh->num_zones);
 }

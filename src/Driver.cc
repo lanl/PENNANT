@@ -29,8 +29,6 @@ using namespace std;
 DriverTask::DriverTask(int my_color,
 		LogicalRegion my_zones,
 		LogicalRegion all_zones,
-		LogicalRegion my_pts,
-		LogicalRegion all_pts,
 		std::vector<LogicalRegion> halo_pts,
 		void *args, const size_t &size)
 	 : TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size))
@@ -39,14 +37,12 @@ DriverTask::DriverTask(int my_color,
 	add_field(0/*idx*/, FID_ZR);
 	add_field(0/*idx*/, FID_ZE);
 	add_field(0/*idx*/, FID_ZP);
-	add_region_requirement(RegionRequirement(my_pts, READ_ONLY, EXCLUSIVE, all_pts));
-	add_field(1/*idx*/, FID_GHOST_PF);  // TODO until real ghost regions give access to index space
 	for (int i=0; i < halo_pts.size(); ++i) {
 		add_region_requirement(RegionRequirement(halo_pts[i], READ_WRITE, SIMULTANEOUS, halo_pts[i]));
 		if (i != 0)
-			region_requirements[2+i].add_flags(NO_ACCESS_FLAG);
-		add_field(2+i, FID_GHOST_PF);
-		add_field(2+i, FID_GHOST_PMASWT);
+			region_requirements[1+i].add_flags(NO_ACCESS_FLAG);
+		add_field(1+i, FID_GHOST_PF);
+		add_field(1+i, FID_GHOST_PMASWT);
 	}
 }
 
@@ -57,18 +53,16 @@ RunStat DriverTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() > 2);
-	assert(task->regions.size() > 2);
+	assert(regions.size() > 1);
+	assert(task->regions.size() > 1);
 	assert(task->regions[0].privilege_fields.size() == 3);
-	assert(task->regions[1].privilege_fields.size() == 1);
-	assert(task->regions[2].privilege_fields.size() == 2);
+	assert(task->regions[1].privilege_fields.size() == 2);
 
-	LogicalUnstructured zones(ctx, runtime, regions[0]);
+	runtime->unmap_all_regions(ctx);
 
     std::vector<LogicalUnstructured> halos_points;
     std::vector<PhysicalRegion> pregions_halos;
-	for (int i = 2; i < task->regions.size(); i++) {
-	    runtime->unmap_region(ctx, regions[i]);
+	for (int i = 1; i < task->regions.size(); i++) {
 	    halos_points.push_back(LogicalUnstructured(ctx, runtime, task->regions[i].region));
 	    pregions_halos.push_back(regions[i]);
 	}
@@ -85,15 +79,12 @@ RunStat DriverTask::cpu_run(const Task *task,
     params.bcx = args.bcx;
 	params.bcy = args.bcy;
 
-    // For some reason Legion explodes if I do this in the Hydro object or use LogicalUnstructured
-    DoubleAccessor zone_rho = zones.getRegionAccessor<double>(FID_ZR); // TODO can I do this in driver object?
-    DoubleAccessor zone_energy_density = zones.getRegionAccessor<double>(FID_ZE);
-    DoubleAccessor zone_pressure = zones.getRegionAccessor<double>(FID_ZP);
-
+    IndexSpace ghost_is = task->regions[1].region.get_index_space();
+    IndexPartition ghost_ip = runtime->get_parent_index_partition(ctx, ghost_is);
+    IndexSpace points = runtime->get_parent_index_space(ctx, ghost_ip);
     Driver drv(params, args.add_reduction, args.min_reduction,
             args.pbarrier_as_master, args.masters_pbarriers,
-            &zone_rho, &zone_energy_density, &zone_pressure, zones,
-            regions[1], halos_points, pregions_halos,
+            regions[0], points, halos_points, pregions_halos,
             ctx, runtime);
 
     RunStat value=drv.run();
@@ -105,11 +96,8 @@ Driver::Driver(const InputParameters& params,
 		DynamicCollective min_reduct,
         PhaseBarrier pbarrier_as_master,
         std::vector<PhaseBarrier> masters_pbarriers,
-		DoubleAccessor* zone_rho,
-		DoubleAccessor* zone_energy_density,
-		DoubleAccessor* zone_pressure,
-        LogicalUnstructured& global_comm_zones,
-		const PhysicalRegion& pts,
+        const PhysicalRegion& zones,
+        IndexSpace pts,
         std::vector<LogicalUnstructured>& halos_points,
         std::vector<PhysicalRegion>& pregions_halos,
         Context ctx, HighLevelRuntime* rt)
@@ -125,13 +113,11 @@ Driver::Driver(const InputParameters& params,
 		  ctx(ctx),
 		  runtime(rt),
 		  my_color(params.directs.task_id),
-          points(ctx, rt, pts),
-          zone_rho(zone_rho),
-          zone_energy_density(zone_energy_density),
-          zone_pressure(zone_pressure),
-          ispace_zones(global_comm_zones.getISpace())
+          global_zones(ctx, runtime, zones)
+
 {
-    mesh = new LocalMesh(params, points, halos_points, pregions_halos,
+    global_zones.unMapPRegion();
+    mesh = new LocalMesh(params, pts, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
     		    ctx, runtime);
     hydro = new Hydro(params, mesh, add_reduction, ctx, runtime);
@@ -186,8 +172,8 @@ RunStat Driver::run() {
 
     } // while cycle...
 
-    // copy Hydro zone data to legion regions
-    hydro->copyZonesToLegion(zone_rho, zone_energy_density, zone_pressure, ispace_zones);
+    // copy Hydro zone data to legion global regions
+    hydro->copyZonesToLegion(global_zones);
 
     if (my_color == 0) {
 

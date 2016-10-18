@@ -91,6 +91,7 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime)
 
 
 LogicalUnstructured::~LogicalUnstructured() {
+    unMapPRegion();
     if (destroy_lregion)
         runtime->destroy_logical_region(ctx, lregion);
     if (destroy_fspace)
@@ -126,7 +127,7 @@ IndexSpace LogicalUnstructured::getSubspace(Color color)
 
 void LogicalUnstructured::allocate(int nUnstrucs)
 {
-    assert( (nUnstrucs > 0) && (fIDs.size() > 0) && (!pregion.is_mapped())
+    assert( (nUnstrucs > 0) && (!pregion.is_mapped())
             && (ispaceID == nullptr) && (lregionID == nullptr) );
 
     ispace = runtime->create_index_space(ctx, nUnstrucs);
@@ -139,7 +140,8 @@ void LogicalUnstructured::allocate(int nUnstrucs)
     assert(!begin.is_null());
     ispaceID = new IndexSpaceID;
     *ispaceID = ispace.get_id();
-    allocate();
+    if (fIDs.size() > 0)
+        allocate();
 }
 
 
@@ -188,10 +190,18 @@ void LogicalUnstructured::addField<int>(FieldID FID)
     allocator.allocate_field(sizeof(int), FID);
 }
 
+
+void LogicalUnstructured::unMapPRegion()
+{
+    if (pregion.is_mapped())
+        runtime->unmap_region(ctx, pregion);
+}
+
+
 PhysicalRegion LogicalUnstructured::getPRegion()
 {
     assert(lregionID != nullptr);
-    if (!pregion.is_mapped() ) {
+    if (!pregion.is_mapped()) {
         RegionRequirement req(lregion, WRITE_DISCARD, EXCLUSIVE, lregion);
         for (int i=0; i<fIDs.size(); i++)
             req.add_field(fIDs[i]);

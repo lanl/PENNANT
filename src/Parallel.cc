@@ -91,11 +91,8 @@ void Parallel::run(InputParameters input_params,
 		  DomainPoint point(color);
 		  LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
 				  global_mesh.zones.getLPart(), color);
-		  LogicalRegion my_pts = runtime->get_logical_subregion_by_color(ctx,
-				  global_mesh.points.getLPart(), color);
 
 		  DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
-				  my_pts, global_mesh.points.getLRegion(),
 				  lregions_halos,
 				  args_seriliazed[color].getBitStream(), args_seriliazed[color].getBitStreamSize());
 		  must_epoch_launcher.add_single_task(point, driver_launcher);

@@ -25,7 +25,7 @@
 // forward declarations
 class LocalMesh;
 
-// TODO making more member variables private
+
 class Hydro {
 public:
 
@@ -46,29 +46,13 @@ public:
     std::vector<double> bcx;    // x values of x-plane fixed boundaries
     std::vector<double> bcy;    // y values of y-plane fixed boundaries
 
-    double2* pt_vel;       // point velocity
-    double2* pt_vel0;      // point velocity, start of cycle
-    double2* pt_accel;      // point acceleration
-    double* crnr_weighted_mass;    // corner contribution to pmaswt
-
-    double* zone_mass;        // zone mass
-    double* zone_energy_tot;     // zone total internal energy
-    double* zone_work;        // zone work done in cycle
-    double* zone_work_rate;    // zone work rate
-    double* zone_sound_speed;       // zone sound speed
-    double* zone_dvel;       // zone velocity difference
-
-    double2* side_force_pres;      // side force from pressure
-    double2* side_force_visc;      // side force from artificial visc.
-    double2* side_force_tts;      // side force from tts
-    double2* crnr_force_tot;    // corner force, total from all sources
-
     void init();
 
     void initRadialVel(
             const double vel,
             const int pfirst,
-            const int plast);
+            const int plast,
+            double2* pt_vel);
 
     TimeStep doCycle(const double dt);
 
@@ -207,17 +191,8 @@ public:
 
     void writeEnergyCheck();
 
-    void copyZonesToLegion(
-            DoubleAccessor* zone_rho,
-            DoubleAccessor*  zone_energy_density,
-            DoubleAccessor*  zone_pressure,
-            IndexSpace ispace_zones);
+    void copyZonesToLegion(LogicalUnstructured& global_zones);
 
-	double* zone_rho;             // zone density // TODO make private
-    double* zone_rho_pred;        // zone density, middle of cycle
-	double* zone_energy_density;  // zone specific internal energy
-    // (energy per unit mass)  // TODO make private
-	double* zone_pressure_;        // zone pressure  // TODO make private
 private:
 	void  allocateFields();
 

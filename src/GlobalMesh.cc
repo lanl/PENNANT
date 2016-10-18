@@ -38,7 +38,6 @@ void GlobalMesh::init()
 	zones.addField<double>(FID_ZE);
 	zones.allocate(generate_mesh.numberOfZones());
 
-	points.addField<double2>(FID_GHOST_PF); // TODO until real ghost regions give access to index space
     points.allocate(generate_mesh.numberOfPoints());
 
     	Coloring zones_map;
