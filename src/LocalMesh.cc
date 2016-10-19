@@ -176,16 +176,11 @@ void LocalMesh::allocateFields()
 {
     zone_pts.addField<int>(FID_ZONE_PTS_PTR);
     zones.addField<double2>(FID_ZX);
-    zones.addField<double2>(FID_ZXP);
     zones.addField<double>(FID_ZAREA);
     zones.addField<double>(FID_ZVOL);
-    zones.addField<double>(FID_ZAREAP);
-    zones.addField<double>(FID_ZVOLP);
     zones.addField<double>(FID_ZVOL0);
     zones.addField<double>(FID_ZDL);
     edges.addField<double2>(FID_EX);
-    edges.addField<double2>(FID_EXP);
-    edges.addField<double>(FID_ELEN);
     points.addField<double2>(FID_PX0);
     points.addField<double2>(FID_PX);
     points.addField<double2>(FID_PXP);
@@ -193,9 +188,6 @@ void LocalMesh::allocateFields()
     sides.addField<int>(FID_MAP_CRN2CRN_NEXT);
     sides.addField<double>(FID_SAREA);
     sides.addField<double>(FID_SVOL);
-    sides.addField<double>(FID_SAREAP);
-    sides.addField<double>(FID_SVOLP);
-    sides.addField<double2>(FID_SSURFP);
     sides.addField<double>(FID_SMF);
     sides.addField<int>(FID_SMAP_SIDE_TO_PT1);
     sides.addField<int>(FID_SMAP_SIDE_TO_ZONE);
@@ -474,7 +466,8 @@ void LocalMesh::calcVols(
         double sa = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
         double sv = third * sa * (px[p1].x + px[p2].x + zx[z].x);
         sarea[s] = sa;
-        svol[s] = sv;
+        if (svol != nullptr)
+            svol[s] = sv;
         zarea[z] += sa;
         zvol[z] += sv;
 

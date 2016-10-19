@@ -33,17 +33,12 @@ enum ZoneFields {
 	FID_ZE,
 	FID_ZP,
 	FID_ZX,
-	FID_ZXP,
 	FID_ZVOL,
     FID_ZAREA,
-    FID_ZAREAP,
-	FID_ZVOLP,
 	FID_ZVOL0,
 	FID_ZDL,
-	FID_ZRP,
 	FID_ZM,
 	FID_ZETOT,
-	FID_ZW,
 	FID_ZWR,
 	FID_ZSS,
 	FID_ZDU,
@@ -52,9 +47,6 @@ enum ZoneFields {
 enum SidesAndCornersFields {
     FID_SAREA,
     FID_SVOL,
-    FID_SAREAP,
-    FID_SVOLP,
-    FID_SSURFP,
     FID_SMF,
     FID_CMASWT,
     FID_SFP,
@@ -69,8 +61,6 @@ enum SidesAndCornersFields {
 
 enum EdgeFields {
     FID_EX,
-    FID_EXP,
-    FID_ELEN,
 };
 
 enum PointFields {
@@ -83,7 +73,6 @@ enum PointFields {
     FID_PXP,
     FID_PU,
     FID_PU0,
-    FID_PAP,
     FID_MAP_PT2CRN_FIRST,
 };
 
@@ -228,6 +217,7 @@ struct DoCycleTasksArgs {
     int num_points;
     int num_sides;
     int num_zones;
+    int num_edges;
     int my_color;
     int num_subregions;
     int nzones_x, nzones_y;

@@ -23,9 +23,12 @@ public:
     LogicalStructured(Context ctx, HighLevelRuntime *runtime);
     LogicalStructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion);
     void allocate(int nElements);
+    int size() const { return nElements; }
     template <typename TYPE>
       TYPE* getRawPtr(FieldID FID);
 
+private:
+    int nElements;
 };
 
 #endif /* SRC_LOGICALSTRUCTURED_HH_ */

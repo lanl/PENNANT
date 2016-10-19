@@ -18,6 +18,7 @@
 #include "InputParameters.hh"
 #include "LocalMesh.hh"
 #include "LogicalStructured.hh"
+#include "Memory.hh"
 #include "Vec2.hh"
 
 
@@ -46,7 +47,6 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_field(2/*idx*/, FID_ZE);
     add_field(2/*idx*/, FID_ZWR);
     add_field(2/*idx*/, FID_ZETOT);
-    add_field(2/*idx*/, FID_ZW);
     add_region_requirement(RegionRequirement(mesh_sides, READ_ONLY, EXCLUSIVE, mesh_sides));
     add_field(3/*idx*/, FID_SMAP_SIDE_TO_ZONE);
     add_field(3/*idx*/, FID_SMAP_SIDE_TO_PT1);
@@ -72,7 +72,6 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_field(10/*idx*/, FID_SVOL);
     add_region_requirement(RegionRequirement(hydro_points, READ_WRITE, EXCLUSIVE, hydro_points));
     add_field(11/*idx*/, FID_PU);
-    add_field(11/*idx*/, FID_PAP);
     add_field(11/*idx*/, FID_PU0);
     add_region_requirement(RegionRequirement(mesh_points, READ_WRITE, EXCLUSIVE, mesh_points));
     add_field(12/*idx*/, FID_PX);
@@ -131,13 +130,13 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     LogicalUnstructured local_write_points_by_gid(ctx, runtime, regions[6]);
     Double2Accessor point_force = local_write_points_by_gid.getRegionAccessor<double2>(FID_PF);
 
-    assert(task->regions[2].privilege_fields.size() == 5);
+    assert(task->regions[2].privilege_fields.size() == 4);
     LogicalStructured hydro_write_zones(ctx, runtime, regions[2]);
     double* zone_rho = hydro_write_zones.getRawPtr<double>(FID_ZR);
     double* zone_energy_density = hydro_write_zones.getRawPtr<double>(FID_ZE);
     double* zone_work_rate = hydro_write_zones.getRawPtr<double>(FID_ZWR);
     double* zone_energy_tot = hydro_write_zones.getRawPtr<double>(FID_ZETOT);
-    double* zone_work = hydro_write_zones.getRawPtr<double>(FID_ZW);
+    double* zone_work = AbstractedMemory::alloc<double>(hydro_write_zones.size());
 
     assert(task->regions[8].privilege_fields.size() == 1);
     LogicalStructured mesh_edges(ctx, runtime, regions[8]);
@@ -154,10 +153,9 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     double* side_vol = mesh_write_sides.getRawPtr<double>(FID_SVOL);
     double* side_area = mesh_write_sides.getRawPtr<double>(FID_SAREA);
 
-    assert(task->regions[11].privilege_fields.size() == 3);
+    assert(task->regions[11].privilege_fields.size() == 2);
     LogicalStructured hydro_write_points(ctx, runtime, regions[11]);
     double2* pt_vel = hydro_write_points.getRawPtr<double2>(FID_PU);
-    double2* pt_accel = hydro_write_points.getRawPtr<double2>(FID_PAP);
     double2* pt_vel0 = hydro_write_points.getRawPtr<double2>(FID_PU0);
 
     assert(task->regions[12].privilege_fields.size() == 1);
@@ -208,13 +206,10 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         }
 
         // 5. compute accelerations
-        Hydro::calcAccel(generate_mesh, point_force, point_mass,
-            pt_accel, pfirst, plast);
-
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        Hydro::advPosFull(args.dt, pt_vel0, pt_accel, pt_x0,
-                pt_vel, pt_x,
+        Hydro::calcAccelAndAdvPosFull(generate_mesh, point_force, point_mass,
+                args.dt, pt_vel0, pt_x0, pt_vel, pt_x,
                 pfirst, plast);
     }
 
@@ -260,6 +255,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
                 zone_dvel, zone_sound_speed, args.cfl,
                 zone_vol, zone_vol0, args.cflv, recommend);
     }
+
+    AbstractedMemory::free(zone_work);
 
     return recommend;
 }

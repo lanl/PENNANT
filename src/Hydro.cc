@@ -139,19 +139,16 @@ void Hydro::allocateFields()
 {
     points.addField<double2>(FID_PU);
     points.addField<double2>(FID_PU0);
-    points.addField<double2>(FID_PAP);
     sides_and_corners.addField<double>(FID_CMASWT);
     sides_and_corners.addField<double2>(FID_SFP);
     sides_and_corners.addField<double2>(FID_SFQ);
     sides_and_corners.addField<double2>(FID_SFT);
     sides_and_corners.addField<double2>(FID_CFTOT);
     zones.addField<double>(FID_ZR);
-    zones.addField<double>(FID_ZRP);
     zones.addField<double>(FID_ZE);
     zones.addField<double>(FID_ZP);
     zones.addField<double>(FID_ZM);
     zones.addField<double>(FID_ZETOT);
-    zones.addField<double>(FID_ZW);
     zones.addField<double>(FID_ZWR);
     zones.addField<double>(FID_ZSS);
     zones.addField<double>(FID_ZDU);
@@ -189,6 +186,7 @@ TimeStep Hydro::doCycle(
     args.num_points = mesh->num_pts;
     args.num_sides = mesh->num_sides;
     args.num_zones = mesh->num_zones;
+    args.num_edges = mesh->num_edges;
     args.zone_chunk_CRS = mesh->zone_chunks_CRS;
     args.side_chunk_CRS = mesh->side_chunks_CRS;
     args.point_chunk_CRS = mesh->pt_chunks_CRS;
@@ -212,7 +210,6 @@ TimeStep Hydro::doCycle(
             mesh->sides.getLRegion(),
             mesh->zone_pts.getLRegion(),
             mesh->points.getLRegion(),
-            mesh->edges.getLRegion(),
             zones.getLRegion(),
             sides_and_corners.getLRegion(),
             points.getLRegion(),
@@ -253,26 +250,6 @@ void Hydro::advPosHalf(
     for (int p = pfirst; p < plast; ++p) {
         pt_x_pred[p] = pt_x0[p] + pt_vel0[p] * dth;
     }
-}
-
-
-/*static*/
-void Hydro::advPosFull(
-        const double dt,
-        const double2* pt_vel0,
-        const double2* pt_accel,
-        const double2* pt_x0,
-        double2* pt_vel,
-        double2* pt_x,
-        const int pfirst,
-        const int plast) {
-
-    #pragma ivdep
-    for (int p = pfirst; p < plast; ++p) {
-        pt_vel[p] = pt_vel0[p] + pt_accel[p] * dt;
-        pt_x[p] = pt_x0[p] + 0.5 * (pt_vel[p] + pt_vel0[p]) * dt;
-    }
-
 }
 
 
@@ -321,11 +298,15 @@ void Hydro::sumCrnrForce(
 
 
 /*static*/
-void Hydro::calcAccel(
+void Hydro::calcAccelAndAdvPosFull(
         const GenerateMesh* generate_mesh,
         const Double2Accessor pf,
         const DoubleAccessor pmass,
-        double2* pt_accel,
+        const double dt,
+        const double2* pt_vel0,
+        const double2* pt_x0,
+        double2* pt_vel,
+        double2* pt_x,
         const int pfirst,
         const int plast) {
 
@@ -334,7 +315,9 @@ void Hydro::calcAccel(
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
         ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(p));
-        pt_accel[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
+        double2 pt_accel = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
+        pt_vel[p] = pt_vel0[p] + pt_accel * dt;
+        pt_x[p] = pt_x0[p] + 0.5 * (pt_vel[p] + pt_vel0[p]) * dt;
     }
 
 }

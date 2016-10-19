@@ -349,7 +349,7 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* corrector_args)
 {
     assert(corrector_args != nullptr);
 
-    bit_stream_size = 9 * sizeof(double) + 7 * sizeof(int)
+    bit_stream_size = 9 * sizeof(double) + 8 * sizeof(int)
         + sizeof(size_t) + corrector_args->zone_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + corrector_args->side_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + corrector_args->point_chunk_CRS.size() * sizeof(int)
@@ -368,6 +368,7 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* corrector_args)
     stream_size += archiveScalar(corrector_args->num_points, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->num_sides, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->num_zones, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(corrector_args->num_edges, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->nzones_x, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->nzones_y, (void*)(serialized+stream_size));
     stream_size += archiveScalar(corrector_args->num_subregions, (void*)(serialized+stream_size));
@@ -465,6 +466,7 @@ void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* corrector_args)
     bit_stream_size += restoreScalar(&(corrector_args->num_points), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->num_sides), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->num_zones), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(corrector_args->num_edges), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->nzones_x), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->nzones_y), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(corrector_args->num_subregions), (void*)(serialized_args + bit_stream_size));

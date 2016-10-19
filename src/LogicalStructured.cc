@@ -18,20 +18,27 @@
 
 
 LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime) :
-    LogicalUnstructured(ctx, runtime)
+    LogicalUnstructured(ctx, runtime),
+    nElements(-1)
 {
 }
 
 
 LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion) :
-    LogicalUnstructured(ctx, runtime, pregion)
+    LogicalUnstructured(ctx, runtime, pregion),
+    nElements(-2)
 {
+    Domain Dom = runtime->get_index_space_domain(ctx, ispace);
+    Rect<1> rect = Dom.get_rect<1>();
+    nElements = static_cast<int>(rect.volume());
 }
 
 void LogicalStructured::allocate(int nStrucs)
 {
     assert( (nStrucs > 0) && (fIDs.size() > 0) && (!pregion.is_mapped())
             && (ispaceID == nullptr) && (lregionID == nullptr) );
+
+    nElements = nStrucs;
 
     Rect<1> rect(Point<1>(0),Point<1>(nStrucs - 1));
     ispace = runtime->create_index_space(ctx, Domain::from_rect<1>(rect));
