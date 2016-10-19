@@ -13,6 +13,8 @@
 
 #include "CorrectorTask.hh"
 
+#include<iostream>
+
 #include "Hydro.hh"
 #include "HydroBC.hh"
 #include "InputParameters.hh"
@@ -182,26 +184,16 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         // 4a. apply boundary conditions
         const double2 vfixx = double2(1., 0.);
         const double2 vfixy = double2(0., 1.);
-        for (int x = 0; x < args.bcx.size(); ++x) {
-            std::vector<int> pchbfirst;    // start/stop index for bdy pt chunks
-            std::vector<int> pchblast;
-            std::vector<int> mapbp = LocalMesh::getXPlane(args.bcx[x], args.num_points, pt_x);
-
-            LocalMesh::getPlaneChunks(mapbp, args.point_chunk_CRS, pchbfirst, pchblast);
-            int bfirst = pchbfirst[pt_chunk];
-            int blast = pchblast[pt_chunk];
-            HydroBC::applyFixedBC(generate_mesh, vfixx, mapbp,
+        for (int x = 0; x < args.boundary_conditions_x.size(); ++x) {
+            int bfirst = args.bcx_point_chunk_CRS[x][pt_chunk];
+            int blast = args.bcx_point_chunk_CRS[x][pt_chunk+1];
+            HydroBC::applyFixedBC(generate_mesh, vfixx, args.boundary_conditions_x[x],
                     pt_vel0, point_force, bfirst, blast);
         }
-        for (int y = 0; y < args.bcy.size(); ++y) {
-            std::vector<int> pchbfirst;    // start/stop index for bdy pt chunks
-            std::vector<int> pchblast;
-            std::vector<int> mapbp = LocalMesh::getYPlane(args.bcy[y], args.num_points, pt_x);
-
-            LocalMesh::getPlaneChunks(mapbp, args.point_chunk_CRS, pchbfirst, pchblast);
-            int bfirst = pchbfirst[pt_chunk];
-            int blast = pchblast[pt_chunk];
-            HydroBC::applyFixedBC(generate_mesh, vfixy, mapbp,
+        for (int y = 0; y < args.boundary_conditions_y.size(); ++y) {
+            int bfirst = args.bcy_point_chunk_CRS[y][pt_chunk];
+            int blast = args.bcy_point_chunk_CRS[y][pt_chunk+1];
+            HydroBC::applyFixedBC(generate_mesh, vfixy, args.boundary_conditions_y[y],
                     pt_vel0, point_force, bfirst, blast);
         }
 

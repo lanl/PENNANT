@@ -190,6 +190,7 @@ public:
 private:
 	void  allocateFields();
 
+    DoCycleTasksArgs args;
     DynamicCollective add_reduction;
     Context ctx;
     HighLevelRuntime* runtime;

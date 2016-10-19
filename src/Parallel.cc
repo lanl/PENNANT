@@ -316,6 +316,24 @@ static size_t archiveVector(std::vector<Type> vec, void* bit_stream)
     return size_size + vec_size;
 }
 
+template<class Type>
+static size_t archiveTensor(std::vector<std::vector<Type>> tensor, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t size_size = archiveScalar(tensor.size(), (void*)serialized);
+    serialized += size_size;
+
+    size_t tensor_size = 0;
+    for (int i = 0; i < tensor.size(); i++) {
+        size_t vec_size = archiveVector(tensor[i], (void*)serialized);
+        serialized += vec_size;
+        tensor_size += vec_size;
+    }
+
+    return size_size + tensor_size;
+}
+
 void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 {
     assert(spmd_args != nullptr);
@@ -345,46 +363,58 @@ void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 }
 
 
-void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* corrector_args)
+void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args)
 {
-    assert(corrector_args != nullptr);
+    assert(docycle_args != nullptr);
 
     bit_stream_size = 9 * sizeof(double) + 8 * sizeof(int)
-        + sizeof(size_t) + corrector_args->zone_chunk_CRS.size() * sizeof(int)
-        + sizeof(size_t) + corrector_args->side_chunk_CRS.size() * sizeof(int)
-        + sizeof(size_t) + corrector_args->point_chunk_CRS.size() * sizeof(int)
-        + sizeof(size_t) + corrector_args->bcx.size() * sizeof(double)
-        + sizeof(size_t) + corrector_args->bcy.size() * sizeof(double)
-        + sizeof(size_t) + (corrector_args->meshtype.length() + 1) * sizeof(char);
+        + sizeof(size_t) + docycle_args->zone_chunk_CRS.size() * sizeof(int)
+        + sizeof(size_t) + docycle_args->side_chunk_CRS.size() * sizeof(int)
+        + sizeof(size_t) + docycle_args->point_chunk_CRS.size() * sizeof(int)
+        + sizeof(size_t) + (docycle_args->meshtype.length() + 1) * sizeof(char)
+        + sizeof(size_t) + docycle_args->boundary_conditions_x.size() * sizeof(size_t)
+        + sizeof(size_t) + docycle_args->boundary_conditions_y.size() * sizeof(size_t)
+        + sizeof(size_t) + docycle_args->bcx_point_chunk_CRS.size() * sizeof(size_t)
+        + sizeof(size_t) + docycle_args->bcy_point_chunk_CRS.size() * sizeof(size_t);
+    for (size_t i = 0; i < docycle_args->boundary_conditions_x.size(); i++)
+        bit_stream_size += docycle_args->boundary_conditions_x[i].size() * sizeof(int);
+    for (size_t i = 0; i < docycle_args->boundary_conditions_y.size(); i++)
+        bit_stream_size += docycle_args->boundary_conditions_y[i].size() * sizeof(int);
+    for (size_t i = 0; i < docycle_args->bcx_point_chunk_CRS.size(); i++)
+        bit_stream_size += docycle_args->bcx_point_chunk_CRS[i].size() * sizeof(int);
+    for (size_t i = 0; i < docycle_args->bcy_point_chunk_CRS.size(); i++)
+        bit_stream_size += docycle_args->bcy_point_chunk_CRS[i].size() * sizeof(int);
     bit_stream = malloc(bit_stream_size);
     free_bit_stream = true;
 
     unsigned char *serialized = (unsigned char*)(bit_stream);
 
     size_t stream_size = 0;
-    stream_size += archiveScalar(corrector_args->dt, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->cfl, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->cflv, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->num_points, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->num_sides, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->num_zones, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->num_edges, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->nzones_x, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->nzones_y, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->num_subregions, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->my_color, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->qgamma, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->q1, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->q2, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->ssmin, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->alpha, (void*)(serialized+stream_size));
-    stream_size += archiveScalar(corrector_args->gamma, (void*)(serialized+stream_size));
-    stream_size += archiveVector(corrector_args->zone_chunk_CRS, (void*)(serialized+stream_size));
-    stream_size += archiveVector(corrector_args->side_chunk_CRS, (void*)(serialized+stream_size));
-    stream_size += archiveVector(corrector_args->point_chunk_CRS, (void*)(serialized+stream_size));
-    stream_size += archiveVector(corrector_args->bcx, (void*)(serialized+stream_size));
-    stream_size += archiveVector(corrector_args->bcy, (void*)(serialized+stream_size));
-    stream_size += archiveString(corrector_args->meshtype, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->dt, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->cfl, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->cflv, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->num_points, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->num_sides, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->num_zones, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->num_edges, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->nzones_x, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->nzones_y, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->num_subregions, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->my_color, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->qgamma, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->q1, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->q2, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->ssmin, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->alpha, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->gamma, (void*)(serialized+stream_size));
+    stream_size += archiveVector(docycle_args->zone_chunk_CRS, (void*)(serialized+stream_size));
+    stream_size += archiveVector(docycle_args->side_chunk_CRS, (void*)(serialized+stream_size));
+    stream_size += archiveVector(docycle_args->point_chunk_CRS, (void*)(serialized+stream_size));
+    stream_size += archiveString(docycle_args->meshtype, (void*)(serialized+stream_size));
+    stream_size += archiveTensor(docycle_args->boundary_conditions_x, (void*)(serialized+stream_size));
+    stream_size += archiveTensor(docycle_args->boundary_conditions_y, (void*)(serialized+stream_size));
+    stream_size += archiveTensor(docycle_args->bcx_point_chunk_CRS, (void*)(serialized+stream_size));
+    stream_size += archiveTensor(docycle_args->bcy_point_chunk_CRS, (void*)(serialized+stream_size));
 
     assert(stream_size == bit_stream_size);
 }
@@ -431,6 +461,26 @@ static size_t restoreVector(std::vector<Type>* vec, void* bit_stream)
     return size_size + vec_size;
 }
 
+template<class Type>
+static size_t restoreTensor(std::vector<std::vector<Type>>* tensor, void* bit_stream)
+{
+    unsigned char *serialized = (unsigned char*)(bit_stream) ;
+
+    size_t n_entries;
+    size_t size_size = restoreScalar(&n_entries, (void*)serialized);
+    serialized += size_size;
+
+    size_t tensor_size = 0;
+    for (int i = 0; i < n_entries; i++) {
+        std::vector<Type> vec;
+        size_t vec_size = restoreVector(&vec, (void*)serialized);
+        tensor->push_back(vec);
+        serialized += vec_size;
+        tensor_size += vec_size;
+    }
+
+    return size_size + tensor_size;
+}
 
 void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 {
@@ -452,37 +502,39 @@ void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 }
 
 
-void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* corrector_args)
+void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* docycle_args)
 {
-    assert(corrector_args != nullptr);
+    assert(docycle_args != nullptr);
     assert(bit_stream != nullptr);
 
     unsigned char *serialized_args = (unsigned char *) bit_stream;
 
     bit_stream_size = 0;
-    bit_stream_size += restoreScalar(&(corrector_args->dt), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->cfl), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->cflv), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->num_points), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->num_sides), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->num_zones), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->num_edges), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->nzones_x), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->nzones_y), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->num_subregions), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->my_color), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->qgamma), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->q1), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->q2), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->ssmin), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->alpha), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreScalar(&(corrector_args->gamma), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(corrector_args->zone_chunk_CRS), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(corrector_args->side_chunk_CRS), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(corrector_args->point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(corrector_args->bcx), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreVector(&(corrector_args->bcy), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreString(&(corrector_args->meshtype), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->dt), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->cfl), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->cflv), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->num_points), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->num_sides), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->num_zones), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->num_edges), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->nzones_x), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->nzones_y), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->num_subregions), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->my_color), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->qgamma), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->q1), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->q2), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->ssmin), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->alpha), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->gamma), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(docycle_args->zone_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(docycle_args->side_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(docycle_args->point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreString(&(docycle_args->meshtype), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_x), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_y), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreTensor(&(docycle_args->bcx_point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreTensor(&(docycle_args->bcy_point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
 }
 
 

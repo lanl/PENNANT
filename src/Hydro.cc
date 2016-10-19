@@ -133,6 +133,43 @@ void Hydro::init() {
     sides_and_corners.unMapPRegion();
     zones.unMapPRegion();
     mesh->zones.unMapPRegion();
+
+    args.point_chunk_CRS = mesh->pt_chunks_CRS;
+    double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
+    for (int i = 0; i < bcx.size(); ++i) {
+        args.boundary_conditions_x.push_back(LocalMesh::getXPlane(bcx[i], mesh->num_pts, pt_x));
+        std::vector<int> pchb_CRS;
+        LocalMesh::getPlaneChunks(args.boundary_conditions_x[i], args.point_chunk_CRS, pchb_CRS);
+        args.bcx_point_chunk_CRS.push_back(pchb_CRS);
+    }
+    for (int i = 0; i < bcy.size(); ++i){
+        args.boundary_conditions_y.push_back(LocalMesh::getYPlane(bcy[i], mesh->num_pts, pt_x));
+        std::vector<int> pchb_CRS;
+        LocalMesh::getPlaneChunks(args.boundary_conditions_y[i], args.point_chunk_CRS, pchb_CRS);
+        args.bcy_point_chunk_CRS.push_back(pchb_CRS);
+    }
+    mesh->points.unMapPRegion();
+
+
+    args.cfl = cfl;
+    args.cflv = cflv;
+    args.num_points = mesh->num_pts;
+    args.num_sides = mesh->num_sides;
+    args.num_zones = mesh->num_zones;
+    args.num_edges = mesh->num_edges;
+    args.zone_chunk_CRS = mesh->zone_chunks_CRS;
+    args.side_chunk_CRS = mesh->side_chunks_CRS;
+    args.meshtype = params.meshtype;
+    args.nzones_x = params.directs.nzones_x;
+    args.nzones_y = params.directs.nzones_y;
+    args.num_subregions = params.directs.ntasks;
+    args.my_color = my_color;
+    args.qgamma = params.directs.qgamma;
+    args.q1 = params.directs.q1;
+    args.q2 = params.directs.q2;
+    args.ssmin = params.directs.ssmin;
+    args.alpha = params.directs.alpha;
+    args.gamma = params.directs.gamma;
 }
 
 void Hydro::allocateFields()
@@ -179,30 +216,7 @@ void Hydro::initRadialVel(
 TimeStep Hydro::doCycle(
             const double dt)
 {
-    DoCycleTasksArgs args;  // TODO all but dt out from doCycle?
-    args.dt = dt;
-    args.cfl = cfl;
-    args.cflv = cflv;
-    args.num_points = mesh->num_pts;
-    args.num_sides = mesh->num_sides;
-    args.num_zones = mesh->num_zones;
-    args.num_edges = mesh->num_edges;
-    args.zone_chunk_CRS = mesh->zone_chunks_CRS;
-    args.side_chunk_CRS = mesh->side_chunks_CRS;
-    args.point_chunk_CRS = mesh->pt_chunks_CRS;
-    args.meshtype = params.meshtype;
-    args.nzones_x = params.directs.nzones_x;
-    args.nzones_y = params.directs.nzones_y;
-    args.num_subregions = params.directs.ntasks;
-    args.my_color = my_color;
-    args.bcx = bcx;
-    args.bcy = bcy;
-    args.qgamma = params.directs.qgamma;
-    args.q1 = params.directs.q1;
-    args.q2 = params.directs.q2;
-    args.ssmin = params.directs.ssmin;
-    args.alpha = params.directs.alpha;
-    args.gamma = params.directs.gamma;
+    args.dt = dt;  // TODO only CorrectorTask needs this; pass as ArgumentMap to IndexLauncher
     DoCycleTasksArgsSerializer serial;
     serial.archive(&args);
 

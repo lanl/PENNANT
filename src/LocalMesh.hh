@@ -109,8 +109,7 @@ public:
     static void getPlaneChunks(
             const std::vector<int>& mapbp,
             const std::vector<int> pt_chunks_CRS,
-            std::vector<int>& pchbfirst,
-            std::vector<int>& pchblast);
+            std::vector<int>& pchb_CRS);
 
     // compute edge, zone centers
     static void calcCtrs(

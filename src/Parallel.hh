@@ -227,7 +227,11 @@ struct DoCycleTasksArgs {
     std::vector<int> side_chunk_CRS;
     std::vector<int> point_chunk_CRS;
     std::string meshtype;
-    std::vector<double> bcx, bcy;
+    std::vector<std::vector<int>> boundary_conditions_x;
+    std::vector<std::vector<int>> boundary_conditions_y;
+    // start/stop index for boundary pt chunks, compressed row storage
+    std::vector<std::vector<int>> bcx_point_chunk_CRS;
+    std::vector<std::vector<int>> bcy_point_chunk_CRS;
 };
 
 class DoCycleTasksArgsSerializer : public ArgsSerializer {

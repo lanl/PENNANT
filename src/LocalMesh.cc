@@ -381,21 +381,18 @@ vector<int> LocalMesh::getYPlane(const double c,
 void LocalMesh::getPlaneChunks(
         const std::vector<int>& mapbp,
         const std::vector<int> pt_chunks_CRS,
-        vector<int>& pchbfirst,
-        vector<int>& pchblast)
+        vector<int>& pchb_CRS)
 {
-    pchbfirst.resize(0);
-    pchblast.resize(0);
+    pchb_CRS.resize(0);
 
     // compute boundary point chunks
     // (boundary points contained in each point chunk)
-    int bf, bl = 0;
+    int bl = 0;
+    pchb_CRS.push_back(bl);
     for (int pch = 0; pch < (pt_chunks_CRS.size()-1); ++pch) {
          int pl = pt_chunks_CRS[pch+1];
-         bf = bl;
-         bl = lower_bound(&mapbp[bf], &mapbp[mapbp.size()], pl) - &mapbp[0];
-         pchbfirst.push_back(bf);
-         pchblast.push_back(bl);
+         bl = lower_bound(&mapbp[pchb_CRS.back()], &mapbp[mapbp.size()], pl) - &mapbp[0];
+         pchb_CRS.push_back(bl);
     }
 }
 
