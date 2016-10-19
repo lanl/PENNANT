@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N1 --constraint="haswell&ib_fdr"
+#SBATCH -N1 --constraint="ib_fdr&e5-2660_v3"
 
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
@@ -15,4 +15,4 @@ cp ${HOME}/gitlab/pennant-spmd/pennant .
 cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
 
 mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 8 ./sedovbig.pnt\
- -ll:cpu 8 -ll:util 2 -ll:dma 1 2>&1 | tee sedovbig.1x8
+ -ll:cpu 16 -ll:util 2 -ll:dma 1 2>&1 | tee sedovbig.1x8
