@@ -32,7 +32,6 @@
 
 using namespace std;
 
-// TODO: declare const initialized in all constructors as const
 Hydro::Hydro(const InputParameters& params, LocalMesh* m,
 		DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt) :
@@ -633,7 +632,7 @@ void Hydro::copyZonesToLegion(LogicalUnstructured& global_zones)
     const double* zone_energy_density = zones.getRawPtr<double>(FID_ZE);
     const double* zone_pressure_ = zones.getRawPtr<double>(FID_ZP);
 
-    IndexIterator zone_itr(runtime,ctx, ispace_zones);  // TODO continue to investigate why passing LogicalUnstructured in failed
+    IndexIterator zone_itr(runtime,ctx, ispace_zones);
     int z = 0;
     while (zone_itr.has_next()) {
         ptr_t zone_ptr = zone_itr.next();

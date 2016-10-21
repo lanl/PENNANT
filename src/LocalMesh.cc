@@ -28,7 +28,6 @@
 using namespace std;
 
 
-// TODO make const the consts
 LocalMesh::LocalMesh(const InputParameters& params,
 		IndexSpace points,
         std::vector<LogicalUnstructured>& halos_pts,
@@ -129,17 +128,6 @@ void LocalMesh::init() {
 
     edges.allocate(num_edges);
     double2* edge_x = edges.getRawPtr<double2>(FID_EX);
-
-    IndexIterator itr = pt_x_init_by_gid.getIterator();
-    point_local_to_globalID = AbstractedMemory::alloc<ptr_t>(num_pts);
-    int i = 0;
-    while (itr.has_next()) {
-    		ptr_t pt_ptr = itr.next();
-        point_local_to_globalID[i] = pt_ptr;
-        assert(point_local_to_globalID[i].value == generate_mesh->pointLocalToGlobalID(i));  // TODO find fastest and use that, no assert
-        	i++;
-    }
-    assert(i == num_pts);
 
     initParallel();
 
@@ -629,7 +617,7 @@ void LocalMesh::initParallel() {
     for (unsigned  slave = 0; slave < master_points_counts.size(); slave++) {
         for (unsigned pt = 0; pt < master_points_counts[slave]; pt++) {
             all_slaved_pts_map[0].points.insert(
-                    point_local_to_globalID[master_points[pt + previous_slaved_pts_count]].value);
+                    generate_mesh->pointLocalToGlobalID(master_points[pt + previous_slaved_pts_count]));
         }
         previous_slaved_pts_count += master_points_counts[slave];
     }
@@ -639,9 +627,9 @@ void LocalMesh::initParallel() {
         Coloring my_slaved_pts_map;
         for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++) {
             my_slaved_pts_map[1+master].points.insert(
-                    point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value);
+                    generate_mesh->pointLocalToGlobalID(slaved_points[pt + previous_master_pts_count]));
             all_slaved_pts_map[1+master].points.insert(
-                    point_local_to_globalID[slaved_points[pt + previous_master_pts_count]].value);
+                    generate_mesh->pointLocalToGlobalID(slaved_points[pt + previous_master_pts_count]));
         }
         previous_master_pts_count += slaved_points_counts[master];
         halos_points[1+master].partition(my_slaved_pts_map, true);

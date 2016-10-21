@@ -155,15 +155,15 @@ private:
     // associated mesh object
     LocalMesh* mesh;
 
-    double cfl;                 // Courant number, limits timestep
-    double cflv;                // volume change limit for timestep
-    double rho_init;               // initial density for main mesh
-    double energy_init;               // initial energy for main mesh
-    double rho_init_sub;            // initial density in subregion
-    double energy_init_sub;            // initial energy in subregion
-    double vel_init_radial;         // initial velocity in radial direction
-    std::vector<double> bcx;    // x values of x-plane fixed boundaries
-    std::vector<double> bcy;    // y values of y-plane fixed boundaries
+    const double cfl;                 // Courant number, limits timestep
+    const double cflv;                // volume change limit for timestep
+    const double rho_init;               // initial density for main mesh
+    const double energy_init;               // initial energy for main mesh
+    const double rho_init_sub;            // initial density in subregion
+    const double energy_init_sub;            // initial energy in subregion
+    const double vel_init_radial;         // initial velocity in radial direction
+    const std::vector<double> bcx;    // x values of x-plane fixed boundaries
+    const std::vector<double> bcy;    // y values of y-plane fixed boundaries
 
     void init();
 
@@ -187,7 +187,6 @@ private:
             const int zlast,
             const int sfirst,
             const int slast);
-
 
     void  allocateFields();
 

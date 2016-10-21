@@ -37,10 +37,10 @@ public:
     ~LocalMesh();
 
     // parameters
-    double subregion_xmin; 		   // bounding box for a subregion
-    double subregion_xmax; 		   // if xmin != std::numeric_limits<double>::max(),
-    double subregion_ymin;         // should have 4 entries:
-    double subregion_ymax; 		   // xmin, xmax, ymin, ymax
+    const double subregion_xmin; 		   // bounding box for a subregion
+    const double subregion_xmax; 		   // if xmin != std::numeric_limits<double>::max(),
+    const double subregion_ymin;         // should have 4 entries:
+    const double subregion_ymax; 		   // xmin, xmax, ymin, ymax
 
     // mesh variables
     // (See documentation for more details on the mesh
@@ -100,7 +100,7 @@ public:
 
     inline int num_zone_chunks() { return zone_chunks_CRS.size() - 1;}
 
-    // find plane with constant x, y value //TODO profile: is this still eating my time?
+    // find plane with constant x, y value
     static std::vector<int> getXPlane(
             const double c,
             const int num_pts,
@@ -190,7 +190,6 @@ public:
             Double2Accessor pt_force);
 
     LogicalUnstructured local_points_by_gid;
-    ptr_t* point_local_to_globalID;
     LogicalStructured zone_pts;
     LogicalStructured zones;
     LogicalStructured sides;

@@ -175,14 +175,6 @@ void PredictorTask::cpu_run(const Task *task,
     double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
     double2* pt_x0 = mesh_write_points.getRawPtr<double2>(FID_PX0);
 
-    InputParameters input_params;
-    input_params.meshtype = args.meshtype;
-    input_params.directs.nzones_x = args.nzones_x;
-    input_params.directs.nzones_y = args.nzones_y;
-    input_params.directs.ntasks = args.num_subregions;
-    input_params.directs.task_id = args.my_color;
-    GenerateMesh* generate_mesh = new GenerateMesh(input_params);
-
     for (int pch = 0; pch < (args.point_chunk_CRS.size()-1); ++pch) {
         int pfirst = args.point_chunk_CRS[pch];
         int plast = args.point_chunk_CRS[pch+1];
