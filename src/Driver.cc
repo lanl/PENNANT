@@ -82,7 +82,7 @@ RunStat DriverTask::cpu_run(const Task *task,
     IndexSpace ghost_is = task->regions[1].region.get_index_space();
     IndexPartition ghost_ip = runtime->get_parent_index_partition(ctx, ghost_is);
     IndexSpace points = runtime->get_parent_index_space(ctx, ghost_ip);
-    Driver drv(params, args.add_reduction, args.min_reduction,
+    Driver drv(params, args.add_reduction, args.add_int64_reduction, args.min_reduction,
             args.pbarrier_as_master, args.masters_pbarriers,
             regions[0], points, halos_points, pregions_halos,
             ctx, runtime);
@@ -92,7 +92,8 @@ RunStat DriverTask::cpu_run(const Task *task,
 }
 
 Driver::Driver(const InputParameters& params,
-		DynamicCollective add_reduct,
+        DynamicCollective add_reduct,
+        DynamicCollective add_int64_reduct,
 		DynamicCollective min_reduct,
         PhaseBarrier pbarrier_as_master,
         std::vector<PhaseBarrier> masters_pbarriers,
@@ -108,7 +109,8 @@ Driver::Driver(const InputParameters& params,
 		  dtinit(params.directs.dtinit),
 		  dtfac(params.directs.dtfac),
 		  dtreport(params.directs.dtreport),
-		  add_reduction(add_reduct),
+          add_reduction(add_reduct),
+          add_int64_reduction(add_int64_reduct),
 		  min_reduction(min_reduct),
 		  ctx(ctx),
 		  runtime(rt),
@@ -119,9 +121,10 @@ Driver::Driver(const InputParameters& params,
     global_zones.unMapPRegion();
     mesh = new LocalMesh(params, pts, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
-    		    ctx, runtime);
+            add_int64_reduction, ctx, runtime);
     hydro = new Hydro(params, mesh, add_reduction, ctx, runtime);
 }
+
 
 RunStat Driver::run() {
     run_stat.time = 0.0;
@@ -205,7 +208,6 @@ RunStat Driver::run() {
     return run_stat;
 }
 
-// TODO make this a task and collapse Driver into DriverTask
 void Driver::calcGlobalDt() {
 
     // Save timestep from last cycle

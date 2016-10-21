@@ -28,14 +28,15 @@
 using namespace std;
 
 
+// TODO make const the consts
 LocalMesh::LocalMesh(const InputParameters& params,
 		IndexSpace points,
         std::vector<LogicalUnstructured>& halos_pts,
         std::vector<PhysicalRegion>& pregionshalos,
         PhaseBarrier as_master,
         std::vector<PhaseBarrier> masters,
+        DynamicCollective add_reduction,
 		Context ctx, HighLevelRuntime* rt) :
-			chunk_size(params.directs.chunk_size),
 			subregion_xmin(params.directs.subregion_xmin),
 			subregion_xmax(params.directs.subregion_xmax),
 			subregion_ymin(params.directs.subregion_ymin),
@@ -46,10 +47,12 @@ LocalMesh::LocalMesh(const InputParameters& params,
             sides(ctx, rt),
             points(ctx, rt),
             edges(ctx, rt),
+            chunk_size(params.directs.chunk_size),
             pt_x_init_by_gid(ctx, rt, points),
 			generate_mesh(NULL),
 	        pbarrier_as_master(as_master),
 	        masters_pbarriers(masters),
+	        add_reduction(add_reduction),
 			ctx(ctx),
 			runtime(rt),
 			halos_points(halos_pts),
@@ -105,7 +108,6 @@ void LocalMesh::init() {
     int* map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
     int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
 
-
     // use the cell* arrays to populate the side maps
     initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc,
             map_side2zone, map_side2pt1);
@@ -125,8 +127,6 @@ void LocalMesh::init() {
     populateInverseMap(map_side2pt1, map_pt2crn_first,
             map_crn2crn_next);   // for corner-to-point gathers
 
-    writeMeshStats();
-
     edges.allocate(num_edges);
     double2* edge_x = edges.getRawPtr<double2>(FID_EX);
 
@@ -142,6 +142,8 @@ void LocalMesh::init() {
     assert(i == num_pts);
 
     initParallel();
+
+    writeMeshStats();
 
     #pragma omp parallel for schedule(static)
     for (int pch = 0; pch < num_pt_chunks(); ++pch) {
@@ -194,6 +196,7 @@ void LocalMesh::allocateFields()
     sides.addField<int>(FID_SMAP_SIDE_TO_EDGE);
 }
 
+
 void LocalMesh::initSideMappingArrays(
         const vector<int>& cellstart,
         const vector<int>& cellnodes,
@@ -238,12 +241,11 @@ void LocalMesh::initEdgeMappingArrays(
     }  // for s
 
     num_edges = e;
-
 }
 
 
-void LocalMesh::populateChunks(const int* map_side2zone) {
-
+void LocalMesh::populateChunks(const int* map_side2zone)
+{
     if (chunk_size == 0) chunk_size = max(num_pts, num_sides);
 
     // compute side chunks
@@ -274,7 +276,6 @@ void LocalMesh::populateChunks(const int* map_side2zone) {
         z2 = min(z2 + chunk_size, num_zones);
         zone_chunks_CRS.push_back(z2);
     }
-
 }
 
 
@@ -315,18 +316,30 @@ void LocalMesh::writeMeshStats() {
     int gnumzch = num_zone_chunks();
     int gnumsch = num_side_chunks();
 
-    // TODO use Legion
-    Parallel::globalSum(gnump);
-    Parallel::globalSum(gnumz);
-    Parallel::globalSum(gnums);
-    Parallel::globalSum(gnume);
-    Parallel::globalSum(gnumpch);
-    Parallel::globalSum(gnumzch);
-    Parallel::globalSum(gnumsch);
+    Future future_sum = Parallel::globalSumInt64(gnump, add_reduction, runtime, ctx);
+    gnump = future_sum.get_result<int64_t>();
 
-    // TODO if (my_color > 0) return;
+    future_sum = Parallel::globalSumInt64(gnumz, add_reduction, runtime, ctx);
+    gnumz = future_sum.get_result<int64_t>();
 
-    cout << "--- Mesh Information ---" << endl; // TODO must be global sum
+    future_sum = Parallel::globalSumInt64(gnums, add_reduction, runtime, ctx);
+    gnums = future_sum.get_result<int64_t>();
+
+    future_sum = Parallel::globalSumInt64(gnume, add_reduction, runtime, ctx);
+    gnume = future_sum.get_result<int64_t>();
+
+    future_sum = Parallel::globalSumInt64(gnumpch, add_reduction, runtime, ctx);
+    gnumpch = future_sum.get_result<int64_t>();
+
+    future_sum = Parallel::globalSumInt64(gnumzch, add_reduction, runtime, ctx);
+    gnumzch = future_sum.get_result<int64_t>();
+
+    future_sum = Parallel::globalSumInt64(gnumsch, add_reduction, runtime, ctx);
+    gnumsch = future_sum.get_result<int64_t>();
+
+    if (my_color > 0) return;
+
+    cout << "--- Mesh Information ---" << endl;
     cout << "Points:  " << gnump << endl;
     cout << "Zones:  "  << gnumz << endl;
     cout << "Sides:  "  << gnums << endl;
@@ -338,7 +351,6 @@ void LocalMesh::writeMeshStats() {
     cout << "------------------------" << endl;
 
 }
-
 
 
 /*static*/

@@ -19,6 +19,7 @@
 #include <string>
 
 #include "AddReductionOp.hh"
+#include "AddInt64ReductionOp.hh"
 #include "Driver.hh"
 #include "GlobalMesh.hh"
 #include "MinReductionOp.hh"
@@ -55,10 +56,15 @@ void Parallel::run(InputParameters input_params,
 
 	  Rect<1> launch_bounds(Point<1>(0),Point<1>(num_subregions_-1));
 
-	  double zero = 0.0;
-	  DynamicCollective add_reduction =
-		runtime->create_dynamic_collective(ctx, num_subregions_, AddReductionOp::redop_id,
-						   &zero, sizeof(zero));
+      double zero = 0.0;
+      DynamicCollective add_reduction =
+        runtime->create_dynamic_collective(ctx, num_subregions_, AddReductionOp::redop_id,
+                           &zero, sizeof(zero));
+
+      int64_t int_zero = 0;
+      DynamicCollective add_int64_reduction =
+        runtime->create_dynamic_collective(ctx, num_subregions_, AddInt64ReductionOp::redop_id,
+                           &int_zero, sizeof(int_zero));
 
 	  TimeStep max;
 	  DynamicCollective min_reduction =
@@ -70,7 +76,8 @@ void Parallel::run(InputParameters input_params,
 
 	  for (int color = 0; color < num_subregions_; color++) {
 		  args[color].pbarrier_as_master = global_mesh.phase_barriers[color];
-		  args[color].add_reduction = add_reduction;
+          args[color].add_reduction = add_reduction;
+          args[color].add_int64_reduction = add_int64_reduction;
 		  args[color].min_reduction = min_reduction;
 		  args[color].direct_input_params = input_params.directs;
 		  args[color].direct_input_params.task_id = color;
@@ -115,121 +122,6 @@ void Parallel::run(InputParameters input_params,
 }
 
 
-void Parallel::globalSum(int& x) {
-    //if (num_subregions_ == 1)
-	return;
-#ifdef USE_MPI
-    int y;
-    MPI_Allreduce(&x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-    x = y;
-#endif
-}
-
-
-void Parallel::globalSum(int64_t& x) {
-    //if (num_subregions_ == 1)
-	return;
-#ifdef USE_MPI
-    int64_t y;
-    MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
-    x = y;
-#endif
-}
-
-
-void Parallel::globalSum(double& x) {
-    //if (num_subregions_ == 1)
-	return;
-#ifdef USE_MPI
-    double y;
-    MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    x = y;
-#endif
-}
-
-
-void Parallel::gather(int x, int* y) {
-    //if (num_subregions_ == 1)
-	{
-        y[0] = x;
-        return;
-    }
-#ifdef USE_MPI
-    MPI_Gather(&x, 1, MPI_INT, y, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-}
-
-
-void Parallel::scatter(const int* x, int& y) {
-    //if (num_subregions_ == 1)
-	{
-        y = x[0];
-        return;
-    }
-#ifdef USE_MPI
-    MPI_Scatter((void*) x, 1, MPI_INT, &y, 1, MPI_INT, 0, MPI_COMM_WORLD);
-#endif
-}
-
-
-template<typename T>
-void Parallel::gathervImpl(
-        const T *x, const int numx,
-        T* y, const int* numy) {
-
-    //if (num_subregions_ == 1)
-	{
-        std::copy(x, x + numx, y);
-        return;
-    }
-#ifdef USE_MPI
-    const int type_size = sizeof(T);
-    int sendcount = type_size * numx;
-    std::vector<int> recvcount, disp;
-    if (mype == 0) {
-        recvcount.resize(num_subregions);
-        for (int pe = 0; pe < num_subregions; ++pe) {
-            recvcount[pe] = type_size * numy[pe];
-        }
-        // exclusive scan isn't available in the standard library,
-        // so we use an inclusive scan and displace it by one place
-        disp.resize(num_subregions + 1);
-        std::partial_sum(recvcount.begin(), recvcount.end(), &disp[1]);
-    } // if mype
-
-    MPI_Gatherv((void*) x, sendcount, MPI_BYTE,
-            y, &recvcount[0], &disp[0], MPI_BYTE,
-            0, MPI_COMM_WORLD);
-#endif
-
-}
-
-
-template<>
-void Parallel::gatherv(
-        const double2 *x, const int numx,
-        double2* y, const int* numy) {
-    gathervImpl(x, numx, y, numy);
-}
-
-
-template<>
-void Parallel::gatherv(
-        const double *x, const int numx,
-        double* y, const int* numy) {
-    gathervImpl(x, numx, y, numy);
-}
-
-
-template<>
-void Parallel::gatherv(
-        const int *x, const int numx,
-        int* y, const int* numy) {
-    gathervImpl(x, numx, y, numy);
-}
-
-// Legion Stuff
-
 Future Parallel::globalSum(double local_value,
 		DynamicCollective& dc_reduction,
 		Runtime *runtime, Context ctx,
@@ -245,13 +137,40 @@ Future Parallel::globalSum(double local_value,
   return ff2;
 }
 
+
+Future Parallel::globalSumInt64(int64_t local_value,
+        DynamicCollective& dc_reduction,
+        Runtime *runtime, Context ctx,
+        Predicate pred)
+{
+  TaskLauncher launcher(sumInt64TaskID, TaskArgument(&local_value, sizeof(local_value)), pred, 0 /*default mapper*/);
+  int64_t zero = 0;
+  launcher.set_predicate_false_result(TaskArgument(&zero, sizeof(zero)));
+  Future f = runtime->execute_task(ctx, launcher);
+  runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
+  dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
+  Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
+  return ff2;
+}
+
+
 double Parallel::globalSumTask (const Task *task,
                   const std::vector<PhysicalRegion> &regions,
                   Context ctx, HighLevelRuntime *runtime)
 {
-	double value = *(const double *)(task->args);
-	return value;
+    double value = *(const double *)(task->args);
+    return value;
 }
+
+
+int64_t Parallel::globalSumInt64Task (const Task *task,
+                  const std::vector<PhysicalRegion> &regions,
+                  Context ctx, HighLevelRuntime *runtime)
+{
+    int64_t value = *(const int64_t *)(task->args);
+    return value;
+}
+
 
 Future Parallel::globalMin(TimeStep local_value,
 		DynamicCollective& dc_reduction,
@@ -334,11 +253,12 @@ static size_t archiveTensor(std::vector<std::vector<Type>> tensor, void* bit_str
     return size_size + tensor_size;
 }
 
+
 void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 {
     assert(spmd_args != nullptr);
 
-    bit_stream_size = 2 * sizeof(DynamicCollective) + sizeof(DirectInputParameters)
+    bit_stream_size = 3 * sizeof(DynamicCollective) + sizeof(DirectInputParameters)
             + sizeof(PhaseBarrier) + 5 * sizeof(size_t)
             + (spmd_args->meshtype.length() + 1 + spmd_args->probname.length() + 1) * sizeof(char)
             + (spmd_args->bcx.size() + spmd_args->bcy.size()) * sizeof(double)
@@ -350,6 +270,7 @@ void SPMDArgsSerializer::archive(SPMDArgs* spmd_args)
 
     size_t stream_size = 0;
     stream_size += archiveScalar(spmd_args->add_reduction, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(spmd_args->add_int64_reduction, (void*)(serialized+stream_size));
     stream_size += archiveScalar(spmd_args->min_reduction, (void*)(serialized+stream_size));
     stream_size += archiveScalar(spmd_args->direct_input_params, (void*)(serialized+stream_size));
     stream_size += archiveScalar(spmd_args->pbarrier_as_master, (void*)(serialized+stream_size));
@@ -461,6 +382,7 @@ static size_t restoreVector(std::vector<Type>* vec, void* bit_stream)
     return size_size + vec_size;
 }
 
+
 template<class Type>
 static size_t restoreTensor(std::vector<std::vector<Type>>* tensor, void* bit_stream)
 {
@@ -482,6 +404,7 @@ static size_t restoreTensor(std::vector<std::vector<Type>>* tensor, void* bit_st
     return size_size + tensor_size;
 }
 
+
 void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 {
     assert(spmd_args != nullptr);
@@ -491,6 +414,7 @@ void SPMDArgsSerializer::restore(SPMDArgs* spmd_args)
 
     bit_stream_size = 0;
     bit_stream_size += restoreScalar(&(spmd_args->add_reduction), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(spmd_args->add_int64_reduction), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(spmd_args->min_reduction), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(spmd_args->direct_input_params), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(spmd_args->pbarrier_as_master), (void*)(serialized_args + bit_stream_size));

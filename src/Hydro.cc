@@ -172,6 +172,7 @@ void Hydro::init() {
     args.gamma = params.directs.gamma;
 }
 
+
 void Hydro::allocateFields()
 {
     points.addField<double2>(FID_PU);
@@ -190,6 +191,7 @@ void Hydro::allocateFields()
     zones.addField<double>(FID_ZSS);
     zones.addField<double>(FID_ZDU);
 }
+
 
 void Hydro::initRadialVel(
         const double vel,
@@ -213,8 +215,7 @@ void Hydro::initRadialVel(
 }
 
 
-TimeStep Hydro::doCycle(
-            const double dt)
+TimeStep Hydro::doCycle(const double dt)
 {
     args.dt = dt;  // TODO only CorrectorTask needs this; pass as ArgumentMap to IndexLauncher
     DoCycleTasksArgsSerializer serial;

@@ -18,6 +18,7 @@
 
 #include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
+#include "AddInt64ReductionOp.hh"
 #include "CorrectorTask.hh"
 #include "Driver.hh"
 #include "HaloTask.hh"
@@ -92,12 +93,17 @@ int main(int argc, char **argv)
 
     TaskHelper::register_cpu_variants<WriteTask>();
 
-	HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
-			Processor::LOC_PROC, true/*single*/, true/*index*/,
-			AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumTask");
+    HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
+            Processor::LOC_PROC, true/*single*/, true/*index*/,
+            AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumTask");
+
+    HighLevelRuntime::register_legion_task<int64_t, Parallel::globalSumInt64Task>(GLOBAL_SUM_INT64_TASK_ID,
+            Processor::LOC_PROC, true/*single*/, true/*index*/,
+            AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumInt64Task");
 
     Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
     Runtime::register_reduction_op<Add2ReductionOp>(Add2ReductionOp::redop_id);
+    Runtime::register_reduction_op<AddInt64ReductionOp>(AddInt64ReductionOp::redop_id);
 
 	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,
 			Processor::LOC_PROC, true/*single*/, true/*index*/,
@@ -108,7 +114,6 @@ int main(int argc, char **argv)
 
 	return HighLevelRuntime::start(argc, argv);
 }
-
 
 
 InputParameters parseInputFile(InputFile *inp) {

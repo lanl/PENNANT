@@ -20,7 +20,6 @@
 
 
 // forward declarations
-class InputFile;
 class LocalMesh;
 class Hydro;
 
@@ -58,6 +57,7 @@ public:
 
     Driver(const InputParameters &params,
             DynamicCollective add_reduction,
+            DynamicCollective add_int64_reduction,
             DynamicCollective min_reduction,
             PhaseBarrier pbarrier_as_master,
             std::vector<PhaseBarrier> masters_pbarriers,
@@ -76,6 +76,7 @@ private:
     TimeStep dt_hydro;
 
     DynamicCollective add_reduction;
+    DynamicCollective add_int64_reduction;
     DynamicCollective min_reduction;
     Context ctx;
     HighLevelRuntime* runtime;

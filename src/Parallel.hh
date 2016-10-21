@@ -23,7 +23,7 @@
 using namespace LegionRuntime::HighLevel;
 using namespace LegionRuntime::Accessor;
 
-// TODO remove circular dependencies by breaking this class up
+// TODO break this file up
 
 // Parallel provides helper functions and variables for
 // running in distributed parallel mode using Legion.
@@ -123,9 +123,11 @@ enum TaskIDs {
     HALO_TASK_ID,
     PREDICTOR_TASK_ID,
     WRITE_TASK_ID,
-	GLOBAL_SUM_TASK_ID,
+    GLOBAL_SUM_TASK_ID,
+    GLOBAL_SUM_INT64_TASK_ID,
 	GLOBAL_MIN_TASK_ID,
     ADD_REDOP_ID,
+    ADD_INT64_REDOP_ID,
     ADD2_REDOP_ID,
 	MIN_REDOP_ID,
 };
@@ -139,48 +141,39 @@ class Parallel {
 public:
 
     static void run(InputParameters input_params,
-    		Context ctx, HighLevelRuntime *runtime);
+            Context ctx, HighLevelRuntime *runtime);
 
-    // TODO use Legion
-    static void globalSum(int& x);     // find sum over all PEs - overloaded
-    static void globalSum(int64_t& x);
-    // TODO Export Gold stuff to be converted to Legion
-    static void globalSum(double& x);
-    static void gather(const int x, int* y);
-                                // gather list of ints from all PEs
-    static void scatter(const int* x, int& y);
-                                // gather list of ints from all PEs
-
-    template<typename T>
-    static void gatherv(               // gather variable-length list
-            const T *x, const int numx,
-            T* y, const int* numy);
-    template<typename T>
-    static void gathervImpl(           // helper function for gatherv
-            const T *x, const int numx,
-            T* y, const int* numy);
-    // Legion stuff
     static Future globalSum(double local_value,
-			  DynamicCollective& dc_reduction,
-			  Runtime *runtime, Context ctx,
-			  Predicate pred = Predicate::TRUE_PRED);
+            DynamicCollective& dc_reduction,
+            Runtime *runtime, Context ctx,
+            Predicate pred = Predicate::TRUE_PRED);
 	static const TaskID sumTaskID = GLOBAL_SUM_TASK_ID;
 	static double globalSumTask(const Task *task,
-					const std::vector<PhysicalRegion> &regions,
-					Context ctx, HighLevelRuntime *runtime);
+	        const std::vector<PhysicalRegion> &regions,
+	        Context ctx, HighLevelRuntime *runtime);
+
+    static Future globalSumInt64(int64_t local_value,
+            DynamicCollective& dc_reduction,
+            Runtime *runtime, Context ctx,
+            Predicate pred = Predicate::TRUE_PRED);
+    static const TaskID sumInt64TaskID = GLOBAL_SUM_INT64_TASK_ID;
+    static int64_t globalSumInt64Task(const Task *task,
+            const std::vector<PhysicalRegion> &regions,
+            Context ctx, HighLevelRuntime *runtime);
 
 	static Future globalMin(TimeStep local_value,
-			  DynamicCollective& dc_reduction,
-			  Runtime *runtime, Context ctx,
-			  Predicate pred = Predicate::TRUE_PRED);
+	        DynamicCollective& dc_reduction,
+	        Runtime *runtime, Context ctx,
+	        Predicate pred = Predicate::TRUE_PRED);
 	static const TaskID minTaskID = GLOBAL_MIN_TASK_ID;
 	static TimeStep globalMinTask(const Task *task,
-					const std::vector<PhysicalRegion> &regions,
-					Context ctx, HighLevelRuntime *runtime);
+	        const std::vector<PhysicalRegion> &regions,
+	        Context ctx, HighLevelRuntime *runtime);
 };  // class Parallel
 
 struct SPMDArgs {
-	DynamicCollective add_reduction;
+    DynamicCollective add_reduction;
+    DynamicCollective add_int64_reduction;
 	DynamicCollective min_reduction;
 	DirectInputParameters direct_input_params;
     std::string meshtype;

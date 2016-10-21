@@ -33,27 +33,6 @@ public:
     		DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt);
 
-    // associated mesh object
-    LocalMesh* mesh;
-
-    double cfl;                 // Courant number, limits timestep
-    double cflv;                // volume change limit for timestep
-    double rho_init;               // initial density for main mesh
-    double energy_init;               // initial energy for main mesh
-    double rho_init_sub;            // initial density in subregion
-    double energy_init_sub;            // initial energy in subregion
-    double vel_init_radial;         // initial velocity in radial direction
-    std::vector<double> bcx;    // x values of x-plane fixed boundaries
-    std::vector<double> bcy;    // y values of y-plane fixed boundaries
-
-    void init();
-
-    void initRadialVel(
-            const double vel,
-            const int pfirst,
-            const int plast,
-            double2* pt_vel);
-
     TimeStep doCycle(const double dt);
 
     static void advPosHalf(
@@ -135,21 +114,6 @@ public:
             const int zfirst,
             const int zlast);
 
-    void sumEnergy(
-            const double* zetot,
-            const double* zarea,
-            const double* zvol,
-            const double* zm,
-            const double* smf,
-            const double2* px,
-            const double2* pu,
-            double& ei,
-            double& ek,
-            const int zfirst,
-            const int zlast,
-            const int sfirst,
-            const int slast);
-
     static void calcDtCourant(
             double& dtrec,
             char* msgdtrec,
@@ -188,7 +152,44 @@ public:
     void copyZonesToLegion(LogicalUnstructured& global_zones);
 
 private:
-	void  allocateFields();
+    // associated mesh object
+    LocalMesh* mesh;
+
+    double cfl;                 // Courant number, limits timestep
+    double cflv;                // volume change limit for timestep
+    double rho_init;               // initial density for main mesh
+    double energy_init;               // initial energy for main mesh
+    double rho_init_sub;            // initial density in subregion
+    double energy_init_sub;            // initial energy in subregion
+    double vel_init_radial;         // initial velocity in radial direction
+    std::vector<double> bcx;    // x values of x-plane fixed boundaries
+    std::vector<double> bcy;    // y values of y-plane fixed boundaries
+
+    void init();
+
+    void initRadialVel(
+            const double vel,
+            const int pfirst,
+            const int plast,
+            double2* pt_vel);
+
+    void sumEnergy(
+            const double* zetot,
+            const double* zarea,
+            const double* zvol,
+            const double* zm,
+            const double* smf,
+            const double2* px,
+            const double2* pu,
+            double& ei,
+            double& ek,
+            const int zfirst,
+            const int zlast,
+            const int sfirst,
+            const int slast);
+
+
+    void  allocateFields();
 
     DoCycleTasksArgs args;
     DynamicCollective add_reduction;

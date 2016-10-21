@@ -23,20 +23,20 @@
 #include "Parallel.hh"
 #include "Vec2.hh"
 
+
 class LocalMesh {
 public:
-
     LocalMesh(const InputParameters& params,
    		IndexSpace pts,
         std::vector<LogicalUnstructured>& halos_points,
         std::vector<PhysicalRegion>& pregions_halos,
         PhaseBarrier pbarrier_as_master,
         std::vector<PhaseBarrier> masters_pbarriers,
+        DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt);
     ~LocalMesh();
 
     // parameters
-    int chunk_size;                 // max size for processing chunks
     double subregion_xmin; 		   // bounding box for a subregion
     double subregion_xmax; 		   // if xmin != std::numeric_limits<double>::max(),
     double subregion_ymin;         // should have 4 entries:
@@ -57,6 +57,7 @@ public:
         const int snext = (s + 1 == slast ? sbase : s + 1);
         return snext;
     }
+
     static inline int mapSideToPt2(const int &s,
             const int* map_side2pt1,
             const int* map_side2zone,
@@ -80,20 +81,24 @@ public:
     {return zone_pts_ptr[i+1] - zone_pts_ptr[i];}
 
     inline int num_side_chunks() { return side_chunks_CRS.size() - 1;}
+
     std::vector<int> side_chunks_CRS;    // start/stop index for side chunks, compressed row storage
+    std::vector<int> pt_chunks_CRS;    // start/stop index for point chunks, compressed row storage
+    std::vector<int> zone_chunks_CRS;    // start/stop index for zone chunks, compressed row storage
+
     static inline int side_zone_chunks_first(int s,
             const int* map_side2zone,
             const std::vector<int> side_chunks_CRS)
     { return map_side2zone[side_chunks_CRS[s]]; }
+
     static inline int side_zone_chunks_last(int s,
             const int* map_side2zone,
             const std::vector<int> side_chunks_CRS)
     { return map_side2zone[side_chunks_CRS[s+1]-1] + 1; }
-    inline int num_pt_chunks() { return pt_chunks_CRS.size() - 1;}
-    std::vector<int> pt_chunks_CRS;    // start/stop index for point chunks, compressed row storage
-    inline int num_zone_chunks() { return zone_chunks_CRS.size() - 1;}
-    std::vector<int> zone_chunks_CRS;    // start/stop index for zone chunks, compressed row storage
 
+    inline int num_pt_chunks() { return pt_chunks_CRS.size() - 1;}
+
+    inline int num_zone_chunks() { return zone_chunks_CRS.size() - 1;}
 
     // find plane with constant x, y value //TODO profile: is this still eating my time?
     static std::vector<int> getXPlane(
@@ -193,10 +198,10 @@ public:
     LogicalStructured edges;
 
 private:
+    int chunk_size;                 // max size for processing chunks
 
 	LogicalUnstructured pt_x_init_by_gid;
 
-	// children
     GenerateMesh* generate_mesh;
 
     PhaseBarrier pbarrier_as_master;
@@ -205,6 +210,7 @@ private:
     std::vector<int> master_colors;
     std::vector<int> slave_colors;
 
+    DynamicCollective add_reduction;
     Context ctx;
     HighLevelRuntime* runtime;
 
@@ -214,7 +220,7 @@ private:
     std::vector<LogicalUnstructured> local_halos_points;
 
     const int num_subregions;
-    const int my_color; // TODO not used?
+    const int my_color;
 
     void init();
 
