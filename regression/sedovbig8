@@ -16,3 +16,4 @@ cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
 
 mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 8 ./sedovbig.pnt\
  -ll:cpu 16 -ll:util 2 -ll:dma 1 2>&1 | tee sedovbig.1x8
+# -ll:cpu 16 -ll:util 2 -ll:dma 1 -hl:prof 1 -logfile prof_%.log 2>&1 | tee sedovbig.1x8
