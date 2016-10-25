@@ -26,6 +26,7 @@
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
 #include "Parallel.hh"
+#include "PredictorPointTask.hh"
 #include "PredictorTask.hh"
 #include "WriteTask.hh"
 
@@ -88,6 +89,8 @@ int main(int argc, char **argv)
             AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF), DriverTask::TASK_NAME);
 
     TaskHelper::register_cpu_variants<HaloTask>();
+
+    TaskHelper::register_cpu_variants<PredictorPointTask>();
 
     TaskHelper::register_cpu_variants<PredictorTask>();
 

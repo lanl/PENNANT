@@ -23,8 +23,6 @@
 using namespace LegionRuntime::HighLevel;
 using namespace LegionRuntime::Accessor;
 
-// TODO break this file up
-
 // Parallel provides helper functions and variables for
 // running in distributed parallel mode using Legion.
 
@@ -121,6 +119,7 @@ enum TaskIDs {
     CORRECTOR_TASK_ID,
     DRIVER_TASK_ID,
     HALO_TASK_ID,
+    PREDICTOR_POINT_TASK_ID,
     PREDICTOR_TASK_ID,
     WRITE_TASK_ID,
     GLOBAL_SUM_TASK_ID,

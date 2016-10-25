@@ -14,6 +14,7 @@
 #include "PredictorTask.hh"
 
 #include <algorithm>
+#include <cmath>
 
 #include "GenerateMesh.hh"
 #include "Hydro.hh"
@@ -21,8 +22,6 @@
 #include "LocalMesh.hh"
 #include "LogicalStructured.hh"
 #include "PolyGas.hh"
-#include "QCS.hh"
-#include "TTS.hh"
 #include "Memory.hh"
 #include "Vec2.hh"
 
@@ -37,9 +36,10 @@ enum idx {
     SEVEN,
     EIGHT,
     NINE,
-    TEN,
-    ELEVEN,
 };
+
+using namespace std;
+
 
 PredictorTask::PredictorTask(LogicalRegion mesh_zones,
         LogicalRegion mesh_sides,
@@ -72,25 +72,326 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
     add_field(FOUR, FID_PU);
     add_region_requirement(RegionRequirement(mesh_zones, READ_ONLY, EXCLUSIVE, mesh_zones));
     add_field(FIVE, FID_ZVOL);
-    add_region_requirement(RegionRequirement(hydro_points, READ_WRITE, EXCLUSIVE, hydro_points));
-    add_field(SIX, FID_PU0);
     add_region_requirement(RegionRequirement(hydro_zones, READ_ONLY, EXCLUSIVE, hydro_zones));
-    add_field(SEVEN, FID_ZR);
-    add_field(SEVEN, FID_ZE);
-    add_field(SEVEN, FID_ZM);
-    add_field(SEVEN, FID_ZWR);
+    add_field(SIX, FID_ZR);
+    add_field(SIX, FID_ZE);
+    add_field(SIX, FID_ZM);
+    add_field(SIX, FID_ZWR);
     add_region_requirement(RegionRequirement(hydro_zones, READ_WRITE, EXCLUSIVE, hydro_zones));
-    add_field(EIGHT, FID_ZDU);
-    add_field(EIGHT, FID_ZSS);
-    add_field(EIGHT, FID_ZP);
-    add_region_requirement(RegionRequirement(mesh_points, READ_WRITE, EXCLUSIVE, mesh_points));
-    add_field(NINE, FID_PXP);
-    add_field(NINE, FID_PX0);
+    add_field(SEVEN, FID_ZDU);
+    add_field(SEVEN, FID_ZSS);
+    add_field(SEVEN, FID_ZP);
     add_region_requirement(RegionRequirement(mesh_points, READ_ONLY, EXCLUSIVE, mesh_points));
-    add_field(TEN, FID_PX);
+    add_field(EIGHT, FID_PXP);
 }
 
 /*static*/ const char * const PredictorTask::TASK_NAME = "PredictorTask";
+
+
+static void QCScalcForce(
+        double2* sfq,
+        const int sfirst,
+        const int slast,
+        const int nums,
+        const int numz,
+        const double2* pu,
+        const double2* ex,
+        const double2* zx,
+        const double* elen,
+        const int* map_side2zone,
+        const int* map_side2pt1,
+        const int* zone_pts_ptr,
+        const int* map_side2edge,
+        const double2* pt_x_pred,
+        const double* zrp,
+        const double* zss,
+        const double qgamma,
+        const double q1,
+        const double q2,
+        int zfirst,
+        int zlast,
+        double* zdu) {
+    // declare temporary variables
+    double* c0area = AbstractedMemory::alloc<double>(slast - sfirst);
+    double* c0cos = AbstractedMemory::alloc<double>(slast - sfirst);
+    double2* c0qe = AbstractedMemory::alloc<double2>(2 * (slast - sfirst));
+    double* c0w = AbstractedMemory::alloc<double>(slast - sfirst);
+
+
+    // [1] Find the right, left, top, bottom  edges to use for the
+    //     limiters
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [2] Compute corner divergence and related quantities
+    // [2.1] Find the corner divergence
+    // [2.2] Compute the cos angle for c
+    // [2.3] Find the evolution factor c0evol(c) and the Delta u(c) = du(c)
+    // [2.4] Find the weights c0w(c)
+
+
+    // Routine number [2]  in the full algorithm
+    //     [2.1] Find the corner divergence
+    //     [2.2] Compute the cos angle for c
+    //     [2.3] Find the evolution factor c0evol(c)
+    //           and the Delta u(c) = du(c)
+
+        double2* z0uc = AbstractedMemory::alloc<double2>(zlast - zfirst);
+
+        // [1] Compute a zone-centered velocity
+        fill(&z0uc[0], &z0uc[zlast-zfirst], double2(0., 0.));
+        for (int s = sfirst; s < slast; ++s) {
+            int p = map_side2pt1[s];
+            int z = map_side2zone[s];
+            int z0 = z - zfirst;
+            z0uc[z0] += pu[p];
+        }
+
+        for (int z = zfirst; z < zlast; ++z) {
+            int z0 = z - zfirst;
+            z0uc[z0] /= (double) LocalMesh::zoneNPts(z, zone_pts_ptr);
+        }
+
+        // [2] Divergence at the corner
+        const double2* pt_x_pred_ = pt_x_pred;
+        #pragma ivdep
+        for (int s = sfirst; s < slast; ++s) {
+            int s2 = s;
+            int sprev = LocalMesh::mapSideToSidePrev(s2, map_side2zone, zone_pts_ptr);
+            // Associated zone, corner, point
+            int z = map_side2zone[sprev];
+            int z0 = z - zfirst;
+            int c0 = s - sfirst;
+            int p = LocalMesh::mapSideToPt2(sprev, map_side2pt1, map_side2zone, zone_pts_ptr);
+            // Points
+            int p1 = map_side2pt1[sprev];
+            int p2 = LocalMesh::mapSideToPt2(s2, map_side2pt1, map_side2zone, zone_pts_ptr);
+            // Edges
+            int e1 = map_side2edge[sprev];
+            int e2 = map_side2edge[s2];
+
+            // Velocities and positions
+            // 0 = point p
+            double2 xp0 = pt_x_pred_[p];
+            // 1 = edge e2
+            double2 xp1 = ex[e2];
+            // 2 = zone center z
+            double2 xp2 = zx[z];
+            // 3 = edge e1
+            double2 xp3 = ex[e1];
+
+            // compute 2d cartesian volume of corner
+            double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
+            c0area[c0] = cvolume;
+
+            // compute cosine angle
+            double2 v1 = xp3 - xp0;
+            double2 v2 = xp1 - xp0;
+            double de1 = elen[e1];
+            double de2 = elen[e2];
+            double minelen = min(de1, de2);
+            c0cos[c0] = ((minelen < 1.e-12) ?
+                    0. :
+                    4. * dot(v1, v2) / (de1 * de2));
+
+            // [5.1] Preparation of extra variables
+            double csin2 = 1.0 - c0cos[c0] * c0cos[c0];
+            c0w[c0]   = ((csin2 < 1.e-4) ? 0. : c0area[c0] / csin2);
+            c0cos[c0] = ((csin2 < 1.e-4) ? 0. : c0cos[c0]);
+        }  // for s
+
+
+    // [3] Find the limiters Psi(c)
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [4] Compute the Q vector (corner based)
+    // [4.1] Compute cmu = (1-psi) . crho . zKUR . c0evol
+    // [4.2] Compute the q vector associated with c on edges
+    //       e1=[n0,n1], e2=[n1,n2]
+    //       c0qe(2,c) = cmu(c).( u(n2)-u(n1) ) / l_{n1->n2}
+    //       c0qe(1,c) = cmu(c).( u(n1)-u(n0) ) / l_{n0->n1}
+
+
+    // Routine number [4]  in the full algorithm CS2DQforce(...)
+    const double gammap1 = qgamma + 1.0;
+
+    double* z0tmp = AbstractedMemory::alloc<double>(zlast - zfirst);
+
+    fill(&z0tmp[0], &z0tmp[zlast-zfirst], 0.);
+
+    #pragma ivdep
+    for (int s = sfirst; s < slast; ++s) {
+        int sprev = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
+        int c10 = s - sfirst;
+        int p = LocalMesh::mapSideToPt2(sprev, map_side2pt1, map_side2zone, zone_pts_ptr);
+        // Associated point and edge 1
+        int p1 = map_side2pt1[sprev];
+        int e1 = map_side2edge[sprev];
+        // Associated point and edge 2
+        int p2 = LocalMesh::mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int e2 = map_side2edge[s];
+        int z = map_side2zone[s];
+
+        // Associated zone, corner, point
+        int zprev = map_side2zone[sprev];
+        int z0 = zprev - zfirst;
+
+        // Velocities and positions
+        // 0 = point p
+        double2 up0 = pu[p];
+        double2 xp0 = pt_x_pred_[p];
+        // 1 = edge e2
+        double2 up1 = 0.5 * (pu[p] + pu[p2]);
+        double2 xp1 = ex[e2];
+        // 2 = zone center z
+        double2 up2 = z0uc[z0];
+        double2 xp2 = zx[z];
+        // 3 = edge e1
+        double2 up3 = 0.5 * (pu[p1] + pu[p]);
+        double2 xp3 = ex[e1];
+
+        // compute cosine angle
+        double2 v1 = xp3 - xp0;
+        double2 v2 = xp1 - xp0;
+        double de1 = elen[e1];
+        double de2 = elen[e2];
+        double minelen = min(de1, de2);
+
+        // compute delta velocity
+        double dv1 = length2(up1 + up2 - up0 - up3);
+        double dv2 = length2(up2 + up3 - up0 - up1);
+        double du = sqrt(max(dv1, dv2));
+
+        // average corner-centered velocity
+        double2 duav = 0.25 * (up0 + up1 + up2 + up3);
+
+        // compute evolution factor
+        double2 dxx1 = 0.5 * (xp1 + xp2 - xp0 - xp3);
+        double2 dxx2 = 0.5 * (xp2 + xp3 - xp0 - xp1);
+        double dx1 = length(dxx1);
+        double dx2 = length(dxx2);
+
+        double test1 = abs(dot(dxx1, duav) * dx2);
+        double test2 = abs(dot(dxx2, duav) * dx1);
+        double num = (test1 > test2 ? dx1 : dx2);
+        double den = (test1 > test2 ? dx2 : dx1);
+        double r = num / den;
+        double evol = sqrt(4.0 * c0area[c10] * r);
+        evol = min(evol, 2.0 * minelen);
+
+        // compute divergence of corner
+        double c0div = (cross(up2 - up0, xp3 - xp1) -
+                cross(up3 - up1, xp2 - xp0)) /
+                (2.0 * c0area[c10]);
+
+        double c0evol = (c0div < 0.0 ? evol : 0.);
+        double c0du = (c0div < 0.0 ? du   : 0.);
+
+        // [4.1] Compute the c0rmu (real Kurapatenko viscous scalar)
+        // Kurapatenko form of the viscosity
+        double ztmp2 = q2 * 0.25 * gammap1 * c0du;
+        double ztmp1 = q1 * zss[z];
+        double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
+        // Compute c0rmu for each corner
+        double rmu = zkur * zrp[z] * c0evol;
+        double c0rmu = ((c0div > 0.0) ? 0. : rmu);
+
+        // [4.2] Compute the c0qe for each corner
+
+        // Compute: c0qe(1,2,3)=edge 1, y component (2nd), 3rd corner
+        //          c0qe(2,1,3)=edge 2, x component (1st)
+        c0qe[2 * c10]     = c0rmu * (pu[p] - pu[p1]) / elen[e1];
+        c0qe[2 * c10 + 1] = c0rmu * (pu[p2] - pu[p]) / elen[e2];
+
+    } // for s
+
+    #pragma ivdep
+    for (int s = sfirst; s < slast; ++s) {
+        // [5] Compute the Q forces
+        // Routine number [5]  in the full algorithm CS2DQforce(...)
+        // Associated corners 1 and 2, and edge
+        int c10 = s - sfirst;
+        int c2 = LocalMesh::mapSideToSideNext(s, map_side2zone, zone_pts_ptr);
+        int c20 = c2 - sfirst;
+        int e = map_side2edge[s];
+        // Edge length for s, c2 contribution to s
+        double el = elen[e];
+
+        // [5.2] Set-Up the forces on corners
+        sfq[s] = (c0w[c10] * (c0qe[2*c10+1] + c0cos[c10] * c0qe[2*c10]) +
+                  c0w[c20] * (c0qe[2*c20] + c0cos[c20] * c0qe[2*c20+1]))
+            / el;
+
+        int p3 = map_side2pt1[s];
+        int p4 = LocalMesh::mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int z = map_side2zone[s];
+        int z0 = z - zfirst;
+
+        // [6] Set velocity difference to use to compute timestep
+        double2 dx = pt_x_pred[p4] - pt_x_pred[p3];
+        double2 du = pu[p4] - pu[p3];
+        double lenx = elen[e];
+        double dux = dot(du, dx);
+        // Routine number [6] in the full algorithm
+        dux = (lenx > 0. ? abs(dux) / lenx : 0.);
+        z0tmp[z0] = max(z0tmp[z0], dux);
+    }
+
+    AbstractedMemory::free(z0uc);
+    AbstractedMemory::free(c0w);
+    AbstractedMemory::free(c0area);
+    AbstractedMemory::free(c0cos);
+    AbstractedMemory::free(c0qe);
+
+    for (int z = zfirst; z < zlast; ++z) {
+        int z0 = z - zfirst;
+        zdu[z] = q1 * zss[z] + 2. * q2 * z0tmp[z0];
+    }
+
+    AbstractedMemory::free(z0tmp);
+}
+
+
+static void TTScalcForce(
+        const double* zarea,
+        const double* zr,
+        const double* zss,
+        const double* sarea,
+        const double* smf,
+        const double2* ssurfp,
+        double2* sf,
+        const int sfirst,
+        const int slast,
+        const int* map_side2zone,
+        const double ssmin,
+        const double alfa) {
+
+    //  Side density:
+    //    srho = sm/sv = zr (sm/zm) / (sv/zv)
+    //  Side pressure:
+    //    sp   = zp + alfa dpdr (srho-zr)
+    //         = zp + sdp
+    //  Side delta pressure:
+    //    sdp  = alfa dpdr (srho-zr)
+    //         = alfa c**2 (srho-zr)
+    //
+    //    Notes: smf stores (sm/zm)
+    //           svfac stores (sv/zv)
+
+    #pragma ivdep
+    for (int s = sfirst; s < slast; ++s) {
+        int z = map_side2zone[s];
+
+        double svfacinv = zarea[z] / sarea[s];
+        double srho = zr[z] * smf[s] * svfacinv;
+        double sstmp = max(zss[z], ssmin);
+        sstmp = alfa * sstmp * sstmp;
+        double sdp = sstmp * (srho - zr[z]);
+        double2 sqq = -sdp * ssurfp[s];
+        sf[s] = sqq;
+
+    }
+
+}
 
 
 /*static*/
@@ -98,8 +399,8 @@ void PredictorTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == ELEVEN);
-	assert(task->regions.size() == ELEVEN);
+	assert(regions.size() == NINE);
+	assert(task->regions.size() == NINE);
 
     DoCycleTasksArgs args;
     DoCycleTasksArgsSerializer args_serializer;
@@ -126,20 +427,16 @@ void PredictorTask::cpu_run(const Task *task,
     LogicalStructured mesh_zones(ctx, runtime, regions[FIVE]);
     const double* zone_vol = mesh_zones.getRawPtr<double>(FID_ZVOL);
 
-    assert(task->regions[SEVEN].privilege_fields.size() == 4);
-    LogicalStructured hydro_zones(ctx, runtime, regions[SEVEN]);
+    assert(task->regions[SIX].privilege_fields.size() == 4);
+    LogicalStructured hydro_zones(ctx, runtime, regions[SIX]);
     const double* zone_rho = hydro_zones.getRawPtr<double>(FID_ZR);
     const double* zone_energy_density = hydro_zones.getRawPtr<double>(FID_ZE);
     const double* zone_mass = hydro_zones.getRawPtr<double>(FID_ZM);
     const double* zone_work_rate = hydro_zones.getRawPtr<double>(FID_ZWR);
 
-    assert(task->regions[TEN].privilege_fields.size() == 1);
-    LogicalStructured mesh_points(ctx, runtime, regions[TEN]);
-    const double2* pt_x = mesh_points.getRawPtr<double2>(FID_PX);
-
-    assert(task->regions[SIX].privilege_fields.size() == 1);
-    LogicalStructured hydro_write_points(ctx, runtime, regions[SIX]);
-    double2* pt_vel0 = hydro_write_points.getRawPtr<double2>(FID_PU0);
+    assert(task->regions[EIGHT].privilege_fields.size() == 1);
+    LogicalStructured mesh_write_points(ctx, runtime, regions[EIGHT]);
+    const double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
 
     double* edge_len = AbstractedMemory::alloc<double>(args.num_edges);
     double2* edge_x_pred = AbstractedMemory::alloc<double2>(args.num_edges);
@@ -152,8 +449,8 @@ void PredictorTask::cpu_run(const Task *task,
     double* zone_vol_pred = AbstractedMemory::alloc<double>(mesh_write_zones.size());
     double* zone_area_pred = AbstractedMemory::alloc<double>(mesh_write_zones.size());
 
-    assert(task->regions[EIGHT].privilege_fields.size() == 3);
-    LogicalStructured hydro_write_zones(ctx, runtime, regions[EIGHT]);
+    assert(task->regions[SEVEN].privilege_fields.size() == 3);
+    LogicalStructured hydro_write_zones(ctx, runtime, regions[SEVEN]);
     double* zone_dvel = hydro_write_zones.getRawPtr<double>(FID_ZDU);
     double* zone_sound_speed = hydro_write_zones.getRawPtr<double>(FID_ZSS);
     double* zone_pressure = hydro_write_zones.getRawPtr<double>(FID_ZP);
@@ -169,26 +466,6 @@ void PredictorTask::cpu_run(const Task *task,
 
     double* side_area_pred = AbstractedMemory::alloc<double>(args.num_sides);
     double2* side_surfp = AbstractedMemory::alloc<double2>(args.num_sides);
-
-    assert(task->regions[NINE].privilege_fields.size() == 2);
-    LogicalStructured mesh_write_points(ctx, runtime, regions[NINE]);
-    double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
-    double2* pt_x0 = mesh_write_points.getRawPtr<double2>(FID_PX0);
-
-    for (int pch = 0; pch < (args.point_chunk_CRS.size()-1); ++pch) {
-        int pfirst = args.point_chunk_CRS[pch];
-        int plast = args.point_chunk_CRS[pch+1];
-
-        // save off point variable values from previous cycle
-        std::copy(&pt_x[pfirst], &pt_x[plast], &pt_x0[pfirst]);
-        std::copy(&pt_vel[pfirst], &pt_vel[plast], &pt_vel0[pfirst]);
-
-        // ===== Predictor step =====
-        // 1. advance mesh to center of time step
-        Hydro::advPosHalf(args.dt, pfirst, plast,
-                pt_x0, pt_vel0,
-                pt_x_pred);
-    }
 
     for (int side_chunk = 0; side_chunk < (args.side_chunk_CRS.size()-1); ++side_chunk) {
         int sfirst = args.side_chunk_CRS[side_chunk];
@@ -236,12 +513,12 @@ void PredictorTask::cpu_run(const Task *task,
         PolyGas::calcForce(zone_pressure, side_surfp, side_force_pres, sfirst, slast,
                 map_side2zone);
 
-        TTS::calcForce(zone_area_pred, zone_rho_pred, zone_sound_speed, side_area_pred,
+        TTScalcForce(zone_area_pred, zone_rho_pred, zone_sound_speed, side_area_pred,
                 side_mass_frac, side_surfp, side_force_tts,
                 sfirst, slast,
                 map_side2zone, args.ssmin, args.alpha);
 
-        QCS::calcForce(side_force_visc, sfirst, slast,
+        QCScalcForce(side_force_visc, sfirst, slast,
                 args.num_sides, args.num_zones, pt_vel, edge_x_pred,
                 zone_x_pred, edge_len, map_side2zone, map_side2pt1,
                 zone_pts_ptr, map_side2edge, pt_x_pred,

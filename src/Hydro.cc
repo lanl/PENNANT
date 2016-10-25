@@ -27,6 +27,7 @@
 #include "HydroBC.hh"
 #include "LocalMesh.hh"
 #include "Memory.hh"
+#include "PredictorPointTask.hh"
 #include "PredictorTask.hh"
 
 
@@ -219,6 +220,12 @@ TimeStep Hydro::doCycle(const double dt)
     args.dt = dt;  // TODO only CorrectorTask needs this; pass as ArgumentMap to IndexLauncher
     DoCycleTasksArgsSerializer serial;
     serial.archive(&args);
+
+    PredictorPointTask predictor_point_launcher(
+            mesh->points.getLRegion(),
+            points.getLRegion(),
+            serial.getBitStream(), serial.getBitStreamSize());
+    runtime->execute_task(ctx, predictor_point_launcher);
 
     PredictorTask predictor_launcher(mesh->zones.getLRegion(),
             mesh->sides.getLRegion(),
