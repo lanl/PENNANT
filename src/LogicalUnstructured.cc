@@ -207,6 +207,7 @@ PhysicalRegion LogicalUnstructured::getPRegion()
             req.add_field(fIDs[i]);
         InlineLauncher launcher(req);
         pregion = runtime->map_region(ctx, launcher);
+        pregion.wait_until_valid(); // maybe don't trust is_mapped()
     }
     return pregion;
 }
