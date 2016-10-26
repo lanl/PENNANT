@@ -275,28 +275,6 @@ void Hydro::advPosHalf(
 
 
 /*static*/
-void Hydro::calcCrnrMass(
-        const int sfirst,
-        const int slast,
-        const double* zone_area_pred,
-        const double* side_mass_frac,
-        const int* map_side2zone,
-        const int* zone_pts_ptr,
-        const double* zone_rho_pred,
-        double* crnr_weighted_mass)
-{
-    #pragma ivdep
-    for (int s = sfirst; s < slast; ++s) {
-        int s3 = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
-        int z = map_side2zone[s];
-
-        double m = zone_rho_pred[z] * zone_area_pred[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[s3]);
-        crnr_weighted_mass[s] = m;
-    }
-}
-
-
-/*static*/
 void Hydro::sumCrnrForce(
         const double2* side_force_pres,
         const double2* side_force_visc,

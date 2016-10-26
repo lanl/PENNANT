@@ -21,7 +21,6 @@
 #include "InputParameters.hh"
 #include "LocalMesh.hh"
 #include "LogicalStructured.hh"
-#include "PolyGas.hh"
 #include "Memory.hh"
 #include "Vec2.hh"
 
@@ -88,7 +87,99 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
 /*static*/ const char * const PredictorTask::TASK_NAME = "PredictorTask";
 
 
-static void QCScalcForce(
+
+static
+void PolyGascalcForce(
+        const double* zp,
+        const double2* ssurfp,
+        double2* sf,
+        const int sfirst,
+        const int slast,
+        const int* map_side2zone) {
+
+    #pragma ivdep
+    for (int s = sfirst; s < slast; ++s) {
+        int z = map_side2zone[s];
+        double2 sfx = -zp[z] * ssurfp[s];
+        sf[s] = sfx;
+
+    }
+}
+
+
+static
+void PolyGascalcEOS(
+        const double* zr,
+        const double* ze,
+        double* zp,
+        double* z0per,
+        double* zss,
+        const int zfirst,
+        const int zlast,
+        const double gamma,
+        const double ssmin) {
+
+    const double gm1 = gamma - 1.;
+    const double ss2 = max(ssmin * ssmin, 1.e-99);
+
+    #pragma ivdep
+    for (int z = zfirst; z < zlast; ++z) {
+        int z0 = z - zfirst;
+        double rx = zr[z];
+        double ex = max(ze[z], 0.0);
+        double px = gm1 * rx * ex;
+        double prex = gm1 * ex;
+        double perx = gm1 * rx;
+        double csqd = max(ss2, prex + perx * px / (rx * rx));
+        zp[z] =  px;
+        z0per[z0] = perx;
+        zss[z] = sqrt(csqd);
+    }
+
+}
+
+
+static
+void PolyGascalcStateAtHalf(
+        const double* zr0,
+        const double* zvolp,
+        const double* zvol0,
+        const double* ze,
+        const double* zwrate,
+        const double* zm,
+        const double dt,
+        double* zp,
+        double* zss,
+        const int zfirst,
+        const int zlast,
+        const double gamma,
+        const double ssmin) {
+
+    double* z0per = AbstractedMemory::alloc<double>(zlast - zfirst);
+
+    const double dth = 0.5 * dt;
+
+    // compute EOS at beginning of time step
+    PolyGascalcEOS(zr0, ze, zp, z0per, zss, zfirst, zlast, gamma, ssmin);
+
+    // now advance pressure to the half-step
+    #pragma ivdep
+    for (int z = zfirst; z < zlast; ++z) {
+        int z0 = z - zfirst;
+        double zminv = 1. / zm[z];
+        double dv = (zvolp[z] - zvol0[z]) * zminv;
+        double bulk = zr0[z] * zss[z] * zss[z];
+        double denom = 1. + 0.5 * z0per[z0] * dv;
+        double src = zwrate[z] * dth * zminv;
+        double value = zp[z] + (z0per[z0] * src - zr0[z] * bulk * dv) / denom;
+        zp[z] = value;
+    }
+
+    AbstractedMemory::free(z0per);
+}
+
+
+static void Force(
         double2* sfq,
         const int sfirst,
         const int slast,
@@ -103,14 +194,36 @@ static void QCScalcForce(
         const int* zone_pts_ptr,
         const int* map_side2edge,
         const double2* pt_x_pred,
-        const double* zrp,
         const double* zss,
         const double qgamma,
         const double q1,
         const double q2,
         int zfirst,
         int zlast,
-        double* zdu) {
+        double* zdu,
+        const double* zone_area_pred,
+        const double* side_area_pred,
+        const double* side_mass_frac,
+        const double2* ssurfp,
+        double2* sf,
+        const double ssmin,
+        const double alfa,
+        double* crnr_weighted_mass,
+        const double* zone_vol_pred,
+        const double* zone_mass)
+{
+    //  Side density:
+    //    srho = sm/sv = zr (sm/zm) / (sv/zv)
+    //  Side pressure:
+    //    sp   = zp + alfa dpdr (srho-zr)
+    //         = zp + sdp
+    //  Side delta pressure:
+    //    sdp  = alfa dpdr (srho-zr)
+    //         = alfa c**2 (srho-zr)
+    //
+    //    Notes: smf stores (sm/zm)
+    //           svfac stores (sv/zv)
+
     // declare temporary variables
     double* c0area = AbstractedMemory::alloc<double>(slast - sfirst);
     double* c0cos = AbstractedMemory::alloc<double>(slast - sfirst);
@@ -286,13 +399,29 @@ static void QCScalcForce(
         double c0evol = (c0div < 0.0 ? evol : 0.);
         double c0du = (c0div < 0.0 ? du   : 0.);
 
+        // Hydro::calcRho
+        double zone_rho_pred = zone_mass[z] / zone_vol_pred[z];
+
+        // Hydro::calcCrnrMass
+        double m = zone_rho_pred * zone_area_pred[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[sprev]);
+        crnr_weighted_mass[s] = m;
+
+        // TTS
+        double svfacinv = zone_area_pred[z] / side_area_pred[s];
+        double srho = zone_rho_pred * side_mass_frac[s] * svfacinv;
+        double sstmp = max(zss[z], ssmin);
+        sstmp = alfa * sstmp * sstmp;
+        double sdp = sstmp * (srho - zone_rho_pred);
+        double2 sqq = -sdp * ssurfp[s];
+        sf[s] = sqq;
+
         // [4.1] Compute the c0rmu (real Kurapatenko viscous scalar)
         // Kurapatenko form of the viscosity
         double ztmp2 = q2 * 0.25 * gammap1 * c0du;
         double ztmp1 = q1 * zss[z];
         double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
         // Compute c0rmu for each corner
-        double rmu = zkur * zrp[z] * c0evol;
+        double rmu = zkur * zone_rho_pred * c0evol;
         double c0rmu = ((c0div > 0.0) ? 0. : rmu);
 
         // [4.2] Compute the c0qe for each corner
@@ -348,49 +477,6 @@ static void QCScalcForce(
     }
 
     AbstractedMemory::free(z0tmp);
-}
-
-
-static void TTScalcForce(
-        const double* zarea,
-        const double* zr,
-        const double* zss,
-        const double* sarea,
-        const double* smf,
-        const double2* ssurfp,
-        double2* sf,
-        const int sfirst,
-        const int slast,
-        const int* map_side2zone,
-        const double ssmin,
-        const double alfa) {
-
-    //  Side density:
-    //    srho = sm/sv = zr (sm/zm) / (sv/zv)
-    //  Side pressure:
-    //    sp   = zp + alfa dpdr (srho-zr)
-    //         = zp + sdp
-    //  Side delta pressure:
-    //    sdp  = alfa dpdr (srho-zr)
-    //         = alfa c**2 (srho-zr)
-    //
-    //    Notes: smf stores (sm/zm)
-    //           svfac stores (sv/zv)
-
-    #pragma ivdep
-    for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone[s];
-
-        double svfacinv = zarea[z] / sarea[s];
-        double srho = zr[z] * smf[s] * svfacinv;
-        double sstmp = max(zss[z], ssmin);
-        sstmp = alfa * sstmp * sstmp;
-        double sdp = sstmp * (srho - zr[z]);
-        double2 sqq = -sdp * ssurfp[s];
-        sf[s] = sqq;
-
-    }
-
 }
 
 
@@ -454,7 +540,6 @@ void PredictorTask::cpu_run(const Task *task,
     double* zone_dvel = hydro_write_zones.getRawPtr<double>(FID_ZDU);
     double* zone_sound_speed = hydro_write_zones.getRawPtr<double>(FID_ZSS);
     double* zone_pressure = hydro_write_zones.getRawPtr<double>(FID_ZP);
-    double* zone_rho_pred = AbstractedMemory::alloc<double>(hydro_write_zones.size());
 
     assert(task->regions[TWO].privilege_fields.size() == 5);
     LogicalStructured write_sides_and_corners(ctx, runtime, regions[TWO]);
@@ -497,36 +582,31 @@ void PredictorTask::cpu_run(const Task *task,
                 zone_pts_ptr, side_area_pred, edge_len, args.num_sides, args.num_zones,
                 zone_dl);
 
-        // 2. compute point masses
-        Hydro::calcRho(zone_vol_pred, zone_mass, zone_rho_pred, zfirst, zlast);
-
-        Hydro::calcCrnrMass(sfirst, slast, zone_area_pred, side_mass_frac,
-                map_side2zone, zone_pts_ptr, zone_rho_pred,
-                crnr_weighted_mass);
-
         // 3. compute material state (half-advanced)
-        PolyGas::calcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, args.dt,
+        PolyGascalcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, args.dt,
                 zone_pressure, zone_sound_speed, zfirst, zlast, args.gamma,
                         args.ssmin);
 
+        // 2. compute point masses
         // 4. compute forces
-        PolyGas::calcForce(zone_pressure, side_surfp, side_force_pres, sfirst, slast,
-                map_side2zone);
-
-        TTScalcForce(zone_area_pred, zone_rho_pred, zone_sound_speed, side_area_pred,
-                side_mass_frac, side_surfp, side_force_tts,
-                sfirst, slast,
-                map_side2zone, args.ssmin, args.alpha);
-
-        QCScalcForce(side_force_visc, sfirst, slast,
+        Force(side_force_visc, sfirst, slast,
                 args.num_sides, args.num_zones, pt_vel, edge_x_pred,
                 zone_x_pred, edge_len, map_side2zone, map_side2pt1,
                 zone_pts_ptr, map_side2edge, pt_x_pred,
-                zone_rho_pred, zone_sound_speed, args.qgamma,
+                zone_sound_speed, args.qgamma,
                 args.q1, args.q2,
                 map_side2zone[sfirst],
                 (slast < args.num_sides ? map_side2zone[slast] : args.num_zones),
-                zone_dvel);
+                zone_dvel,
+                zone_area_pred, side_area_pred, side_mass_frac, side_surfp, side_force_tts,
+                args.ssmin, args.alpha,
+                crnr_weighted_mass,
+                zone_vol_pred, zone_mass);
+
+
+
+        PolyGascalcForce(zone_pressure, side_surfp, side_force_pres, sfirst, slast,
+                map_side2zone);
 
         Hydro::sumCrnrForce(side_force_pres, side_force_visc, side_force_tts,
                 map_side2zone, zone_pts_ptr, sfirst, slast,
@@ -535,7 +615,6 @@ void PredictorTask::cpu_run(const Task *task,
 
     AbstractedMemory::free(side_surfp);
     AbstractedMemory::free(side_area_pred);
-    AbstractedMemory::free(zone_rho_pred);
     AbstractedMemory::free(zone_area_pred);
     AbstractedMemory::free(zone_vol_pred);
     AbstractedMemory::free(zone_x_pred);
