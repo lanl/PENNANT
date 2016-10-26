@@ -87,26 +87,6 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
 /*static*/ const char * const PredictorTask::TASK_NAME = "PredictorTask";
 
 
-
-static
-void PolyGascalcForce(
-        const double* zp,
-        const double2* ssurfp,
-        double2* sf,
-        const int sfirst,
-        const int slast,
-        const int* map_side2zone) {
-
-    #pragma ivdep
-    for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone[s];
-        double2 sfx = -zp[z] * ssurfp[s];
-        sf[s] = sfx;
-
-    }
-}
-
-
 static
 void PolyGascalcEOS(
         const double* zr,
@@ -186,8 +166,8 @@ static void Force(
         const int nums,
         const int numz,
         const double2* pu,
-        const double2* ex,
-        const double2* zx,
+        const double2* edge_x_pred,
+        const double2* zone_x_pred,
         const double* elen,
         const int* map_side2zone,
         const int* map_side2pt1,
@@ -204,13 +184,14 @@ static void Force(
         const double* zone_area_pred,
         const double* side_area_pred,
         const double* side_mass_frac,
-        const double2* ssurfp,
         double2* sf,
         const double ssmin,
         const double alfa,
         double* crnr_weighted_mass,
         const double* zone_vol_pred,
-        const double* zone_mass)
+        const double* zone_mass,
+        const double* zone_pressure,
+        double2* side_force_pres)
 {
     //  Side density:
     //    srho = sm/sv = zr (sm/zm) / (sv/zv)
@@ -286,11 +267,11 @@ static void Force(
             // 0 = point p
             double2 xp0 = pt_x_pred_[p];
             // 1 = edge e2
-            double2 xp1 = ex[e2];
+            double2 xp1 = edge_x_pred[e2];
             // 2 = zone center z
-            double2 xp2 = zx[z];
+            double2 xp2 = zone_x_pred[z];
             // 3 = edge e1
-            double2 xp3 = ex[e1];
+            double2 xp3 = edge_x_pred[e1];
 
             // compute 2d cartesian volume of corner
             double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
@@ -354,13 +335,13 @@ static void Force(
         double2 xp0 = pt_x_pred_[p];
         // 1 = edge e2
         double2 up1 = 0.5 * (pu[p] + pu[p2]);
-        double2 xp1 = ex[e2];
+        double2 xp1 = edge_x_pred[e2];
         // 2 = zone center z
         double2 up2 = z0uc[z0];
-        double2 xp2 = zx[z];
+        double2 xp2 = zone_x_pred[z];
         // 3 = edge e1
         double2 up3 = 0.5 * (pu[p1] + pu[p]);
-        double2 xp3 = ex[e1];
+        double2 xp3 = edge_x_pred[e1];
 
         // compute cosine angle
         double2 v1 = xp3 - xp0;
@@ -406,14 +387,21 @@ static void Force(
         double m = zone_rho_pred * zone_area_pred[z] * 0.5 * (side_mass_frac[s] + side_mass_frac[sprev]);
         crnr_weighted_mass[s] = m;
 
+        // LocalMesh::calcMedianMeshSurfVecs
+        double2 side_surfp = rotateCCW(edge_x_pred[e2] - zone_x_pred[z]);
+
         // TTS
         double svfacinv = zone_area_pred[z] / side_area_pred[s];
         double srho = zone_rho_pred * side_mass_frac[s] * svfacinv;
         double sstmp = max(zss[z], ssmin);
         sstmp = alfa * sstmp * sstmp;
         double sdp = sstmp * (srho - zone_rho_pred);
-        double2 sqq = -sdp * ssurfp[s];
+        double2 sqq = -sdp * side_surfp;
         sf[s] = sqq;
+
+        // PolyGas::calcForce
+        double2 sfx = -zone_pressure[z] * side_surfp;
+        side_force_pres[s] = sfx;
 
         // [4.1] Compute the c0rmu (real Kurapatenko viscous scalar)
         // Kurapatenko form of the viscosity
@@ -550,7 +538,6 @@ void PredictorTask::cpu_run(const Task *task,
     double* crnr_weighted_mass = write_sides_and_corners.getRawPtr<double>(FID_CMASWT);
 
     double* side_area_pred = AbstractedMemory::alloc<double>(args.num_sides);
-    double2* side_surfp = AbstractedMemory::alloc<double2>(args.num_sides);
 
     for (int side_chunk = 0; side_chunk < (args.side_chunk_CRS.size()-1); ++side_chunk) {
         int sfirst = args.side_chunk_CRS[side_chunk];
@@ -569,10 +556,6 @@ void PredictorTask::cpu_run(const Task *task,
         LocalMesh::calcVols(sfirst, slast, pt_x_pred, zone_x_pred,
                 map_side2zone, args.num_sides, args.num_zones, map_side2pt1, zone_pts_ptr,
                 side_area_pred, nullptr, zone_area_pred, zone_vol_pred);
-
-        LocalMesh::calcMedianMeshSurfVecs(sfirst, slast, map_side2zone,
-                map_side2edge, edge_x_pred, zone_x_pred,
-                side_surfp);
 
         LocalMesh::calcEdgeLen(sfirst, slast, map_side2pt1, map_side2edge,
                 map_side2zone, zone_pts_ptr, pt_x_pred,
@@ -598,22 +581,17 @@ void PredictorTask::cpu_run(const Task *task,
                 map_side2zone[sfirst],
                 (slast < args.num_sides ? map_side2zone[slast] : args.num_zones),
                 zone_dvel,
-                zone_area_pred, side_area_pred, side_mass_frac, side_surfp, side_force_tts,
+                zone_area_pred, side_area_pred, side_mass_frac, side_force_tts,
                 args.ssmin, args.alpha,
                 crnr_weighted_mass,
-                zone_vol_pred, zone_mass);
-
-
-
-        PolyGascalcForce(zone_pressure, side_surfp, side_force_pres, sfirst, slast,
-                map_side2zone);
+                zone_vol_pred, zone_mass,
+                zone_pressure, side_force_pres);
 
         Hydro::sumCrnrForce(side_force_pres, side_force_visc, side_force_tts,
                 map_side2zone, zone_pts_ptr, sfirst, slast,
                 crnr_force_tot);
     } // side chunk
 
-    AbstractedMemory::free(side_surfp);
     AbstractedMemory::free(side_area_pred);
     AbstractedMemory::free(zone_area_pred);
     AbstractedMemory::free(zone_vol_pred);

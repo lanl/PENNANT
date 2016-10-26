@@ -500,25 +500,6 @@ void LocalMesh::calcSideMassFracs(const int side_chunk,
 
 
 /*static*/
-void LocalMesh::calcMedianMeshSurfVecs(
-        const int sfirst,
-        const int slast,
-        const int* map_side2zone,
-        const int* map_side2edge,
-        const double2* edge_x_pred,
-        const double2* zone_x_pred,
-        double2* side_surfp)
-{
-    #pragma ivdep
-    for (int s = sfirst; s < slast; ++s) {
-        int z = map_side2zone[s];
-        int e = map_side2edge[s];
-        side_surfp[s] = rotateCCW(edge_x_pred[e] - zone_x_pred[z]);
-    }
-}
-
-
-/*static*/
 void LocalMesh::calcEdgeLen(
         const int sfirst,
         const int slast,
