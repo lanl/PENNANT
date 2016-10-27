@@ -91,7 +91,6 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime)
 
 
 LogicalUnstructured::~LogicalUnstructured() {
-    unMapPRegion();
     if (destroy_lregion)
         runtime->destroy_logical_region(ctx, lregion);
     if (destroy_fspace)

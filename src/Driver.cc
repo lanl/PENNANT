@@ -58,11 +58,10 @@ RunStat DriverTask::cpu_run(const Task *task,
 	assert(task->regions[0].privilege_fields.size() == 3);
 	assert(task->regions[1].privilege_fields.size() == 2);
 
-	runtime->unmap_all_regions(ctx);
-
     std::vector<LogicalUnstructured> halos_points;
     std::vector<PhysicalRegion> pregions_halos;
 	for (int i = 1; i < task->regions.size(); i++) {
+	    runtime->unmap_region(ctx, regions[i]);
 	    halos_points.push_back(LogicalUnstructured(ctx, runtime, task->regions[i].region));
 	    pregions_halos.push_back(regions[i]);
 	}
@@ -118,7 +117,6 @@ Driver::Driver(const InputParameters& params,
           global_zones(ctx, runtime, zones)
 
 {
-    global_zones.unMapPRegion();
     mesh = new LocalMesh(params, pts, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
             add_int64_reduction, ctx, runtime);
