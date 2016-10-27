@@ -421,6 +421,9 @@ void Hydro::sumEnergy(
         const double* side_mass_frac,
         const double2* px,
         const double2* pu,
+        const int* map_side2pt1,
+        const int* map_side2zone,
+        const int* zone_pts_ptr,
         double& ei,
         double& ek,
         const int zfirst,
@@ -435,10 +438,6 @@ void Hydro::sumEnergy(
     }
     // multiply by 2\pi for cylindrical geometry
     ei += sumi * 2 * M_PI;
-
-    int* map_side2pt1 = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
-    int* map_side2zone = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
-    int* zone_pts_ptr = mesh->zone_pts.getRawPtr<int>(FID_ZONE_PTS_PTR);
 
     // compute kinetic energy
     // in each individual zone:
@@ -457,9 +456,6 @@ void Hydro::sumEnergy(
     }
     // multiply by 2\pi for cylindrical geometry
     ek += sumk * 2 * M_PI;
-
-    mesh->sides.unMapPRegion();
-    mesh->zone_pts.unMapPRegion();
 }
 
 
@@ -559,8 +555,10 @@ void Hydro::writeEnergyCheck() {
     const double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
     const int* map_side2zone = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     const double* side_mass_frac = mesh->sides.getRawPtr<double>(FID_SMF);
+    const int* map_side2pt1 = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
     const double* zone_area = mesh->zones.getRawPtr<double>(FID_ZAREA);
     const double* zone_vol = mesh->zones.getRawPtr<double>(FID_ZVOL);
+    const int* zone_pts_ptr = mesh->zone_pts.getRawPtr<int>(FID_ZONE_PTS_PTR);
     const double* zone_energy_tot = zones.getRawPtr<double>(FID_ZETOT);
     const double* zone_mass = zones.getRawPtr<double>(FID_ZM);
     const double2* pt_vel = points.getRawPtr<double2>(FID_PU);
@@ -576,7 +574,8 @@ void Hydro::writeEnergyCheck() {
         double eichunk = 0.;
         double ekchunk = 0.;
         sumEnergy(zone_energy_tot, zone_area, zone_vol, zone_mass, side_mass_frac,
-                pt_x, pt_vel, eichunk, ekchunk,
+                pt_x, pt_vel, map_side2pt1, map_side2zone, zone_pts_ptr,
+                eichunk, ekchunk,
                 zfirst, zlast, sfirst, slast);
         {
             ei += eichunk;
@@ -588,6 +587,7 @@ void Hydro::writeEnergyCheck() {
     mesh->points.unMapPRegion();
     mesh->sides.unMapPRegion();
     mesh->zones.unMapPRegion();
+    mesh->zone_pts.unMapPRegion();
 
     Future future_sum = Parallel::globalSum(ei, add_reduction, runtime, ctx);
     ei = future_sum.get_result<double>();
