@@ -215,7 +215,7 @@ void Hydro::initRadialVel(
 }
 
 
-TimeStep Hydro::doCycle(const double dt)
+Future Hydro::doCycle(const double dt)
 {
     args.dt = dt;  // TODO only CorrectorTask needs this; pass as ArgumentMap to IndexLauncher
     DoCycleTasksArgsSerializer serial;
@@ -251,8 +251,7 @@ TimeStep Hydro::doCycle(const double dt)
             points.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
     Future future = runtime->execute_task(ctx, corrector_launcher);
-    TimeStep recommend = future.get_result<TimeStep>();
-    return recommend;
+    return future;
 }
 
 

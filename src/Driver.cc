@@ -240,10 +240,12 @@ void Driver::calcGlobalDt() {
         msgdt = "Global (tstop - time)";
     }
 
+    TimeStep hydro_step = dt_hydro.get_result<TimeStep>();
+
     // compare to hydro dt
-    if (dt_hydro.dt < dt) {
-        dt = dt_hydro.dt;
-        msgdt = string(dt_hydro.message);
+    if (hydro_step.dt < dt) {
+        dt = hydro_step.dt;
+        msgdt = string(hydro_step.message);
     }
 
 	TimeStep recommend;

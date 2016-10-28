@@ -33,7 +33,7 @@ public:
     		DynamicCollective add_reduction,
         Context ctx, HighLevelRuntime* rt);
 
-    TimeStep doCycle(const double dt);
+    Future doCycle(const double dt);
 
     static void advPosHalf(
             const double dt,
