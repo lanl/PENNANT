@@ -216,6 +216,8 @@ void Driver::calcGlobalDt() {
     dt = dtmax;
     msgdt = "Global maximum (dtmax)";
 
+    TimeStep hydro_step;
+
     if (run_stat.cycle == 1) {
         // compare to initial timestep
         if (dtinit < dt) {
@@ -232,6 +234,8 @@ void Driver::calcGlobalDt() {
             else
                 msgdt = "Recovery: " + msgdtlast;
         }
+
+        hydro_step = dt_hydro.get_result<TimeStep>();
     }
 
     // compare to time-to-end
@@ -239,8 +243,6 @@ void Driver::calcGlobalDt() {
         dt = tstop - run_stat.time;
         msgdt = "Global (tstop - time)";
     }
-
-    TimeStep hydro_step = dt_hydro.get_result<TimeStep>();
 
     // compare to hydro dt
     if (hydro_step.dt < dt) {
