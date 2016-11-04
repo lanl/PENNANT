@@ -98,11 +98,11 @@ int main(int argc, char **argv)
 
     HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(GLOBAL_SUM_TASK_ID,
             Processor::LOC_PROC, true/*single*/, true/*index*/,
-            AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumTask");
+            AUTO_GENERATE_ID, TaskConfigOptions(true), "globalSumTask");
 
     HighLevelRuntime::register_legion_task<int64_t, Parallel::globalSumInt64Task>(GLOBAL_SUM_INT64_TASK_ID,
             Processor::LOC_PROC, true/*single*/, true/*index*/,
-            AUTO_GENERATE_ID, TaskConfigOptions(), "globalSumInt64Task");
+            AUTO_GENERATE_ID, TaskConfigOptions(true), "globalSumInt64Task");
 
     Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
     Runtime::register_reduction_op<Add2ReductionOp>(Add2ReductionOp::redop_id);
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 
 	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,
 			Processor::LOC_PROC, true/*single*/, true/*index*/,
-			AUTO_GENERATE_ID, TaskConfigOptions(), "globalMinTask");
+			AUTO_GENERATE_ID, TaskConfigOptions(true), "globalMinTask");
 
 	Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
 

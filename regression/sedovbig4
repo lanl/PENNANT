@@ -12,7 +12,7 @@ export GASNET_BACKTRACE=1
 mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/sedovbig/sedovbig.1x4
 cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/sedovbig/sedovbig.1x4
 cp ${HOME}/gitlab/pennant-spmd/pennant .
-cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig.pnt .
+cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig3x30.pnt sedovbig.pnt
 
 mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 4 ./sedovbig.pnt \
--ll:cpu 17 -ll:util 2 -ll:dma 1 2>&1 | tee sedovbig.1x4
+-ll:cpu 17 -ll:util 2 -ll:dma 1 -ll:csize 10000 2>&1 | tee sedovbig.1x4
