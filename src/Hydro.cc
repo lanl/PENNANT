@@ -34,7 +34,8 @@
 using namespace std;
 
 Hydro::Hydro(const InputParameters& params, LocalMesh* m,
-		DynamicCollective add_reduction,
+        DynamicCollective add_reduction,
+        DynamicCollective min_reduction,
         Context ctx, HighLevelRuntime* rt) :
 		mesh(m),
 		cfl(params.directs.cfl),
@@ -46,7 +47,8 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
 		vel_init_radial(params.directs.vel_init_radial),
 		bcx(params.bcx),
 		bcy(params.bcy),
-		add_reduction(add_reduction),
+        add_reduction(add_reduction),
+        min_reduction(min_reduction),
 		ctx(ctx),
 		runtime(rt),
         zones(ctx, rt),
@@ -151,6 +153,7 @@ void Hydro::init() {
     mesh->points.unMapPRegion();
 
 
+    args.min_reduction = min_reduction;
     args.cfl = cfl;
     args.cflv = cflv;
     args.num_points = mesh->num_pts;
@@ -170,6 +173,8 @@ void Hydro::init() {
     args.ssmin = params.directs.ssmin;
     args.alpha = params.directs.alpha;
     args.gamma = params.directs.gamma;
+
+    serial.archive(&args);
 }
 
 
@@ -215,16 +220,13 @@ void Hydro::initRadialVel(
 }
 
 
-Future Hydro::doCycle(const double dt)
+Future Hydro::doCycle(Future future_step)
 {
-    args.dt = dt;  // TODO only CorrectorTask needs this; pass as ArgumentMap to IndexLauncher
-    DoCycleTasksArgsSerializer serial;
-    serial.archive(&args);
-
     PredictorPointTask predictor_point_launcher(
             mesh->points.getLRegion(),
             points.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
+    predictor_point_launcher.add_future(future_step);
     runtime->execute_task(ctx, predictor_point_launcher);
 
     PredictorTask predictor_launcher(mesh->zones.getLRegion(),
@@ -235,6 +237,7 @@ Future Hydro::doCycle(const double dt)
             sides_and_corners.getLRegion(),
             points.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
+    predictor_launcher.add_future(future_step);
     runtime->execute_task(ctx, predictor_launcher);
 
     // sum corner masses, forces to points
@@ -250,8 +253,13 @@ Future Hydro::doCycle(const double dt)
             sides_and_corners.getLRegion(),
             points.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
+    corrector_launcher.add_future(future_step);
+
     Future future = runtime->execute_task(ctx, corrector_launcher);
-    return future;
+    Future min_future = Parallel::globalMin(future, min_reduction, runtime, ctx);
+
+    // Future dt = calcGlobalDt(min_future);
+    return min_future;
 }
 
 

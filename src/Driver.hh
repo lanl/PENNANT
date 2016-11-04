@@ -42,19 +42,6 @@ public:
 class Driver {
 public:
 
-    std::string probname;          // problem name
-    RunStat run_stat;              // simulation time & cycle number
-    double tstop;                  // simulation stop time
-    int cstop;                     // simulation stop cycle
-    double dtmax;                  // maximum timestep size
-    double dtinit;                 // initial timestep size
-    double dtfac;                  // factor limiting timestep growth
-    int dtreport;                  // frequency for timestep reports
-    double dt;                     // current timestep
-    double dtlast;                 // previous timestep
-    std::string msgdt;             // dt limiter message
-    std::string msgdtlast;         // previous dt limiter message
-
     Driver(const InputParameters &params,
             DynamicCollective add_reduction,
             DynamicCollective add_int64_reduction,
@@ -68,9 +55,18 @@ public:
             Context ctx, HighLevelRuntime* rt);
 
     RunStat run();
-    void calcGlobalDt();
+    static TimeStep calcGlobalDt(CalcDtTaskArgs args);
 
 private:
+
+    std::string probname;          // problem name
+    double tstop;                  // simulation stop time
+    int cstop;                     // simulation stop cycle
+    double dtmax;                  // maximum timestep size
+    double dtinit;                 // initial timestep size
+    double dtfac;                  // factor limiting timestep growth
+    int dtreport;                  // frequency for timestep reports
+
     LocalMesh *mesh;
     Hydro *hydro;
     Future dt_hydro;

@@ -94,6 +94,13 @@ struct TimeStep {
 		dt = copy.dt;
 		snprintf(message, 80, "%s", copy.message);
 	}
+	inline TimeStep& operator=(const TimeStep &rhs) {
+	    if (this != &rhs) {
+	        this->dt = rhs.dt;
+	        snprintf(this->message, 80, "%s", rhs.message);
+	    }
+	    return *this;
+	}
 	inline friend bool operator<(const TimeStep &l, const TimeStep &r) {
 		return l.dt < r.dt;
 	}
@@ -116,6 +123,7 @@ struct TimeStep {
 
 enum TaskIDs {
 	TOP_LEVEL_TASK_ID,
+    CALCDT_TASK_ID,
     CORRECTOR_TASK_ID,
     DRIVER_TASK_ID,
     HALO_TASK_ID,
@@ -124,7 +132,6 @@ enum TaskIDs {
     WRITE_TASK_ID,
     GLOBAL_SUM_TASK_ID,
     GLOBAL_SUM_INT64_TASK_ID,
-	GLOBAL_MIN_TASK_ID,
     ADD_REDOP_ID,
     ADD_INT64_REDOP_ID,
     ADD2_REDOP_ID,
@@ -160,14 +167,10 @@ public:
             const std::vector<PhysicalRegion> &regions,
             Context ctx, HighLevelRuntime *runtime);
 
-	static Future globalMin(TimeStep local_value,
+	static Future globalMin(Future local_value,
 	        DynamicCollective& dc_reduction,
 	        Runtime *runtime, Context ctx,
 	        Predicate pred = Predicate::TRUE_PRED);
-	static const TaskID minTaskID = GLOBAL_MIN_TASK_ID;
-	static TimeStep globalMinTask(const Task *task,
-	        const std::vector<PhysicalRegion> &regions,
-	        Context ctx, HighLevelRuntime *runtime);
 };  // class Parallel
 
 struct SPMDArgs {
@@ -196,14 +199,16 @@ protected:
     bool free_bit_stream;
 };
 
+
 class SPMDArgsSerializer : public ArgsSerializer {
 public:
     void archive(SPMDArgs* spmd_args);
     void restore(SPMDArgs* spmd_args);
 };
 
+
 struct DoCycleTasksArgs {
-    double dt;
+    DynamicCollective min_reduction;
     double cfl;
     double cflv;
     int num_points;
@@ -226,11 +231,24 @@ struct DoCycleTasksArgs {
     std::vector<std::vector<int>> bcy_point_chunk_CRS;
 };
 
+
 class DoCycleTasksArgsSerializer : public ArgsSerializer {
 public:
     void archive(DoCycleTasksArgs* hydro_task2_args);
     void restore(DoCycleTasksArgs* hydro_task2_args);
 };
+
+
+struct CalcDtTaskArgs {
+    Future dt_hydro;
+    TimeStep last;
+    double dtmax;
+    double dtinit;
+    double dtfac;
+    double tstop;
+    RunStat run_stat;
+};
+
 
 enum Variants {
   CPU_VARIANT,

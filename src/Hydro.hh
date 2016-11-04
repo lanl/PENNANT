@@ -30,10 +30,11 @@ class Hydro {
 public:
 
     Hydro(const InputParameters& params, LocalMesh* m,
-    		DynamicCollective add_reduction,
-        Context ctx, HighLevelRuntime* rt);
+            DynamicCollective add_reduction,
+            DynamicCollective min_reduction,
+            Context ctx, HighLevelRuntime* rt);
 
-    Future doCycle(const double dt);
+    Future doCycle(Future future_step);
 
     static void advPosHalf(
             const double dt,
@@ -184,7 +185,9 @@ private:
     void  allocateFields();
 
     DoCycleTasksArgs args;
+    DoCycleTasksArgsSerializer serial;
     DynamicCollective add_reduction;
+    DynamicCollective min_reduction;
     Context ctx;
     HighLevelRuntime* runtime;
     LogicalStructured zones;

@@ -19,6 +19,7 @@
 #include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
 #include "AddInt64ReductionOp.hh"
+#include "CalcDtTask.hh"
 #include "CorrectorTask.hh"
 #include "Driver.hh"
 #include "HaloTask.hh"
@@ -80,6 +81,10 @@ int main(int argc, char **argv)
 			Processor::LOC_PROC, true/*single*/, false/*index*/,
 			AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
 
+    HighLevelRuntime::register_legion_task<TimeStep, CalcDtTask::cpu_run>(CALCDT_TASK_ID,
+            Processor::LOC_PROC, true/*single*/, true/*index*/,
+            AUTO_GENERATE_ID, TaskConfigOptions(CalcDtTask::CPU_BASE_LEAF), CalcDtTask::TASK_NAME);
+
     HighLevelRuntime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(CORRECTOR_TASK_ID,
             Processor::LOC_PROC, true/*single*/, true/*index*/,
             AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF), CorrectorTask::TASK_NAME);
@@ -107,10 +112,6 @@ int main(int argc, char **argv)
     Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
     Runtime::register_reduction_op<Add2ReductionOp>(Add2ReductionOp::redop_id);
     Runtime::register_reduction_op<AddInt64ReductionOp>(AddInt64ReductionOp::redop_id);
-
-	HighLevelRuntime::register_legion_task<TimeStep, Parallel::globalMinTask>(GLOBAL_MIN_TASK_ID,
-			Processor::LOC_PROC, true/*single*/, true/*index*/,
-			AUTO_GENERATE_ID, TaskConfigOptions(true), "globalMinTask");
 
 	Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
 

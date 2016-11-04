@@ -80,6 +80,10 @@ void PredictorPointTask::cpu_run(const Task *task,
     double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
     double2* pt_x0 = mesh_write_points.getRawPtr<double2>(FID_PX0);
 
+    assert(task->futures.size() == 1);
+    Future f1 = task->futures[0];
+    TimeStep time_step = f1.get_result<TimeStep>();
+
     for (int pch = 0; pch < (args.point_chunk_CRS.size()-1); ++pch) {
         int pfirst = args.point_chunk_CRS[pch];
         int plast = args.point_chunk_CRS[pch+1];
@@ -90,7 +94,7 @@ void PredictorPointTask::cpu_run(const Task *task,
 
         // ===== Predictor step =====
         // 1. advance mesh to center of time step
-        Hydro::advPosHalf(args.dt, pfirst, plast,
+        Hydro::advPosHalf(time_step.dt, pfirst, plast,
                 pt_x0, pt_vel0,
                 pt_x_pred);
     }

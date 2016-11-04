@@ -177,6 +177,10 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     input_params.directs.task_id = args.my_color;
     GenerateMesh* generate_mesh = new GenerateMesh(input_params);
 
+    assert(task->futures.size() == 1);
+    Future f1 = task->futures[0];
+    TimeStep time_step = f1.get_result<TimeStep>();
+
     for (int pt_chunk = 0; pt_chunk < (args.point_chunk_CRS.size()-1); ++pt_chunk) {
         int pfirst = args.point_chunk_CRS[pt_chunk];
         int plast = args.point_chunk_CRS[pt_chunk+1];
@@ -201,7 +205,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
         Hydro::calcAccelAndAdvPosFull(generate_mesh, point_force, point_mass,
-                args.dt, pt_vel0, pt_x0, pt_vel, pt_x,
+                time_step.dt, pt_vel0, pt_x0, pt_vel, pt_x,
                 pfirst, plast);
     }
 
@@ -221,7 +225,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 
         // 7. compute work
         std::fill(&zone_work[zfirst], &zone_work[zlast], 0.);
-        Hydro::calcWork(args.dt, map_side2pt1, map_side2zone, zone_pts_ptr, side_force_pres,
+        Hydro::calcWork(time_step.dt, map_side2pt1, map_side2zone, zone_pts_ptr, side_force_pres,
                 side_force_visc, pt_vel, pt_vel0, pt_x_pred, zone_energy_tot, zone_work,
                 sfirst, slast);
     } // side chunk
@@ -235,7 +239,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         int zone_last = args.zone_chunk_CRS[zone_chunk+1];
 
         // 7a. compute work rate
-        Hydro::calcWorkRate(args.dt, zone_vol, zone_vol0, zone_work, zone_pressure,
+        Hydro::calcWorkRate(time_step.dt, zone_vol, zone_vol0, zone_work, zone_pressure,
                 zone_work_rate, zone_first, zone_last);
 
         // 8. update state variables
@@ -243,7 +247,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         Hydro::calcRho(zone_vol, zone_mass, zone_rho, zone_first, zone_last);
 
         // 9.  compute timestep for next cycle
-        Hydro::calcDtHydro(args.dt, zone_first, zone_last, zone_dl,
+        Hydro::calcDtHydro(time_step.dt, zone_first, zone_last, zone_dl,
                 zone_dvel, zone_sound_speed, args.cfl,
                 zone_vol, zone_vol0, args.cflv, recommend);
     }

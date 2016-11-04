@@ -539,6 +539,10 @@ void PredictorTask::cpu_run(const Task *task,
 
     double* side_area_pred = AbstractedMemory::alloc<double>(args.num_sides);
 
+    assert(task->futures.size() == 1);
+    Future f1 = task->futures[0];
+    TimeStep time_step = f1.get_result<TimeStep>();
+
     for (int side_chunk = 0; side_chunk < (args.side_chunk_CRS.size()-1); ++side_chunk) {
         int sfirst = args.side_chunk_CRS[side_chunk];
         int slast = args.side_chunk_CRS[side_chunk+1];
@@ -566,7 +570,7 @@ void PredictorTask::cpu_run(const Task *task,
                 zone_dl);
 
         // 3. compute material state (half-advanced)
-        PolyGascalcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, args.dt,
+        PolyGascalcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, time_step.dt,
                 zone_pressure, zone_sound_speed, zfirst, zlast, args.gamma,
                         args.ssmin);
 

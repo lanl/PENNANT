@@ -172,28 +172,15 @@ int64_t Parallel::globalSumInt64Task (const Task *task,
 }
 
 
-Future Parallel::globalMin(TimeStep local_value,
+Future Parallel::globalMin(Future local_value,
 		DynamicCollective& dc_reduction,
 		Runtime *runtime, Context ctx,
 		Predicate pred)
 {
-  TaskLauncher launcher(minTaskID, TaskArgument(&local_value, sizeof(local_value)), pred, 0 /*default mapper*/);
-  TimeStep max;
-  launcher.set_predicate_false_result(TaskArgument(&max, sizeof(max)));
-  Future f = runtime->execute_task(ctx, launcher);
-  runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, f);
+  runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, local_value);
   dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
   Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
   return ff2;
-}
-
-
-TimeStep Parallel::globalMinTask (const Task *task,
-                  const std::vector<PhysicalRegion> &regions,
-                  Context ctx, HighLevelRuntime *runtime)
-{
-	TimeStep value = *(const TimeStep *)(task->args);
-	return value;
 }
 
 
@@ -288,7 +275,7 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args)
 {
     assert(docycle_args != nullptr);
 
-    bit_stream_size = 9 * sizeof(double) + 8 * sizeof(int)
+    bit_stream_size = sizeof(DynamicCollective) + 8 * sizeof(double) + 8 * sizeof(int)
         + sizeof(size_t) + docycle_args->zone_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + docycle_args->side_chunk_CRS.size() * sizeof(int)
         + sizeof(size_t) + docycle_args->point_chunk_CRS.size() * sizeof(int)
@@ -311,7 +298,7 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args)
     unsigned char *serialized = (unsigned char*)(bit_stream);
 
     size_t stream_size = 0;
-    stream_size += archiveScalar(docycle_args->dt, (void*)(serialized+stream_size));
+    stream_size += archiveScalar(docycle_args->min_reduction, (void*)(serialized+stream_size));
     stream_size += archiveScalar(docycle_args->cfl, (void*)(serialized+stream_size));
     stream_size += archiveScalar(docycle_args->cflv, (void*)(serialized+stream_size));
     stream_size += archiveScalar(docycle_args->num_points, (void*)(serialized+stream_size));
@@ -434,7 +421,7 @@ void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* docycle_args)
     unsigned char *serialized_args = (unsigned char *) bit_stream;
 
     bit_stream_size = 0;
-    bit_stream_size += restoreScalar(&(docycle_args->dt), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreScalar(&(docycle_args->min_reduction), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(docycle_args->cfl), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(docycle_args->cflv), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreScalar(&(docycle_args->num_points), (void*)(serialized_args + bit_stream_size));

@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iomanip>
 
+#include "CalcDtTask.hh"
 #include "Hydro.hh"
 #include "LocalMesh.hh"
 
@@ -120,11 +121,14 @@ Driver::Driver(const InputParameters& params,
     mesh = new LocalMesh(params, pts, halos_points, pregions_halos,
             pbarrier_as_master, masters_pbarriers,
             add_int64_reduction, ctx, runtime);
-    hydro = new Hydro(params, mesh, add_reduction, ctx, runtime);
+    hydro = new Hydro(params, mesh, add_reduction, min_reduction, ctx, runtime);
 }
 
 
 RunStat Driver::run() {
+    RunStat run_stat;              // simulation time & cycle number
+    TimeStep time_step;
+
     run_stat.time = 0.0;
     run_stat.cycle = 0;
 
@@ -141,18 +145,29 @@ RunStat Driver::run() {
         tlast = tbegin;
     }
 
+    CalcDtTaskArgs args;
+    args.dtmax = dtmax;
+    args.dtinit = dtinit;
+    args.dtfac = dtfac;
+    args.tstop = tstop;
+
     // main event loop
     while (run_stat.cycle < cstop && run_stat.time < tstop) {
 
-    	run_stat.cycle += 1;
+        run_stat.cycle += 1;
 
         // get timestep
-        calcGlobalDt();
+        args.dt_hydro = dt_hydro;
+        args.last = time_step;
+        args.run_stat = run_stat;
+        CalcDtTask calc_dt_launcher((void*)&args, sizeof(args));
+        Future future_step = runtime->execute_task(ctx, calc_dt_launcher);
 
         // begin hydro cycle
-        dt_hydro = hydro->doCycle(dt);
+        dt_hydro = hydro->doCycle(future_step);
 
-        run_stat.time += dt;
+        time_step = future_step.get_result<TimeStep>();
+        run_stat.time += time_step.dt;
 
         if (my_color == 0 &&
                 (run_stat.cycle == 1 || run_stat.cycle % dtreport == 0)) {
@@ -164,9 +179,9 @@ RunStat Driver::run() {
             cout << scientific << setprecision(5);
             cout << "End cycle " << setw(6) << run_stat.cycle
                  << ", time = " << setw(11) << run_stat.time
-                 << ", dt = " << setw(11) << dt
+                 << ", dt = " << setw(11) << time_step.dt
                  << ", wall = " << setw(11) << tdiff << endl;
-            cout << "dt limiter: " << msgdt << endl;
+            cout << "dt limiter: " << time_step.message << endl;
 
             tlast = tcurr;
         } // if mype_...
@@ -206,58 +221,55 @@ RunStat Driver::run() {
     return run_stat;
 }
 
-void Driver::calcGlobalDt() {
+
+/*static*/
+TimeStep Driver::calcGlobalDt(CalcDtTaskArgs args)
+{
+    TimeStep time_step;
 
     // Save timestep from last cycle
-    dtlast = dt;
-    msgdtlast = msgdt;
+    std::string msgdtlast(args.last.message);
 
     // Compute timestep for this cycle
-    dt = dtmax;
-    msgdt = "Global maximum (dtmax)";
+    time_step.dt = args.dtmax;
+    std::string msgdt = "Global maximum (dtmax)";
 
     TimeStep hydro_step;
 
-    if (run_stat.cycle == 1) {
+    if (args.run_stat.cycle == 1) {
         // compare to initial timestep
-        if (dtinit < dt) {
-            dt = dtinit;
+        if (args.dtinit < time_step.dt) {
+            time_step.dt = args.dtinit;
             msgdt = "Initial timestep";
         }
     } else {
         // compare to factor * previous timestep
-        double dtrecover = dtfac * dtlast;
-        if (dtrecover < dt) {
-            dt = dtrecover;
+        double dtrecover = args.dtfac * args.last.dt;
+        if (dtrecover < time_step.dt) {
+            time_step.dt = dtrecover;
             if (msgdtlast.substr(0, 8) == "Recovery")
                 msgdt = msgdtlast;
             else
                 msgdt = "Recovery: " + msgdtlast;
         }
 
-        hydro_step = dt_hydro.get_result<TimeStep>();
+        hydro_step = args.dt_hydro.get_result<TimeStep>();
     }
 
     // compare to time-to-end
-    if ((tstop - run_stat.time) < dt) {
-        dt = tstop - run_stat.time;
+    if ((args.tstop - args.run_stat.time) < time_step.dt) {
+        time_step.dt = args.tstop - args.run_stat.time;
         msgdt = "Global (tstop - time)";
     }
 
     // compare to hydro dt
-    if (hydro_step.dt < dt) {
-        dt = hydro_step.dt;
+    if (hydro_step.dt < time_step.dt) {
+        time_step.dt = hydro_step.dt;
         msgdt = string(hydro_step.message);
     }
 
-	TimeStep recommend;
-	recommend.dt = dt;
-	snprintf(recommend.message, 80, "%s", msgdt.c_str());
-	Future future_min = Parallel::globalMin(recommend, min_reduction, runtime, ctx);
+	snprintf(time_step.message, 80, "%s", msgdt.c_str());
 
-	TimeStep ts = future_min.get_result<TimeStep>();
-	dt = ts.dt;
-	msgdt = string(ts.message);
-
+	return time_step;
 }
 
