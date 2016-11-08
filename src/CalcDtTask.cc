@@ -16,9 +16,10 @@
 #include "Driver.hh"
 
 
-CalcDtTask::CalcDtTask(void *args, const size_t &size)
-	 : TaskLauncher(CalcDtTask::TASK_ID, TaskArgument(args, size))
+CalcDtTask::CalcDtTask(CalcDtTaskArgs *args)
+	 : TaskLauncher(CalcDtTask::TASK_ID, TaskArgument(static_cast<void*>(args), sizeof(CalcDtTaskArgs)))
 {
+    add_future(args->dt_hydro);
 }
 
 /*static*/ const char * const CalcDtTask::TASK_NAME = "CalcDtTask";
@@ -31,6 +32,8 @@ TimeStep CalcDtTask::cpu_run(const Task *task,
 {
     assert(task->arglen == sizeof(CalcDtTaskArgs));
     CalcDtTaskArgs args = *(const CalcDtTaskArgs*)task->args;
+
+    args.dt_hydro = task->futures[0]; // Cannot pass future through task->args
 
     return Driver::calcGlobalDt(args);
 }

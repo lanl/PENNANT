@@ -18,7 +18,7 @@
 
 class CalcDtTask : public TaskLauncher {
 public:
-	CalcDtTask(void *args, const size_t &size);
+	CalcDtTask(CalcDtTaskArgs *args);
 	static const char * const TASK_NAME;
 	static const int TASK_ID = CALCDT_TASK_ID;
 	static const bool CPU_BASE_LEAF = true;

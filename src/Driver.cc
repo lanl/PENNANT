@@ -109,6 +109,7 @@ Driver::Driver(const InputParameters& params,
 		  dtinit(params.directs.dtinit),
 		  dtfac(params.directs.dtfac),
 		  dtreport(params.directs.dtreport),
+		  dt_hydro(Future::from_value(rt,TimeStep())),
           add_reduction(add_reduct),
           add_int64_reduction(add_int64_reduct),
 		  min_reduction(min_reduct),
@@ -160,7 +161,7 @@ RunStat Driver::run() {
         args.dt_hydro = dt_hydro;
         args.last = time_step;
         args.run_stat = run_stat;
-        CalcDtTask calc_dt_launcher((void*)&args, sizeof(args));
+        CalcDtTask calc_dt_launcher(&args);
         Future future_step = runtime->execute_task(ctx, calc_dt_launcher);
 
         // begin hydro cycle
