@@ -35,6 +35,7 @@ enum idx {
     SEVEN,
     EIGHT,
     NINE,
+    TEN
 };
 
 using namespace std;
@@ -44,6 +45,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
         LogicalRegion mesh_sides,
         LogicalRegion mesh_zone_pts,
         LogicalRegion mesh_points,
+        LogicalRegion side_chunks,
         LogicalRegion hydro_zones,
         LogicalRegion hydro_sides_and_corners,
         LogicalRegion hydro_points,
@@ -83,6 +85,8 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
     add_field(SEVEN, FID_ZP);
     add_region_requirement(RegionRequirement(mesh_points, READ_ONLY, EXCLUSIVE, mesh_points));
     add_field(EIGHT, FID_PXP);
+    add_region_requirement(RegionRequirement(side_chunks, READ_ONLY, EXCLUSIVE, side_chunks));
+    add_field(NINE, FID_SIDE_CHUNKS_CRS);
 }
 
 /*static*/ const char * const PredictorTask::TASK_NAME = "PredictorTask";
@@ -475,8 +479,8 @@ void PredictorTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == NINE);
-	assert(task->regions.size() == NINE);
+	assert(regions.size() == TEN);
+	assert(task->regions.size() == TEN);
 
     DoCycleTasksArgs args;
     DoCycleTasksArgsSerializer args_serializer;
@@ -512,8 +516,12 @@ void PredictorTask::cpu_run(const Task *task,
     const double* zone_work_rate = hydro_zones.getRawPtr<double>(FID_ZWR);
 
     assert(task->regions[EIGHT].privilege_fields.size() == 1);
-    LogicalStructured mesh_write_points(ctx, runtime, regions[EIGHT]);
-    const double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
+    LogicalStructured mesh_points(ctx, runtime, regions[EIGHT]);
+    const double2* pt_x_pred = mesh_points.getRawPtr<double2>(FID_PXP);
+
+    assert(task->regions[NINE].privilege_fields.size() == 1);
+    LogicalStructured side_chunks(ctx, runtime, regions[NINE]);
+    const int* side_chunks_CRS = side_chunks.getRawPtr<int>(FID_SIDE_CHUNKS_CRS);
 
     double* edge_len = AbstractedMemory::alloc<double>(args.num_edges);
     double2* edge_x_pred = AbstractedMemory::alloc<double2>(args.num_edges);
@@ -546,11 +554,11 @@ void PredictorTask::cpu_run(const Task *task,
     Future f1 = task->futures[0];
     TimeStep time_step = f1.get_result<TimeStep>();
 
-    for (int side_chunk = 0; side_chunk < (args.side_chunk_CRS.size()-1); ++side_chunk) {
-        int sfirst = args.side_chunk_CRS[side_chunk];
-        int slast = args.side_chunk_CRS[side_chunk+1];
-        int zfirst = LocalMesh::side_zone_chunks_first(side_chunk, map_side2zone, args.side_chunk_CRS);
-        int zlast = LocalMesh::side_zone_chunks_last(side_chunk, map_side2zone, args.side_chunk_CRS);
+    for (int side_chunk = 0; side_chunk < args.num_side_chunks; ++side_chunk) {
+        int sfirst = side_chunks_CRS[side_chunk];
+        int slast = side_chunks_CRS[side_chunk+1];
+        int zfirst = LocalMesh::side_zone_chunks_first(side_chunk, map_side2zone, side_chunks_CRS);
+        int zlast = LocalMesh::side_zone_chunks_last(side_chunk, map_side2zone, side_chunks_CRS);
 
         // save off zone variable values from previous cycle
         std::copy(&zone_vol[zfirst], &zone_vol[zlast], &zone_vol0[zfirst]);

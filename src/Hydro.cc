@@ -64,14 +64,17 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
 
 void Hydro::init() {
 
-    const int numpch = mesh->num_pt_chunks();
-    const int numzch = mesh->num_zone_chunks();
+    const int numpch = mesh->num_pt_chunks;
+    const int numzch = mesh->num_zone_chunks;
     const int nump = mesh->num_pts;
     const int numz = mesh->num_zones;
     const int nums = mesh->num_sides;
 
     const double2* zx = mesh->zones.getRawPtr<double2>(FID_ZX);
     const double* zvol = mesh->zones.getRawPtr<double>(FID_ZVOL);
+
+    const int* zone_chunks_CRS = mesh->zone_chunks.getRawPtr<int>(FID_ZONE_CHUNKS_CRS);
+    const int* pt_chunks_CRS = mesh->point_chunks.getRawPtr<int>(FID_POINT_CHUNKS_CRS);
 
     // allocate arrays
     allocateFields();
@@ -90,8 +93,8 @@ void Hydro::init() {
 
     // initialize hydro vars
     for (int zch = 0; zch < numzch; ++zch) {
-        int zfirst = mesh->zone_chunks_CRS[zch];
-        int zlast = mesh->zone_chunks_CRS[zch+1];
+        int zfirst = zone_chunks_CRS[zch];
+        int zlast = zone_chunks_CRS[zch+1];
 
         fill(&zone_rho[zfirst], &zone_rho[zlast], rho_init);
         fill(&zone_energy_density[zfirst], &zone_energy_density[zlast], energy_init);
@@ -123,8 +126,8 @@ void Hydro::init() {
     }  // for sch
 
     for (int pch = 0; pch < numpch; ++pch) {
-        int pfirst = mesh->pt_chunks_CRS[pch];
-        int plast = mesh->pt_chunks_CRS[pch+1];
+        int pfirst = pt_chunks_CRS[pch];
+        int plast = pt_chunks_CRS[pch+1];
         if (vel_init_radial != 0.)
             initRadialVel(vel_init_radial, pfirst, plast, pt_vel);
         else
@@ -135,22 +138,24 @@ void Hydro::init() {
     sides_and_corners.unMapPRegion();
     zones.unMapPRegion();
     mesh->zones.unMapPRegion();
+    mesh->zone_chunks.unMapPRegion();
 
-    args.point_chunk_CRS = mesh->pt_chunks_CRS;
+    args.num_point_chunks = mesh->num_pt_chunks;
     double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
     for (int i = 0; i < bcx.size(); ++i) {
         args.boundary_conditions_x.push_back(LocalMesh::getXPlane(bcx[i], mesh->num_pts, pt_x));
         std::vector<int> pchb_CRS;
-        LocalMesh::getPlaneChunks(args.boundary_conditions_x[i], args.point_chunk_CRS, pchb_CRS);
+        LocalMesh::getPlaneChunks(args.boundary_conditions_x[i], pt_chunks_CRS, numpch, pchb_CRS);
         args.bcx_point_chunk_CRS.push_back(pchb_CRS);
     }
     for (int i = 0; i < bcy.size(); ++i){
         args.boundary_conditions_y.push_back(LocalMesh::getYPlane(bcy[i], mesh->num_pts, pt_x));
         std::vector<int> pchb_CRS;
-        LocalMesh::getPlaneChunks(args.boundary_conditions_y[i], args.point_chunk_CRS, pchb_CRS);
+        LocalMesh::getPlaneChunks(args.boundary_conditions_y[i], pt_chunks_CRS, numpch, pchb_CRS);
         args.bcy_point_chunk_CRS.push_back(pchb_CRS);
     }
     mesh->points.unMapPRegion();
+    mesh->point_chunks.unMapPRegion();
 
 
     args.min_reduction = min_reduction;
@@ -160,8 +165,8 @@ void Hydro::init() {
     args.num_sides = mesh->num_sides;
     args.num_zones = mesh->num_zones;
     args.num_edges = mesh->num_edges;
-    args.zone_chunk_CRS = mesh->zone_chunks_CRS;
-    args.side_chunk_CRS = mesh->side_chunks_CRS;
+    args.num_zone_chunks = mesh->num_zone_chunks;
+    args.num_side_chunks = mesh->num_side_chunks;
     args.meshtype = params.meshtype;
     args.nzones_x = params.directs.nzones_x;
     args.nzones_y = params.directs.nzones_y;
@@ -224,6 +229,7 @@ Future Hydro::doCycle(Future future_step)
 {
     PredictorPointTask predictor_point_launcher(
             mesh->points.getLRegion(),
+            mesh->point_chunks.getLRegion(),
             points.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
     predictor_point_launcher.add_future(future_step);
@@ -233,6 +239,7 @@ Future Hydro::doCycle(Future future_step)
             mesh->sides.getLRegion(),
             mesh->zone_pts.getLRegion(),
             mesh->points.getLRegion(),
+            mesh->side_chunks.getLRegion(),
             zones.getLRegion(),
             sides_and_corners.getLRegion(),
             points.getLRegion(),
@@ -249,6 +256,9 @@ Future Hydro::doCycle(Future future_step)
             mesh->points.getLRegion(),
             mesh->edges.getLRegion(),
             mesh->local_points_by_gid.getLRegion(),
+            mesh->point_chunks.getLRegion(),
+            mesh->side_chunks.getLRegion(),
+            mesh->zone_chunks.getLRegion(),
             zones.getLRegion(),
             sides_and_corners.getLRegion(),
             points.getLRegion(),
@@ -560,6 +570,7 @@ void Hydro::calcDtHydro(
 void Hydro::writeEnergyCheck() {
 
 
+    const int* side_chunks_CRS = mesh->side_chunks.getRawPtr<int>(FID_SIDE_CHUNKS_CRS);
     const double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
     const int* map_side2zone = mesh->sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     const double* side_mass_frac = mesh->sides.getRawPtr<double>(FID_SMF);
@@ -573,11 +584,11 @@ void Hydro::writeEnergyCheck() {
 
     double ei = 0.;
     double ek = 0.;
-    for (int sch = 0; sch < mesh->num_side_chunks(); ++sch) {
-        int sfirst = mesh->side_chunks_CRS[sch];
-        int slast = mesh->side_chunks_CRS[sch+1];
-        int zfirst = LocalMesh::side_zone_chunks_first(sch, map_side2zone, mesh->side_chunks_CRS);
-        int zlast = LocalMesh::side_zone_chunks_last(sch, map_side2zone, mesh->side_chunks_CRS);
+    for (int sch = 0; sch < mesh->num_side_chunks; ++sch) {
+        int sfirst = side_chunks_CRS[sch];
+        int slast = side_chunks_CRS[sch+1];
+        int zfirst = LocalMesh::side_zone_chunks_first(sch, map_side2zone, side_chunks_CRS);
+        int zlast = LocalMesh::side_zone_chunks_last(sch, map_side2zone, side_chunks_CRS);
 
         double eichunk = 0.;
         double ekchunk = 0.;
@@ -592,6 +603,7 @@ void Hydro::writeEnergyCheck() {
     }
     points.unMapPRegion();
     zones.unMapPRegion();
+    mesh->side_chunks.unMapPRegion();
     mesh->points.unMapPRegion();
     mesh->sides.unMapPRegion();
     mesh->zones.unMapPRegion();

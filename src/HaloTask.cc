@@ -23,6 +23,7 @@
 HaloTask::HaloTask(LogicalRegion mesh_sides,
         LogicalRegion mesh_points,
         LogicalRegion mesh_local_points,
+        LogicalRegion point_chunks,
         LogicalRegion hydro_sides_and_corners,
         void *args, const size_t &size)
 	 : TaskLauncher(HaloTask::TASK_ID, TaskArgument(args, size))
@@ -37,6 +38,8 @@ HaloTask::HaloTask(LogicalRegion mesh_sides,
     add_region_requirement(RegionRequirement(mesh_local_points, READ_WRITE, EXCLUSIVE, mesh_local_points));
     add_field(3/*idx*/, FID_PF);
     add_field(3/*idx*/, FID_PMASWT);
+    add_region_requirement(RegionRequirement(point_chunks, READ_ONLY, EXCLUSIVE, point_chunks));
+    add_field(4, FID_POINT_CHUNKS_CRS);
 }
 
 /*static*/ const char * const HaloTask::TASK_NAME = "HaloTask";
@@ -47,8 +50,8 @@ void HaloTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == 4);
-	assert(task->regions.size() == 4);
+	assert(regions.size() == 5);
+	assert(task->regions.size() == 5);
 
     assert(task->regions[0].privilege_fields.size() == 1);
     LogicalStructured sides(ctx, runtime, regions[0]);
@@ -62,6 +65,10 @@ void HaloTask::cpu_run(const Task *task,
 	LogicalStructured sides_and_corners(ctx, runtime, regions[2]);
 	const double* corner_mass = sides_and_corners.getRawPtr<double>(FID_CMASWT);
     const double2* corner_force = sides_and_corners.getRawPtr<double2>(FID_CFTOT);
+
+    assert(task->regions[4].privilege_fields.size() == 1);
+    LogicalStructured point_chunks(ctx, runtime, regions[4]);
+    const int* point_chunks_CRS = point_chunks.getRawPtr<int>(FID_POINT_CHUNKS_CRS);
 
     assert(task->regions[3].privilege_fields.size() == 2);
     LogicalUnstructured local_points_by_gid(ctx, runtime, regions[3]);
@@ -82,7 +89,8 @@ void HaloTask::cpu_run(const Task *task,
     GenerateMesh* generate_mesh = new GenerateMesh(input_params);
 
     LocalMesh::sumOnProc(corner_mass, corner_force,
-            args.point_chunk_CRS,
+            point_chunks_CRS,
+            args.num_point_chunks,
             map_pt2crn_first,
             map_crn2crn_next,
             generate_mesh,

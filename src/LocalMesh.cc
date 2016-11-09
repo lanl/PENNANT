@@ -46,6 +46,9 @@ LocalMesh::LocalMesh(const InputParameters& params,
             sides(ctx, rt),
             points(ctx, rt),
             edges(ctx, rt),
+            zone_chunks(ctx, rt),
+            side_chunks(ctx, rt),
+            point_chunks(ctx, rt),
             chunk_size(params.directs.chunk_size),
             pt_x_init_by_gid(ctx, rt, points),
 			generate_mesh(NULL),
@@ -118,7 +121,11 @@ void LocalMesh::init() {
 
     initEdgeMappingArrays(map_side2zone, zone_pts_ptr, map_side2pt1, map_side2pt2, map_side2edge);
 
-    populateChunks(map_side2zone);
+    int* point_chunks_CRS = nullptr;
+    int* side_chunks_CRS = nullptr;
+    int* zone_chunks_CRS = nullptr;
+
+    populateChunks(map_side2zone, &point_chunks_CRS, &side_chunks_CRS, &zone_chunks_CRS);
 
     points.allocate(num_pts);
     double2* pt_x = points.getRawPtr<double2>(FID_PX);
@@ -135,15 +142,15 @@ void LocalMesh::init() {
     writeMeshStats();
 
     #pragma omp parallel for schedule(static)
-    for (int pch = 0; pch < num_pt_chunks(); ++pch) {
-        int pfirst = pt_chunks_CRS[pch];
-        int plast = pt_chunks_CRS[pch+1];
+    for (int pch = 0; pch < num_pt_chunks; ++pch) {
+        int pfirst = point_chunks_CRS[pch];
+        int plast = point_chunks_CRS[pch+1];
         for (int p = pfirst; p < plast; ++p)
             pt_x[p] = point_position_initial[p];
     }
     point_position_initial.resize(0);
 
-    for (int sch = 0; sch < num_side_chunks(); ++sch) {
+    for (int sch = 0; sch < num_side_chunks; ++sch) {
         int sfirst =  side_chunks_CRS[sch];
         int slast =  side_chunks_CRS[sch+1];
         calcCtrs(sfirst, slast,  pt_x,
@@ -152,7 +159,7 @@ void LocalMesh::init() {
         calcVols(sfirst, slast,  pt_x,  zone_x,
                  map_side2zone,  num_sides,  num_zones,  map_side2pt1,  map_side2pt2, zone_pts_ptr,
                  side_area,  side_vol,  zone_area,  zone_vol);
-        calcSideMassFracs(sch, map_side2zone, side_area, zone_area, side_mass_frac);
+        calcSideMassFracs(sch, map_side2zone, side_area, zone_area, side_chunks_CRS, side_mass_frac);
     }
 
     edges.unMapPRegion();
@@ -160,6 +167,9 @@ void LocalMesh::init() {
     sides.unMapPRegion();
     zones.unMapPRegion();
     zone_pts.unMapPRegion();
+    point_chunks.unMapPRegion();
+    side_chunks.unMapPRegion();
+    zone_chunks.unMapPRegion();
 }
 
 
@@ -184,6 +194,9 @@ void LocalMesh::allocateFields()
     sides.addField<int>(FID_SMAP_SIDE_TO_PT2);
     sides.addField<int>(FID_SMAP_SIDE_TO_ZONE);
     sides.addField<int>(FID_SMAP_SIDE_TO_EDGE);
+    zone_chunks.addField<int>(FID_ZONE_CHUNKS_CRS);
+    side_chunks.addField<int>(FID_SIDE_CHUNKS_CRS);
+    point_chunks.addField<int>(FID_POINT_CHUNKS_CRS);
 }
 
 
@@ -239,8 +252,15 @@ void LocalMesh::initEdgeMappingArrays(
 }
 
 
-void LocalMesh::populateChunks(const int* map_side2zone)
+void LocalMesh::populateChunks(const int* map_side2zone,
+        int** point_chunks_CRS,
+        int** side_chunks_CRS,
+        int** zone_chunks_CRS)
 {
+    std::vector<int> side_chunks_vec;    // start/stop index for side chunks, compressed row storage
+    std::vector<int> pt_chunks_vec;    // start/stop index for point chunks, compressed row storage
+    std::vector<int> zone_chunks_vec;    // start/stop index for zone chunks, compressed row storage
+
     if (chunk_size == 0) chunk_size = max(num_pts, num_sides);
 
     // compute side chunks
@@ -248,29 +268,44 @@ void LocalMesh::populateChunks(const int* map_side2zone)
     // to ensure that no zone has its sides split across chunk
     // boundaries
     int s2 = 0;
-    side_chunks_CRS.push_back(s2);
+    side_chunks_vec.push_back(s2);
     while (s2 < num_sides) {
         s2 = min(s2 + chunk_size, num_sides);
         while (s2 < num_sides && map_side2zone[s2] == map_side2zone[s2-1])
             --s2;
-        side_chunks_CRS.push_back(s2);
+        side_chunks_vec.push_back(s2);
     }
+
+    side_chunks.allocate(side_chunks_vec.size());
+    *side_chunks_CRS = side_chunks.getRawPtr<int>(FID_SIDE_CHUNKS_CRS);
+    std::copy(side_chunks_vec.begin(), side_chunks_vec.end(), &(*side_chunks_CRS)[0]);
+    num_side_chunks = side_chunks_vec.size() - 1;
 
     // compute point chunks
     int p2 = 0;
-    pt_chunks_CRS.push_back(p2);
+    pt_chunks_vec.push_back(p2);
     while (p2 < num_pts) {
         p2 = min(p2 + chunk_size, num_pts);
-        pt_chunks_CRS.push_back(p2);
+        pt_chunks_vec.push_back(p2);
     }
+
+    point_chunks.allocate(pt_chunks_vec.size());
+    *point_chunks_CRS = point_chunks.getRawPtr<int>(FID_POINT_CHUNKS_CRS);
+    std::copy(pt_chunks_vec.begin(), pt_chunks_vec.end(), &(*point_chunks_CRS)[0]);
+    num_pt_chunks = pt_chunks_vec.size() - 1;
 
     // compute zone chunks
     int z2 = 0;
-    zone_chunks_CRS.push_back(z2);
+    zone_chunks_vec.push_back(z2);
     while (z2 < num_zones) {
         z2 = min(z2 + chunk_size, num_zones);
-        zone_chunks_CRS.push_back(z2);
+        zone_chunks_vec.push_back(z2);
     }
+
+    num_zone_chunks = zone_chunks_vec.size() - 1;
+    zone_chunks.allocate(zone_chunks_vec.size());
+    *zone_chunks_CRS = zone_chunks.getRawPtr<int>(FID_ZONE_CHUNKS_CRS);
+    std::copy(zone_chunks_vec.begin(), zone_chunks_vec.end(), &(*zone_chunks_CRS)[0]);
 }
 
 
@@ -307,9 +342,9 @@ void LocalMesh::writeMeshStats() {
     int64_t gnumz = num_zones;
     int64_t gnums = num_sides;
     int64_t gnume = num_edges;
-    int gnumpch = num_pt_chunks();
-    int gnumzch = num_zone_chunks();
-    int gnumsch = num_side_chunks();
+    int gnumpch = num_pt_chunks;
+    int gnumzch = num_zone_chunks;
+    int gnumsch = num_side_chunks;
 
     Future future_sum = Parallel::globalSumInt64(gnump, add_reduction, runtime, ctx);
     gnump = future_sum.get_result<int64_t>();
@@ -387,7 +422,8 @@ vector<int> LocalMesh::getYPlane(const double c,
 /*static*/
 void LocalMesh::getPlaneChunks(
         const std::vector<int>& mapbp,
-        const std::vector<int> pt_chunks_CRS,
+        const int* pt_chunks_CRS,
+        const int num_pt_chunks,
         vector<int>& pchb_CRS)
 {
     pchb_CRS.resize(0);
@@ -396,7 +432,7 @@ void LocalMesh::getPlaneChunks(
     // (boundary points contained in each point chunk)
     int bl = 0;
     pchb_CRS.push_back(bl);
-    for (int pch = 0; pch < (pt_chunks_CRS.size()-1); ++pch) {
+    for (int pch = 0; pch < num_pt_chunks; ++pch) {
          int pl = pt_chunks_CRS[pch+1];
          bl = lower_bound(&mapbp[pchb_CRS.back()], &mapbp[mapbp.size()], pl) - &mapbp[0];
          pchb_CRS.push_back(bl);
@@ -495,6 +531,7 @@ void LocalMesh::calcSideMassFracs(const int side_chunk,
         const int* map_side2zone,
         const double* side_area,
         const double* zone_area,
+        const int* side_chunks_CRS,
         double* side_mass_frac)
 {
 	int sfirst = side_chunks_CRS[side_chunk];
@@ -564,14 +601,15 @@ void LocalMesh::calcCharacteristicLen(
 void LocalMesh::sumOnProc(
         const double* corner_mass,
         const double2* corner_force,
-	    const std::vector<int> pt_chunks_CRS,
+        const int* pt_chunks_CRS,
+        const int num_pt_chunks,
 	    const int* map_pt2crn_first,
 	    const int* map_crn2crn_next,
 	    const GenerateMesh* generate_mesh,
 	    DoubleAccessor pt_weighted_mass,
 	    Double2Accessor pt_force)
 {
-    for (int point_chunk = 0; point_chunk < (pt_chunks_CRS.size()-1); ++point_chunk) {
+    for (int point_chunk = 0; point_chunk < num_pt_chunks; ++point_chunk) {
         int pfirst = pt_chunks_CRS[point_chunk];
         int plast = pt_chunks_CRS[point_chunk+1];
         for (int point = pfirst; point < plast; ++point) {
@@ -645,6 +683,7 @@ void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     HaloTask halo_launcher(sides.getLRegion(),
             points.getLRegion(),
             local_points_by_gid.getLRegion(),
+            point_chunks.getLRegion(),
             sides_and_corners.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
     runtime->execute_task(ctx, halo_launcher);

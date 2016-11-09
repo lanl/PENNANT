@@ -77,6 +77,9 @@ enum PointFields {
 
 enum ZonePtsCRSFields {
 	FID_ZONE_PTS_PTR,
+    FID_ZONE_CHUNKS_CRS,
+    FID_SIDE_CHUNKS_CRS,
+    FID_POINT_CHUNKS_CRS,
 };
 
 struct RunStat {
@@ -221,9 +224,9 @@ struct DoCycleTasksArgs {
     int nzones_x, nzones_y;
     double qgamma, q1, q2;
     double ssmin, alpha, gamma;
-    std::vector<int> zone_chunk_CRS;
-    std::vector<int> side_chunk_CRS;
-    std::vector<int> point_chunk_CRS;
+    int num_zone_chunks;
+    int num_side_chunks;
+    int num_point_chunks;
     std::string meshtype;
     std::vector<std::vector<int>> boundary_conditions_x;
     std::vector<std::vector<int>> boundary_conditions_y;

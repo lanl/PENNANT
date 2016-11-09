@@ -19,7 +19,8 @@
 class PredictorPointTask : public TaskLauncher {
 public:
 	PredictorPointTask(
-	        LogicalRegion mesh_points,
+            LogicalRegion mesh_points,
+            LogicalRegion point_chunks,
             LogicalRegion hydro_points,
             void *args, const size_t &size);
 	static const char * const TASK_NAME;

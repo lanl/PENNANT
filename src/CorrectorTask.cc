@@ -30,6 +30,9 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
         LogicalRegion mesh_points,
         LogicalRegion mesh_edges,
         LogicalRegion mesh_local_points,
+        LogicalRegion point_chunks,
+        LogicalRegion side_chunks,
+        LogicalRegion zone_chunks,
         LogicalRegion hydro_zones,
         LogicalRegion hydro_sides_and_corners,
         LogicalRegion hydro_points,
@@ -80,6 +83,12 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_field(12/*idx*/, FID_PX);
     add_region_requirement(RegionRequirement(mesh_local_points, READ_ONLY, EXCLUSIVE, mesh_local_points));
     add_field(13/*idx*/, FID_PMASWT);
+    add_region_requirement(RegionRequirement(point_chunks, READ_ONLY, EXCLUSIVE, point_chunks));
+    add_field(14, FID_POINT_CHUNKS_CRS);
+    add_region_requirement(RegionRequirement(side_chunks, READ_ONLY, EXCLUSIVE, side_chunks));
+    add_field(15, FID_SIDE_CHUNKS_CRS);
+    add_region_requirement(RegionRequirement(zone_chunks, READ_ONLY, EXCLUSIVE, zone_chunks));
+    add_field(16, FID_ZONE_CHUNKS_CRS);
 }
 
 /*static*/ const char * const CorrectorTask::TASK_NAME = "CorrectorTask";
@@ -90,8 +99,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == 14);
-	assert(task->regions.size() == 14);
+	assert(regions.size() == 17);
+	assert(task->regions.size() == 17);
 
 	assert(task->regions[0].privilege_fields.size() == 2);
     LogicalStructured mesh_zones(ctx, runtime, regions[0]);
@@ -129,6 +138,18 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     assert(task->regions[13].privilege_fields.size() == 1);
     LogicalUnstructured local_points_by_gid(ctx, runtime, regions[13]);
     const DoubleAccessor point_mass = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
+
+    assert(task->regions[14].privilege_fields.size() == 1);
+    LogicalStructured point_chunks(ctx, runtime, regions[14]);
+    const int* point_chunks_CRS = point_chunks.getRawPtr<int>(FID_POINT_CHUNKS_CRS);
+
+    assert(task->regions[15].privilege_fields.size() == 1);
+    LogicalStructured side_chunks(ctx, runtime, regions[15]);
+    const int* side_chunks_CRS = side_chunks.getRawPtr<int>(FID_SIDE_CHUNKS_CRS);
+
+    assert(task->regions[16].privilege_fields.size() == 1);
+    LogicalStructured zone_chunks(ctx, runtime, regions[16]);
+    const int* zone_chunks_CRS = zone_chunks.getRawPtr<int>(FID_ZONE_CHUNKS_CRS);
 
     assert(task->regions[6].privilege_fields.size() == 1);
     LogicalUnstructured local_write_points_by_gid(ctx, runtime, regions[6]);
@@ -183,9 +204,9 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     Future f1 = task->futures[0];
     TimeStep time_step = f1.get_result<TimeStep>();
 
-    for (int pt_chunk = 0; pt_chunk < (args.point_chunk_CRS.size()-1); ++pt_chunk) {
-        int pfirst = args.point_chunk_CRS[pt_chunk];
-        int plast = args.point_chunk_CRS[pt_chunk+1];
+    for (int pt_chunk = 0; pt_chunk < args.num_point_chunks; ++pt_chunk) {
+        int pfirst = point_chunks_CRS[pt_chunk];
+        int plast = point_chunks_CRS[pt_chunk+1];
 
         // 4a. apply boundary conditions
         const double2 vfixx = double2(1., 0.);
@@ -211,11 +232,11 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
                 pfirst, plast);
     }
 
-    for (int side_chunk = 0; side_chunk < (args.side_chunk_CRS.size()-1); ++side_chunk) {
-        int sfirst = args.side_chunk_CRS[side_chunk];
-        int slast = args.side_chunk_CRS[side_chunk+1];
-        int zfirst = LocalMesh::side_zone_chunks_first(side_chunk, map_side2zone, args.side_chunk_CRS);
-        int zlast = LocalMesh::side_zone_chunks_last(side_chunk, map_side2zone, args.side_chunk_CRS);
+    for (int side_chunk = 0; side_chunk < args.num_side_chunks; ++side_chunk) {
+        int sfirst = side_chunks_CRS[side_chunk];
+        int slast = side_chunks_CRS[side_chunk+1];
+        int zfirst = LocalMesh::side_zone_chunks_first(side_chunk, map_side2zone, side_chunks_CRS);
+        int zlast = LocalMesh::side_zone_chunks_last(side_chunk, map_side2zone, side_chunks_CRS);
 
         // 6a. compute new mesh geometry
         LocalMesh::calcCtrs(sfirst, slast, pt_x,
@@ -236,9 +257,9 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     recommend.dt = 1.e99;
     strcpy(recommend.message, "Hydro default");
 
-    for (int zone_chunk = 0; zone_chunk < (args.zone_chunk_CRS.size()-1); ++zone_chunk) {
-        int zone_first = args.zone_chunk_CRS[zone_chunk];
-        int zone_last = args.zone_chunk_CRS[zone_chunk+1];
+    for (int zone_chunk = 0; zone_chunk < args.num_zone_chunks; ++zone_chunk) {
+        int zone_first = zone_chunks_CRS[zone_chunk];
+        int zone_last = zone_chunks_CRS[zone_chunk+1];
 
         // 7a. compute work rate
         Hydro::calcWorkRate(time_step.dt, zone_vol, zone_vol0, zone_work, zone_pressure,

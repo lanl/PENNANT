@@ -47,6 +47,10 @@ public:
     //  data structures...)
     int num_pts, num_edges, num_zones, num_sides, num_corners;
 
+    int num_pt_chunks;
+    int num_zone_chunks;
+    int num_side_chunks;
+
     static inline int mapSideToSideNext(const int &s,
             const int* map_side2zone,
             const int* zone_pts_ptr)
@@ -72,25 +76,15 @@ public:
     static inline int zoneNPts(const int &i, const int* zone_pts_ptr)
     {return zone_pts_ptr[i+1] - zone_pts_ptr[i];}
 
-    inline int num_side_chunks() { return side_chunks_CRS.size() - 1;}
-
-    std::vector<int> side_chunks_CRS;    // start/stop index for side chunks, compressed row storage
-    std::vector<int> pt_chunks_CRS;    // start/stop index for point chunks, compressed row storage
-    std::vector<int> zone_chunks_CRS;    // start/stop index for zone chunks, compressed row storage
-
     static inline int side_zone_chunks_first(int s,
             const int* map_side2zone,
-            const std::vector<int> side_chunks_CRS)
+            const int* side_chunks_CRS)
     { return map_side2zone[side_chunks_CRS[s]]; }
 
     static inline int side_zone_chunks_last(int s,
             const int* map_side2zone,
-            const std::vector<int> side_chunks_CRS)
+            const int* side_chunks_CRS)
     { return map_side2zone[side_chunks_CRS[s+1]-1] + 1; }
-
-    inline int num_pt_chunks() { return pt_chunks_CRS.size() - 1;}
-
-    inline int num_zone_chunks() { return zone_chunks_CRS.size() - 1;}
 
     // find plane with constant x, y value
     static std::vector<int> getXPlane(
@@ -105,7 +99,8 @@ public:
     // compute chunks for a given plane
     static void getPlaneChunks(
             const std::vector<int>& mapbp,
-            const std::vector<int> pt_chunks_CRS,
+            const int* pt_chunks_CRS,
+            const int num_pt_chunks,
             std::vector<int>& pchb_CRS);
 
     // compute edge, zone centers
@@ -168,7 +163,8 @@ public:
     static void sumOnProc(
             const double* corner_mass,
             const double2* corner_force,
-            const std::vector<int> pt_chunks_CRS,
+            const int* pt_chunks_CRS,
+            const int num_pt_chunks,
             const int* map_pt2crn_first,
             const int* map_crn2crn_next,
             const GenerateMesh* generate_mesh,
@@ -181,6 +177,9 @@ public:
     LogicalStructured sides;
     LogicalStructured points;
     LogicalStructured edges;
+    LogicalStructured zone_chunks;
+    LogicalStructured side_chunks;
+    LogicalStructured point_chunks;
 
 private:
     int chunk_size;                 // max size for processing chunks
@@ -222,7 +221,10 @@ private:
             const int* map_side2pt2,
             int* map_side2edge);
 
-    void populateChunks(const int* map_side2zone);
+    void populateChunks(const int* map_side2zone,
+            int** point_chunks_CRS,
+            int** side_chunks_CRS,
+            int** zone_chunks_CRS);
 
     void populateInverseMap(const int* map_side2pt1,
             int* map_pt2crn_first,
@@ -236,6 +238,7 @@ private:
             const int* map_side2zone,
             const double* side_area,
             const double* zone_area,
+            const int* side_chunks_CRS,
             double* side_mass_frac);
 
     void  allocateFields();
