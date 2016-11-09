@@ -76,6 +76,7 @@ public:
     static void calcWork(
             const double dt,
             const int* map_side2pt1,
+            const int* map_side2pt2,
             const int* map_side2zone,
             const int* zone_pts_ptr,
             const double2* side_force_pres,

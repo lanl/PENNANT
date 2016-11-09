@@ -52,6 +52,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_region_requirement(RegionRequirement(mesh_sides, READ_ONLY, EXCLUSIVE, mesh_sides));
     add_field(3/*idx*/, FID_SMAP_SIDE_TO_ZONE);
     add_field(3/*idx*/, FID_SMAP_SIDE_TO_PT1);
+    add_field(3/*idx*/, FID_SMAP_SIDE_TO_PT2);
     add_field(3/*idx*/, FID_SMAP_SIDE_TO_EDGE);
     add_region_requirement(RegionRequirement(mesh_zone_pts, READ_ONLY, EXCLUSIVE, mesh_zone_pts));
     add_field(4/*idx*/, FID_ZONE_PTS_PTR);
@@ -104,10 +105,11 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     const double* zone_mass = hydro_read_zones.getRawPtr<double>(FID_ZM);
     const double* zone_pressure = hydro_read_zones.getRawPtr<double>(FID_ZP);
 
-    assert(task->regions[3].privilege_fields.size() == 3);
+    assert(task->regions[3].privilege_fields.size() == 4);
     LogicalStructured mesh_sides(ctx, runtime, regions[3]);
     const int* map_side2zone = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     const int* map_side2pt1 = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
+    const int* map_side2pt2 = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT2);
     const int* map_side2edge = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
 
     assert(task->regions[4].privilege_fields.size() == 1);
@@ -217,15 +219,15 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 
         // 6a. compute new mesh geometry
         LocalMesh::calcCtrs(sfirst, slast, pt_x,
-                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2edge, zone_pts_ptr,
+                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2pt2, map_side2edge, zone_pts_ptr,
                 edge_x, zone_x);
         LocalMesh::calcVols(sfirst, slast, pt_x, zone_x,
-                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, zone_pts_ptr,
+                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2pt2, zone_pts_ptr,
                 side_area, side_vol, zone_area, zone_vol);
 
         // 7. compute work
         std::fill(&zone_work[zfirst], &zone_work[zlast], 0.);
-        Hydro::calcWork(time_step.dt, map_side2pt1, map_side2zone, zone_pts_ptr, side_force_pres,
+        Hydro::calcWork(time_step.dt, map_side2pt1, map_side2pt2, map_side2zone, zone_pts_ptr, side_force_pres,
                 side_force_visc, pt_vel, pt_vel0, pt_x_pred, zone_energy_tot, zone_work,
                 sfirst, slast);
     } // side chunk

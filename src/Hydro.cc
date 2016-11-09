@@ -348,6 +348,7 @@ void Hydro::calcRho(
 void Hydro::calcWork(
         const double dt,
         const int* map_side2pt1,
+        const int* map_side2pt2,
         const int* map_side2zone,
         const int* zone_pts_ptr,
         const double2* side_force_pres,
@@ -368,7 +369,7 @@ void Hydro::calcWork(
 
     for (int side = side_first; side < side_last; ++side) {
         int p1 = map_side2pt1[side];
-        int p2 = LocalMesh::mapSideToPt2(side, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p2 = map_side2pt2[side];
         int z = map_side2zone[side];
 
         double2 sftot = side_force_pres[side] + side_force_visc[side];

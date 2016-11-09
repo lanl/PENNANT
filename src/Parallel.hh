@@ -52,6 +52,7 @@ enum SidesAndCornersFields {
     FID_SFT,
     FID_CFTOT,
     FID_SMAP_SIDE_TO_PT1,
+    FID_SMAP_SIDE_TO_PT2,
     FID_SMAP_SIDE_TO_ZONE,
     FID_SMAP_SIDE_TO_EDGE,
     FID_MAP_CRN2CRN_NEXT,

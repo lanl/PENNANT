@@ -58,14 +58,6 @@ public:
         return snext;
     }
 
-    static inline int mapSideToPt2(const int &s,
-            const int* map_side2pt1,
-            const int* map_side2zone,
-            const int* zone_pts_ptr)
-    {
-        return map_side2pt1[LocalMesh::mapSideToSideNext(s, map_side2zone, zone_pts_ptr)];
-    }
-
     static inline int mapSideToSidePrev(const int &s,
             const int* map_side2zone,
             const int* zone_pts_ptr)
@@ -125,6 +117,7 @@ public:
             const int num_sides,
             const int num_zones,
             const int* map_side2pt1,
+            const int* map_side2pt2,
             const int* map_side2edge,
             const int* zone_pts_ptr,
             double2* ex,
@@ -140,6 +133,7 @@ public:
             const int num_sides,
             const int num_zones,
             const int* map_side2pt1,
+            const int* map_side2pt2,
             const int* zone_pts_ptr,
             double* sarea,
             double* svol,
@@ -150,6 +144,7 @@ public:
             const int sfirst,
             const int slast,
             const int* map_side2pt1,
+            const int* map_side2pt2,
             const int* map_side2edge,
             const int* map_side2zone,
             const int* zone_pts_ptr,
@@ -217,12 +212,14 @@ private:
     void initSideMappingArrays(const std::vector<int>& cellstart,
             const std::vector<int>& cellnodes,
             int* map_side2zone,
-            int* map_side2pt1);
+            int* map_side2pt1,
+            int* map_side2pt2);
 
     void initEdgeMappingArrays(
             const int* map_side2zone,
             const int* zone_pts_ptr,
-            int* map_side2pt1,
+            const int* map_side2pt1,
+            const int* map_side2pt2,
             int* map_side2edge);
 
     void populateChunks(const int* map_side2zone);

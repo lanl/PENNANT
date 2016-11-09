@@ -54,6 +54,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
     add_field(ZERO, FID_MAP_CRN2CRN_NEXT);
     add_field(ZERO, FID_SMAP_SIDE_TO_ZONE);
     add_field(ZERO, FID_SMAP_SIDE_TO_PT1);
+    add_field(ZERO, FID_SMAP_SIDE_TO_PT2);
     add_field(ZERO, FID_SMAP_SIDE_TO_EDGE);
     add_field(ZERO, FID_SMF);
     add_region_requirement(RegionRequirement(mesh_zones, READ_WRITE, EXCLUSIVE, mesh_zones));
@@ -171,6 +172,7 @@ static void Force(
         const double* elen,
         const int* map_side2zone,
         const int* map_side2pt1,
+        const int* map_side2pt2,
         const int* zone_pts_ptr,
         const int* map_side2edge,
         const double2* pt_x_pred,
@@ -255,10 +257,10 @@ static void Force(
             int z = map_side2zone[sprev];
             int z0 = z - zfirst;
             int c0 = s - sfirst;
-            int p = LocalMesh::mapSideToPt2(sprev, map_side2pt1, map_side2zone, zone_pts_ptr);
+            int p = map_side2pt2[sprev];
             // Points
             int p1 = map_side2pt1[sprev];
-            int p2 = LocalMesh::mapSideToPt2(s2, map_side2pt1, map_side2zone, zone_pts_ptr);
+            int p2 = map_side2pt2[s2];
             // Edges
             int e1 = map_side2edge[sprev];
             int e2 = map_side2edge[s2];
@@ -316,12 +318,12 @@ static void Force(
     for (int s = sfirst; s < slast; ++s) {
         int sprev = LocalMesh::mapSideToSidePrev(s, map_side2zone, zone_pts_ptr);
         int c10 = s - sfirst;
-        int p = LocalMesh::mapSideToPt2(sprev, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p = map_side2pt2[sprev];
         // Associated point and edge 1
         int p1 = map_side2pt1[sprev];
         int e1 = map_side2edge[sprev];
         // Associated point and edge 2
-        int p2 = LocalMesh::mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p2 = map_side2pt2[s];
         int e2 = map_side2edge[s];
         int z = map_side2zone[s];
 
@@ -439,7 +441,7 @@ static void Force(
             / el;
 
         int p3 = map_side2pt1[s];
-        int p4 = LocalMesh::mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p4 = map_side2pt2[s];
         int z = map_side2zone[s];
         int z0 = z - zfirst;
 
@@ -481,11 +483,12 @@ void PredictorTask::cpu_run(const Task *task,
     args_serializer.setBitStream(task->args);
     args_serializer.restore(&args);
 
-    assert(task->regions[ZERO].privilege_fields.size() == 5);
+    assert(task->regions[ZERO].privilege_fields.size() == 6);
     LogicalStructured mesh_sides(ctx, runtime, regions[ZERO]);
     const int* map_crn2crn_next = mesh_sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
     const int* map_side2zone = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     const int* map_side2pt1 = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
+    const int* map_side2pt2 = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT2);
     const int* map_side2edge = mesh_sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
     const double* side_mass_frac = mesh_sides.getRawPtr<double>(FID_SMF);
 
@@ -554,14 +557,14 @@ void PredictorTask::cpu_run(const Task *task,
 
         // 1a. compute new mesh geometry
         LocalMesh::calcCtrs(sfirst, slast, pt_x_pred,
-                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2edge, zone_pts_ptr,
+                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2pt2, map_side2edge, zone_pts_ptr,
                 edge_x_pred, zone_x_pred);
 
         LocalMesh::calcVols(sfirst, slast, pt_x_pred, zone_x_pred,
-                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, zone_pts_ptr,
+                map_side2zone, args.num_sides, args.num_zones, map_side2pt1, map_side2pt2, zone_pts_ptr,
                 side_area_pred, nullptr, zone_area_pred, zone_vol_pred);
 
-        LocalMesh::calcEdgeLen(sfirst, slast, map_side2pt1, map_side2edge,
+        LocalMesh::calcEdgeLen(sfirst, slast, map_side2pt1, map_side2pt2, map_side2edge,
                 map_side2zone, zone_pts_ptr, pt_x_pred,
                 edge_len);
 
@@ -578,7 +581,7 @@ void PredictorTask::cpu_run(const Task *task,
         // 4. compute forces
         Force(side_force_visc, sfirst, slast,
                 args.num_sides, args.num_zones, pt_vel, edge_x_pred,
-                zone_x_pred, edge_len, map_side2zone, map_side2pt1,
+                zone_x_pred, edge_len, map_side2zone, map_side2pt1, map_side2pt2,
                 zone_pts_ptr, map_side2edge, pt_x_pred,
                 zone_sound_speed, args.qgamma,
                 args.q1, args.q2,

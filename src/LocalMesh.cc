@@ -103,19 +103,20 @@ void LocalMesh::init() {
     double* side_vol = sides.getRawPtr<double>(FID_SVOL);
     double* side_mass_frac = sides.getRawPtr<double>(FID_SMF);
     int* map_side2pt1 = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
+    int* map_side2pt2 = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT2);
     int* map_side2zone = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
     int* map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
     int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
 
     // use the cell* arrays to populate the side maps
     initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc,
-            map_side2zone, map_side2pt1);
+            map_side2zone, map_side2pt1, map_side2pt2);
 
     // release memory from cell* arrays
     zone_points_pointer_calc.resize(0);
     zone_points_values_calc.resize(0);
 
-    initEdgeMappingArrays(map_side2zone, zone_pts_ptr, map_side2pt1, map_side2edge);
+    initEdgeMappingArrays(map_side2zone, zone_pts_ptr, map_side2pt1, map_side2pt2, map_side2edge);
 
     populateChunks(map_side2zone);
 
@@ -146,10 +147,10 @@ void LocalMesh::init() {
         int sfirst =  side_chunks_CRS[sch];
         int slast =  side_chunks_CRS[sch+1];
         calcCtrs(sfirst, slast,  pt_x,
-                 map_side2zone,  num_sides,  num_zones,  map_side2pt1,  map_side2edge, zone_pts_ptr,
+                 map_side2zone,  num_sides,  num_zones,  map_side2pt1,  map_side2pt2,  map_side2edge, zone_pts_ptr,
                  edge_x,  zone_x);
         calcVols(sfirst, slast,  pt_x,  zone_x,
-                 map_side2zone,  num_sides,  num_zones,  map_side2pt1, zone_pts_ptr,
+                 map_side2zone,  num_sides,  num_zones,  map_side2pt1,  map_side2pt2, zone_pts_ptr,
                  side_area,  side_vol,  zone_area,  zone_vol);
         calcSideMassFracs(sch, map_side2zone, side_area, zone_area, side_mass_frac);
     }
@@ -180,6 +181,7 @@ void LocalMesh::allocateFields()
     sides.addField<double>(FID_SVOL);
     sides.addField<double>(FID_SMF);
     sides.addField<int>(FID_SMAP_SIDE_TO_PT1);
+    sides.addField<int>(FID_SMAP_SIDE_TO_PT2);
     sides.addField<int>(FID_SMAP_SIDE_TO_ZONE);
     sides.addField<int>(FID_SMAP_SIDE_TO_EDGE);
 }
@@ -189,15 +191,19 @@ void LocalMesh::initSideMappingArrays(
         const vector<int>& cellstart,
         const vector<int>& cellnodes,
         int* map_side2zone,
-        int* map_side2pt1)
+        int* map_side2pt1,
+        int* map_side2pt2)
 {
     for (int z = 0; z < num_zones; ++z) {
         int sbase = cellstart[z];
         int size = cellstart[z+1] - sbase;
         for (int n = 0; n < size; ++n) {
             int s = sbase + n;
+            const int slast = sbase + size;
+            const int snext = (s + 1 == slast ? sbase : s + 1);
             map_side2zone[s] = z;
             map_side2pt1[s] = cellnodes[s];
+            map_side2pt2[s] = cellnodes[snext];
         } // for n
     } // for z
 }
@@ -206,15 +212,16 @@ void LocalMesh::initSideMappingArrays(
 void LocalMesh::initEdgeMappingArrays(
         const int* map_side2zone,
         const int* zone_pts_ptr,
-        int* map_side2pt1,
+        const int* map_side2pt1,
+        const int* map_side2pt2,
         int* map_side2edge)
 {
     vector<vector<int> > edgepp(num_pts), edgepe(num_pts);
 
     int e = 0;
     for (int s = 0; s < num_sides; ++s) {
-        int p1 = min(map_side2pt1[s], mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr));
-        int p2 = max(map_side2pt1[s], mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr));
+        int p1 = min(map_side2pt1[s], map_side2pt2[s]);
+        int p2 = max(map_side2pt1[s], map_side2pt2[s]);
 
         vector<int>& vpp = edgepp[p1];
         vector<int>& vpe = edgepe[p1];
@@ -406,6 +413,7 @@ void LocalMesh::calcCtrs(
         const int num_sides,
         const int num_zones,
         const int* map_side2pt1,
+        const int* map_side2pt2,
         const int* map_side2edge,
         const int* zone_pts_ptr,
         double2* ex,
@@ -417,7 +425,7 @@ void LocalMesh::calcCtrs(
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1[s];
-        int p2 = mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p2 = map_side2pt2[s];
         int e = map_side2edge[s];
         int z = map_side2zone[s];
         ex[e] = 0.5 * (px[p1] + px[p2]);
@@ -441,6 +449,7 @@ void LocalMesh::calcVols(
         const int num_sides,
         const int num_zones,
         const int* map_side2pt1,
+        const int* map_side2pt2,
         const int* zone_pts_ptr,
         double* sarea,
         double* svol,
@@ -456,7 +465,7 @@ void LocalMesh::calcVols(
     int count = 0;
     for (int s = sfirst; s < slast; ++s) {
         int p1 = map_side2pt1[s];
-        int p2 = mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        int p2 = map_side2pt2[s];
         int z = map_side2zone[s];
 
         // compute side volumes, sum to zone
@@ -504,6 +513,7 @@ void LocalMesh::calcEdgeLen(
         const int sfirst,
         const int slast,
         const int* map_side2pt1,
+        const int* map_side2pt2,
         const int* map_side2edge,
         const int* map_side2zone,
         const int* zone_pts_ptr,
@@ -512,7 +522,7 @@ void LocalMesh::calcEdgeLen(
 {
 	for (int s = sfirst; s < slast; ++s) {
         const int p1 = map_side2pt1[s];
-        const int p2 = mapSideToPt2(s, map_side2pt1, map_side2zone, zone_pts_ptr);
+        const int p2 = map_side2pt2[s];
         const int e = map_side2edge[s];
 
         edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
