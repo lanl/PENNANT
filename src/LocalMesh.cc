@@ -181,7 +181,12 @@ void LocalMesh::allocateFields()
     zones.addField<double>(FID_ZVOL);
     zones.addField<double>(FID_ZVOL0);
     zones.addField<double>(FID_ZDL);
+    zones.addField<double2>(FID_Z_DBL2_TEMP);
+    zones.addField<double>(FID_Z_DBL_TEMP1);
+    zones.addField<double>(FID_Z_DBL_TEMP2);
     edges.addField<double2>(FID_EX);
+    edges.addField<double2>(FID_E_DBL2_TEMP);
+    edges.addField<double>(FID_E_DBL_TEMP);
     points.addField<double2>(FID_PX0);
     points.addField<double2>(FID_PX);
     points.addField<double2>(FID_PXP);

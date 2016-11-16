@@ -23,6 +23,7 @@ public:
 	        LogicalRegion mesh_zone_pts,
             LogicalRegion mesh_points,
             LogicalRegion side_chunks,
+            LogicalRegion mesh_edges,
 	        LogicalRegion hydro_zones,
             LogicalRegion hydro_sides_and_corners,
             LogicalRegion hydro_points,

@@ -192,6 +192,7 @@ void Hydro::allocateFields()
     sides_and_corners.addField<double2>(FID_SFQ);
     sides_and_corners.addField<double2>(FID_SFT);
     sides_and_corners.addField<double2>(FID_CFTOT);
+    sides_and_corners.addField<double>(FID_S_DBL_TEMP);
     zones.addField<double>(FID_ZR);
     zones.addField<double>(FID_ZE);
     zones.addField<double>(FID_ZP);
@@ -240,6 +241,7 @@ Future Hydro::doCycle(Future future_step)
             mesh->zone_pts.getLRegion(),
             mesh->points.getLRegion(),
             mesh->side_chunks.getLRegion(),
+            mesh->edges.getLRegion(),
             zones.getLRegion(),
             sides_and_corners.getLRegion(),
             points.getLRegion(),

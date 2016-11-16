@@ -35,7 +35,8 @@ enum idx {
     SEVEN,
     EIGHT,
     NINE,
-    TEN
+    TEN,
+    ELEVEN
 };
 
 using namespace std;
@@ -46,6 +47,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
         LogicalRegion mesh_zone_pts,
         LogicalRegion mesh_points,
         LogicalRegion side_chunks,
+        LogicalRegion mesh_edges,
         LogicalRegion hydro_zones,
         LogicalRegion hydro_sides_and_corners,
         LogicalRegion hydro_points,
@@ -62,12 +64,16 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
     add_region_requirement(RegionRequirement(mesh_zones, READ_WRITE, EXCLUSIVE, mesh_zones));
     add_field(ONE, FID_ZDL);
     add_field(ONE, FID_ZVOL0);
+    add_field(ONE, FID_Z_DBL2_TEMP);
+    add_field(ONE, FID_Z_DBL_TEMP1);
+    add_field(ONE, FID_Z_DBL_TEMP2);
     add_region_requirement(RegionRequirement(hydro_sides_and_corners, READ_WRITE, EXCLUSIVE, hydro_sides_and_corners));
     add_field(TWO, FID_CFTOT);
     add_field(TWO, FID_SFQ);
     add_field(TWO, FID_SFT);
     add_field(TWO, FID_SFP);
     add_field(TWO, FID_CMASWT);
+    add_field(TWO, FID_S_DBL_TEMP);
     add_region_requirement(RegionRequirement(mesh_zone_pts, READ_ONLY, EXCLUSIVE, mesh_zone_pts));
     add_field(THREE, FID_ZONE_PTS_PTR);
     add_region_requirement(RegionRequirement(hydro_points, READ_ONLY, EXCLUSIVE, hydro_points));
@@ -87,6 +93,9 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones,
     add_field(EIGHT, FID_PXP);
     add_region_requirement(RegionRequirement(side_chunks, READ_ONLY, EXCLUSIVE, side_chunks));
     add_field(NINE, FID_SIDE_CHUNKS_CRS);
+    add_region_requirement(RegionRequirement(mesh_edges, WRITE_DISCARD, EXCLUSIVE, mesh_edges));
+    add_field(TEN, FID_E_DBL2_TEMP);
+    add_field(TEN, FID_E_DBL_TEMP);
 }
 
 /*static*/ const char * const PredictorTask::TASK_NAME = "PredictorTask";
@@ -479,8 +488,8 @@ void PredictorTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == TEN);
-	assert(task->regions.size() == TEN);
+	assert(regions.size() == ELEVEN);
+	assert(task->regions.size() == ELEVEN);
 
     DoCycleTasksArgs args;
     DoCycleTasksArgsSerializer args_serializer;
@@ -523,16 +532,18 @@ void PredictorTask::cpu_run(const Task *task,
     LogicalStructured side_chunks(ctx, runtime, regions[NINE]);
     const int* side_chunks_CRS = side_chunks.getRawPtr<int>(FID_SIDE_CHUNKS_CRS);
 
-    double* edge_len = AbstractedMemory::alloc<double>(args.num_edges);
-    double2* edge_x_pred = AbstractedMemory::alloc<double2>(args.num_edges);
+    assert(task->regions[TEN].privilege_fields.size() == 2);
+    LogicalStructured mesh_write_edges(ctx, runtime, regions[TEN]);
+    double* edge_len = mesh_write_edges.getRawPtr<double>(FID_E_DBL_TEMP);
+    double2* edge_x_pred = mesh_write_edges.getRawPtr<double2>(FID_E_DBL2_TEMP);
 
-    assert(task->regions[ONE].privilege_fields.size() == 2);
+    assert(task->regions[ONE].privilege_fields.size() == 5);
     LogicalStructured mesh_write_zones(ctx, runtime, regions[ONE]);
     double* zone_dl = mesh_write_zones.getRawPtr<double>(FID_ZDL);
     double* zone_vol0 = mesh_write_zones.getRawPtr<double>(FID_ZVOL0);
-    double2* zone_x_pred = AbstractedMemory::alloc<double2>(mesh_write_zones.size());
-    double* zone_vol_pred = AbstractedMemory::alloc<double>(mesh_write_zones.size());
-    double* zone_area_pred = AbstractedMemory::alloc<double>(mesh_write_zones.size());
+    double2* zone_x_pred = mesh_write_zones.getRawPtr<double2>(FID_Z_DBL2_TEMP);
+    double* zone_vol_pred = mesh_write_zones.getRawPtr<double>(FID_Z_DBL_TEMP1);
+    double* zone_area_pred = mesh_write_zones.getRawPtr<double>(FID_Z_DBL_TEMP2);
 
     assert(task->regions[SEVEN].privilege_fields.size() == 3);
     LogicalStructured hydro_write_zones(ctx, runtime, regions[SEVEN]);
@@ -540,7 +551,7 @@ void PredictorTask::cpu_run(const Task *task,
     double* zone_sound_speed = hydro_write_zones.getRawPtr<double>(FID_ZSS);
     double* zone_pressure = hydro_write_zones.getRawPtr<double>(FID_ZP);
 
-    assert(task->regions[TWO].privilege_fields.size() == 5);
+    assert(task->regions[TWO].privilege_fields.size() == 6);
     LogicalStructured write_sides_and_corners(ctx, runtime, regions[TWO]);
     double2* crnr_force_tot = write_sides_and_corners.getRawPtr<double2>(FID_CFTOT);
     double2* side_force_visc = write_sides_and_corners.getRawPtr<double2>(FID_SFQ);
@@ -548,7 +559,7 @@ void PredictorTask::cpu_run(const Task *task,
     double2* side_force_pres = write_sides_and_corners.getRawPtr<double2>(FID_SFP);
     double* crnr_weighted_mass = write_sides_and_corners.getRawPtr<double>(FID_CMASWT);
 
-    double* side_area_pred = AbstractedMemory::alloc<double>(args.num_sides);
+    double* side_area_pred = write_sides_and_corners.getRawPtr<double>(FID_S_DBL_TEMP);
 
     assert(task->futures.size() == 1);
     Future f1 = task->futures[0];
@@ -606,12 +617,5 @@ void PredictorTask::cpu_run(const Task *task,
                 map_side2zone, zone_pts_ptr, sfirst, slast,
                 crnr_force_tot);
     } // side chunk
-
-    AbstractedMemory::free(side_area_pred);
-    AbstractedMemory::free(zone_area_pred);
-    AbstractedMemory::free(zone_vol_pred);
-    AbstractedMemory::free(zone_x_pred);
-    AbstractedMemory::free(edge_x_pred);
-    AbstractedMemory::free(edge_len);
 }
 

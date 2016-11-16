@@ -40,6 +40,9 @@ enum ZoneFields {
 	FID_ZWR,
 	FID_ZSS,
 	FID_ZDU,
+    FID_Z_DBL2_TEMP,
+    FID_Z_DBL_TEMP1,
+    FID_Z_DBL_TEMP2,
 };
 
 enum SidesAndCornersFields {
@@ -56,10 +59,13 @@ enum SidesAndCornersFields {
     FID_SMAP_SIDE_TO_ZONE,
     FID_SMAP_SIDE_TO_EDGE,
     FID_MAP_CRN2CRN_NEXT,
+    FID_S_DBL_TEMP,
 };
 
 enum EdgeFields {
     FID_EX,
+    FID_E_DBL2_TEMP,
+    FID_E_DBL_TEMP,
 };
 
 enum PointFields {
