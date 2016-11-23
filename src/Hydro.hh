@@ -195,6 +195,8 @@ private:
     LogicalStructured sides_and_corners;
     LogicalStructured edges;
     LogicalStructured points;
+    LogicalStructured bcx_chunks;
+    LogicalStructured bcy_chunks;
     const InputParameters params;
     const int my_color;
 

@@ -36,6 +36,8 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
         LogicalRegion hydro_zones,
         LogicalRegion hydro_sides_and_corners,
         LogicalRegion hydro_points,
+        LogicalRegion bcx_chunks,
+        LogicalRegion bcy_chunks,
 		void *args, const size_t &size)
 	 : TaskLauncher(CorrectorTask::TASK_ID, TaskArgument(args, size))
 {
@@ -89,6 +91,10 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_field(15, FID_SIDE_CHUNKS_CRS);
     add_region_requirement(RegionRequirement(zone_chunks, READ_ONLY, EXCLUSIVE, zone_chunks));
     add_field(16, FID_ZONE_CHUNKS_CRS);
+    add_region_requirement(RegionRequirement(bcx_chunks, READ_ONLY, EXCLUSIVE, bcx_chunks));
+    add_field(17, FID_BCX_CHUNKS_CRS);
+    add_region_requirement(RegionRequirement(bcy_chunks, READ_ONLY, EXCLUSIVE, bcy_chunks));
+    add_field(18, FID_BCY_CHUNKS_CRS);
 }
 
 /*static*/ const char * const CorrectorTask::TASK_NAME = "CorrectorTask";
@@ -99,8 +105,8 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 		const std::vector<PhysicalRegion> &regions,
         Context ctx, HighLevelRuntime* runtime)
 {
-	assert(regions.size() == 17);
-	assert(task->regions.size() == 17);
+	assert(regions.size() == 19);
+	assert(task->regions.size() == 19);
 
 	assert(task->regions[0].privilege_fields.size() == 2);
     LogicalStructured mesh_zones(ctx, runtime, regions[0]);
@@ -150,6 +156,14 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     assert(task->regions[16].privilege_fields.size() == 1);
     LogicalStructured zone_chunks(ctx, runtime, regions[16]);
     const int* zone_chunks_CRS = zone_chunks.getRawPtr<int>(FID_ZONE_CHUNKS_CRS);
+
+    assert(task->regions[17].privilege_fields.size() == 1);
+    LogicalStructured bcx_chunks(ctx, runtime, regions[17]);
+    const int* bcx_chunks_CRS = bcx_chunks.getRawPtr<int>(FID_BCX_CHUNKS_CRS);
+
+    assert(task->regions[18].privilege_fields.size() == 1);
+    LogicalStructured bcy_chunks(ctx, runtime, regions[18]);
+    const int* bcy_chunks_CRS = bcy_chunks.getRawPtr<int>(FID_BCY_CHUNKS_CRS);
 
     assert(task->regions[6].privilege_fields.size() == 1);
     LogicalUnstructured local_write_points_by_gid(ctx, runtime, regions[6]);
@@ -212,14 +226,14 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         const double2 vfixx = double2(1., 0.);
         const double2 vfixy = double2(0., 1.);
         for (int x = 0; x < args.boundary_conditions_x.size(); ++x) {
-            int bfirst = args.bcx_point_chunk_CRS[x][pt_chunk];
-            int blast = args.bcx_point_chunk_CRS[x][pt_chunk+1];
+            int bfirst = bcx_chunks_CRS[args.bcx_point_chunk_CRS_offsets[x] + pt_chunk];
+            int blast = bcx_chunks_CRS[args.bcx_point_chunk_CRS_offsets[x] + pt_chunk + 1];
             HydroBC::applyFixedBC(generate_mesh, vfixx, args.boundary_conditions_x[x],
                     pt_vel0, point_force, bfirst, blast);
         }
         for (int y = 0; y < args.boundary_conditions_y.size(); ++y) {
-            int bfirst = args.bcy_point_chunk_CRS[y][pt_chunk];
-            int blast = args.bcy_point_chunk_CRS[y][pt_chunk+1];
+            int bfirst = bcy_chunks_CRS[args.bcy_point_chunk_CRS_offsets[y] + pt_chunk];
+            int blast = bcy_chunks_CRS[args.bcy_point_chunk_CRS_offsets[y] + pt_chunk + 1];
             HydroBC::applyFixedBC(generate_mesh, vfixy, args.boundary_conditions_y[y],
                     pt_vel0, point_force, bfirst, blast);
         }

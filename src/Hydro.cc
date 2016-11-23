@@ -55,6 +55,8 @@ Hydro::Hydro(const InputParameters& params, LocalMesh* m,
         sides_and_corners(ctx, rt),
         edges(ctx, rt),
         points(ctx, rt),
+        bcx_chunks(ctx, rt),
+        bcy_chunks(ctx, rt),
         params(params),
 		my_color(params.directs.task_id)
 {
@@ -142,18 +144,39 @@ void Hydro::init() {
 
     args.num_point_chunks = mesh->num_pt_chunks;
     double2* pt_x = mesh->points.getRawPtr<double2>(FID_PX);
+    int count = 0;
+    std::vector<int> bcx_point_chunk_CRS_concatenated;
     for (int i = 0; i < bcx.size(); ++i) {
         args.boundary_conditions_x.push_back(LocalMesh::getXPlane(bcx[i], mesh->num_pts, pt_x));
         std::vector<int> pchb_CRS;
         LocalMesh::getPlaneChunks(args.boundary_conditions_x[i], pt_chunks_CRS, numpch, pchb_CRS);
-        args.bcx_point_chunk_CRS.push_back(pchb_CRS);
+        args.bcx_point_chunk_CRS_offsets.push_back(count);
+        count += pchb_CRS.size();
+        for (int j = 0; j < pchb_CRS.size(); ++j)
+            bcx_point_chunk_CRS_concatenated.push_back(pchb_CRS[j]);
     }
+    bcx_chunks.allocate(bcx_point_chunk_CRS_concatenated.size());
+    int* bcx_chunks_CRS = bcx_chunks.getRawPtr<int>(FID_BCX_CHUNKS_CRS);
+    std::copy(bcx_point_chunk_CRS_concatenated.begin(), bcx_point_chunk_CRS_concatenated.end(),
+            bcx_chunks_CRS);
+    bcx_chunks.unMapPRegion();
+
+    count = 0;
+    std::vector<int> bcy_point_chunk_CRS_concatenated;
     for (int i = 0; i < bcy.size(); ++i){
         args.boundary_conditions_y.push_back(LocalMesh::getYPlane(bcy[i], mesh->num_pts, pt_x));
         std::vector<int> pchb_CRS;
         LocalMesh::getPlaneChunks(args.boundary_conditions_y[i], pt_chunks_CRS, numpch, pchb_CRS);
-        args.bcy_point_chunk_CRS.push_back(pchb_CRS);
+        args.bcy_point_chunk_CRS_offsets.push_back(count);
+        count += pchb_CRS.size();
+        for (int j = 0; j < pchb_CRS.size(); ++j)
+            bcy_point_chunk_CRS_concatenated.push_back(pchb_CRS[j]);
     }
+    bcy_chunks.allocate(bcy_point_chunk_CRS_concatenated.size());
+    int* bcy_chunks_CRS = bcy_chunks.getRawPtr<int>(FID_BCY_CHUNKS_CRS);
+    std::copy(bcy_point_chunk_CRS_concatenated.begin(), bcy_point_chunk_CRS_concatenated.end(),
+            bcy_chunks_CRS);
+    bcy_chunks.unMapPRegion();
     mesh->points.unMapPRegion();
     mesh->point_chunks.unMapPRegion();
 
@@ -201,6 +224,8 @@ void Hydro::allocateFields()
     zones.addField<double>(FID_ZWR);
     zones.addField<double>(FID_ZSS);
     zones.addField<double>(FID_ZDU);
+    bcx_chunks.addField<int>(FID_BCX_CHUNKS_CRS);
+    bcy_chunks.addField<int>(FID_BCY_CHUNKS_CRS);
 }
 
 
@@ -264,6 +289,8 @@ Future Hydro::doCycle(Future future_step)
             zones.getLRegion(),
             sides_and_corners.getLRegion(),
             points.getLRegion(),
+            bcx_chunks.getLRegion(),
+            bcy_chunks.getLRegion(),
             serial.getBitStream(), serial.getBitStreamSize());
     corrector_launcher.add_future(future_step);
 

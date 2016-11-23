@@ -86,6 +86,8 @@ enum ZonePtsCRSFields {
     FID_ZONE_CHUNKS_CRS,
     FID_SIDE_CHUNKS_CRS,
     FID_POINT_CHUNKS_CRS,
+    FID_BCX_CHUNKS_CRS,
+    FID_BCY_CHUNKS_CRS,
 };
 
 struct RunStat {
@@ -236,9 +238,9 @@ struct DoCycleTasksArgs {
     std::string meshtype;
     std::vector<std::vector<int>> boundary_conditions_x;
     std::vector<std::vector<int>> boundary_conditions_y;
-    // start/stop index for boundary pt chunks, compressed row storage
-    std::vector<std::vector<int>> bcx_point_chunk_CRS;
-    std::vector<std::vector<int>> bcy_point_chunk_CRS;
+    // offsets into concatantated start/stop indeces for boundary pt chunks, compressed row storage
+    std::vector<int> bcx_point_chunk_CRS_offsets;
+    std::vector<int> bcy_point_chunk_CRS_offsets;
 };
 
 

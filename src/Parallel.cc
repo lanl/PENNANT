@@ -279,16 +279,12 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args)
         + sizeof(size_t) + (docycle_args->meshtype.length() + 1) * sizeof(char)
         + sizeof(size_t) + docycle_args->boundary_conditions_x.size() * sizeof(size_t)
         + sizeof(size_t) + docycle_args->boundary_conditions_y.size() * sizeof(size_t)
-        + sizeof(size_t) + docycle_args->bcx_point_chunk_CRS.size() * sizeof(size_t)
-        + sizeof(size_t) + docycle_args->bcy_point_chunk_CRS.size() * sizeof(size_t);
+        + sizeof(size_t) + docycle_args->bcx_point_chunk_CRS_offsets.size() * sizeof(int)
+        + sizeof(size_t) + docycle_args->bcy_point_chunk_CRS_offsets.size() * sizeof(int);
     for (size_t i = 0; i < docycle_args->boundary_conditions_x.size(); i++)
         bit_stream_size += docycle_args->boundary_conditions_x[i].size() * sizeof(int);
     for (size_t i = 0; i < docycle_args->boundary_conditions_y.size(); i++)
         bit_stream_size += docycle_args->boundary_conditions_y[i].size() * sizeof(int);
-    for (size_t i = 0; i < docycle_args->bcx_point_chunk_CRS.size(); i++)
-        bit_stream_size += docycle_args->bcx_point_chunk_CRS[i].size() * sizeof(int);
-    for (size_t i = 0; i < docycle_args->bcy_point_chunk_CRS.size(); i++)
-        bit_stream_size += docycle_args->bcy_point_chunk_CRS[i].size() * sizeof(int);
     bit_stream = malloc(bit_stream_size);
     free_bit_stream = true;
 
@@ -318,8 +314,8 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args)
     stream_size += archiveString(docycle_args->meshtype, (void*)(serialized+stream_size));
     stream_size += archiveTensor(docycle_args->boundary_conditions_x, (void*)(serialized+stream_size));
     stream_size += archiveTensor(docycle_args->boundary_conditions_y, (void*)(serialized+stream_size));
-    stream_size += archiveTensor(docycle_args->bcx_point_chunk_CRS, (void*)(serialized+stream_size));
-    stream_size += archiveTensor(docycle_args->bcy_point_chunk_CRS, (void*)(serialized+stream_size));
+    stream_size += archiveVector(docycle_args->bcx_point_chunk_CRS_offsets, (void*)(serialized+stream_size));
+    stream_size += archiveVector(docycle_args->bcy_point_chunk_CRS_offsets, (void*)(serialized+stream_size));
 
     assert(stream_size == bit_stream_size);
 }
@@ -441,8 +437,8 @@ void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* docycle_args)
     bit_stream_size += restoreString(&(docycle_args->meshtype), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_x), (void*)(serialized_args + bit_stream_size));
     bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_y), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreTensor(&(docycle_args->bcx_point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
-    bit_stream_size += restoreTensor(&(docycle_args->bcy_point_chunk_CRS), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(docycle_args->bcx_point_chunk_CRS_offsets), (void*)(serialized_args + bit_stream_size));
+    bit_stream_size += restoreVector(&(docycle_args->bcy_point_chunk_CRS_offsets), (void*)(serialized_args + bit_stream_size));
 }
 
 

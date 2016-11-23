@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH -N8 --constraint="ib_fdr&e5-2660_v3"
+
+module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
+
+export GASNET_USE_XRC=0
+export OMPI_MCA_btl="sm,openib,self"
+export OMPI_MCA_mpi_warn_on_fork=0
+export LD_LIBRARY_PATH=${HOME}/opt/gasnet/1.26.4/lib/:$LD_LIBRARY_PATH
+export GASNET_BACKTRACE=1  
+
+mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/leblanc/leblanc
+cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/leblanc/leblanc
+cp ${HOME}/gitlab/pennant-spmd/pennant .
+cp ${HOME}/gitlab/pennant-spmd/test/leblanc/leblanc_long8x30.pnt leblanc.pnt
+
+mpirun -n 8 --map-by ppr:1:node --bind-to none ./pennant 128 ./leblanc.pnt \
+ -ll:cpu 16 -ll:util 2 -ll:dma 1 -ll:csize 20000 2>&1 | tee leblanc.8x16
