@@ -14,5 +14,5 @@ cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/sedovbig/sedovbig
 cp ${HOME}/gitlab/pennant-spmd/pennant .
 cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig3x30.pnt sedovbig.pnt
 
-mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 1 ./sedovbig.pnt\
- -ll:cpu 16 -ll:util 3 -ll:dma 1 -ll:csize 15000 2>&1 | tee sedovbig.1x1
+mpirun -n 1 --map-by ppr:1:socket --bind-to socket ./pennant 1 ./sedovbig.pnt \
+ -ll:cpu 1 -ll:util 3 -ll:dma 1 -ll:csize 15000 2>&1 | tee sedovbig.1x1
