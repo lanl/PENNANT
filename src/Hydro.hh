@@ -44,6 +44,16 @@ public:
             const double2* pt_vel0,
             double2* pt_x_pred);
 
+    static void calcCrnrMass(
+            const int sfirst,
+            const int slast,
+            const double* zone_area_pred,
+            const double* side_mass_frac,
+            const int* map_side2zone,
+            const int* zone_pts_ptr,
+            const double* zone_rho_pred,
+            double* crnr_weighted_mass);
+
     static void sumCrnrForce(
             const double2* side_force_pres,
             const double2* side_force_visc,
