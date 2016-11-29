@@ -196,6 +196,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     LogicalStructured hydro_write_points(ctx, runtime, regions[11]);
     double2* pt_vel = hydro_write_points.getRawPtr<double2>(FID_PU);
     double2* pt_vel0 = hydro_write_points.getRawPtr<double2>(FID_PU0);
+    double2* pt_accel = AbstractedMemory::alloc<double2>(hydro_write_points.size());
 
     assert(task->regions[12].privilege_fields.size() == 1);
     LogicalStructured mesh_write_points(ctx, runtime, regions[12]);
@@ -239,10 +240,13 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         }
 
         // 5. compute accelerations
+        Hydro::calcAccel(generate_mesh, point_force, point_mass,
+            pt_accel, pfirst, plast);
+
         // ===== Corrector step =====
         // 6. advance mesh to end of time step
-        Hydro::calcAccelAndAdvPosFull(generate_mesh, point_force, point_mass,
-                time_step.dt, pt_vel0, pt_x0, pt_vel, pt_x,
+        Hydro::advPosFull(time_step.dt, pt_vel0, pt_accel, pt_x0,
+                pt_vel, pt_x,
                 pfirst, plast);
     }
 
@@ -289,6 +293,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
                 zone_vol, zone_vol0, args.cflv, recommend);
     }
 
+    AbstractedMemory::free(pt_accel);
     AbstractedMemory::free(zone_work);
 
     return recommend;

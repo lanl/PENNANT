@@ -321,6 +321,26 @@ void Hydro::advPosHalf(
 
 
 /*static*/
+void Hydro::advPosFull(
+        const double dt,
+        const double2* pt_vel0,
+        const double2* pt_accel,
+        const double2* pt_x0,
+        double2* pt_vel,
+        double2* pt_x,
+        const int pfirst,
+        const int plast) {
+
+    #pragma ivdep
+    for (int p = pfirst; p < plast; ++p) {
+        pt_vel[p] = pt_vel0[p] + pt_accel[p] * dt;
+        pt_x[p] = pt_x0[p] + 0.5 * (pt_vel[p] + pt_vel0[p]) * dt;
+    }
+
+}
+
+
+/*static*/
 void Hydro::calcCrnrMass(
         const int sfirst,
         const int slast,
@@ -365,15 +385,11 @@ void Hydro::sumCrnrForce(
 
 
 /*static*/
-void Hydro::calcAccelAndAdvPosFull(
+void Hydro::calcAccel(
         const GenerateMesh* generate_mesh,
         const Double2Accessor pf,
         const DoubleAccessor pmass,
-        const double dt,
-        const double2* pt_vel0,
-        const double2* pt_x0,
-        double2* pt_vel,
-        double2* pt_x,
+        double2* pt_accel,
         const int pfirst,
         const int plast) {
 
@@ -382,9 +398,7 @@ void Hydro::calcAccelAndAdvPosFull(
     #pragma ivdep
     for (int p = pfirst; p < plast; ++p) {
         ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(p));
-        double2 pt_accel = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
-        pt_vel[p] = pt_vel0[p] + pt_accel * dt;
-        pt_x[p] = pt_x0[p] + 0.5 * (pt_vel[p] + pt_vel0[p]) * dt;
+        pt_accel[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
     }
 
 }

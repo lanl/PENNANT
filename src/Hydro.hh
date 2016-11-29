@@ -44,6 +44,16 @@ public:
             const double2* pt_vel0,
             double2* pt_x_pred);
 
+    static void advPosFull(
+            const double dt,
+            const double2* pt_vel0,
+            const double2* pt_accel,
+            const double2* pt_x0,
+            double2* pt_vel,
+            double2* pt_x,
+            const int pfirst,
+            const int plast);
+
     static void calcCrnrMass(
             const int sfirst,
             const int slast,
@@ -64,15 +74,11 @@ public:
             const int slast,
             double2* crnr_force_tot);
 
-    static void calcAccelAndAdvPosFull(
+    static void calcAccel(
             const GenerateMesh* generate_mesh,
             const Double2Accessor pf,
             const DoubleAccessor pmass,
-            const double dt,
-            const double2* pt_vel0,
-            const double2* pt_x0,
-            double2* pt_vel,
-            double2* pt_x,
+            double2* pt_accel,
             const int pfirst,
             const int plast);
 
