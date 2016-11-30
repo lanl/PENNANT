@@ -244,24 +244,11 @@ DoubleSOAAccessor LogicalUnstructured::getRegionSOAAccessor<double>(FieldID FID)
 
 
 template <>
-Double2Accessor LogicalUnstructured::getRegionAccessor<double2>(FieldID FID)
+IntSOAAccessor LogicalUnstructured::getRegionSOAAccessor<int>(FieldID FID)
 {
     getPRegion();
-    return  pregion.get_field_accessor(FID).typeify<double2>();
-}
-
-
-template <>
-DoubleAccessor LogicalUnstructured::getRegionAccessor<double>(FieldID FID)
-{
-    getPRegion();
-    return  pregion.get_field_accessor(FID).typeify<double>();
-}
-
-
-template <>
-IntAccessor LogicalUnstructured::getRegionAccessor<int>(FieldID FID)
-{
-    getPRegion();
-    return  pregion.get_field_accessor(FID).typeify<int>();
+    IntAccessor generic =
+            pregion.get_field_accessor(FID).typeify<int>();
+    assert(generic.can_convert<AccessorType::SOA<0>>());
+    return generic.convert<AccessorType::SOA<sizeof(int)>>();
 }

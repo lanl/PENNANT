@@ -74,8 +74,8 @@ void HaloTask::cpu_run(const Task *task,
 
     assert(task->regions[3].privilege_fields.size() == 2);
     LogicalUnstructured local_points_by_gid(ctx, runtime, regions[3]);
-    DoubleAccessor pt_weighted_mass = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
-    Double2Accessor pt_force = local_points_by_gid.getRegionAccessor<double2>(FID_PF);
+    DoubleSOAAccessor pt_weighted_mass = local_points_by_gid.getRegionSOAAccessor<double>(FID_PMASWT);
+    Double2SOAAccessor pt_force = local_points_by_gid.getRegionSOAAccessor<double2>(FID_PF);
 
     DoCycleTasksArgs args;
     DoCycleTasksArgsSerializer args_serializer;

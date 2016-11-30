@@ -29,8 +29,6 @@ public:
     void allocate();
     void partition(Coloring map, bool disjoint);
     template <typename TYPE>
-      RegionAccessor<AccessorType::Generic, TYPE> getRegionAccessor(FieldID FID);
-    template <typename TYPE>
       RegionAccessor<AccessorType::SOA<sizeof(TYPE)>, TYPE> getRegionSOAAccessor(FieldID FID);
     IndexIterator getIterator() const { assert(ispaceID != nullptr); return  IndexIterator(runtime,ctx, ispace);}
     IndexSpace getISpace() const { assert(ispaceID != nullptr); return ispace;}

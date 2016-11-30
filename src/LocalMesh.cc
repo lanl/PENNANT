@@ -641,8 +641,8 @@ void LocalMesh::sumOnProc(
 	    const int* map_pt2crn_first,
 	    const int* map_crn2crn_next,
 	    const ptr_t* pt_local2global,
-	    DoubleAccessor pt_weighted_mass,
-	    Double2Accessor pt_force)
+	    DoubleSOAAccessor pt_weighted_mass,
+	    Double2SOAAccessor pt_force)
 {
     for (int point_chunk = 0; point_chunk < num_pt_chunks; ++point_chunk) {
         int pfirst = pt_chunks_CRS[point_chunk];

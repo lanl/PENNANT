@@ -694,9 +694,9 @@ void Hydro::writeEnergyCheck() {
 void Hydro::copyZonesToLegion(LogicalUnstructured& global_zones)
 {
     IndexSpace ispace_zones = global_zones.getISpace();
-    DoubleAccessor rho_acc = global_zones.getRegionAccessor<double>(FID_ZR);
-    DoubleAccessor energy_density_acc = global_zones.getRegionAccessor<double>(FID_ZE);
-    DoubleAccessor pressure_acc = global_zones.getRegionAccessor<double>(FID_ZP);
+    DoubleSOAAccessor rho_acc = global_zones.getRegionSOAAccessor<double>(FID_ZR);
+    DoubleSOAAccessor energy_density_acc = global_zones.getRegionSOAAccessor<double>(FID_ZE);
+    DoubleSOAAccessor pressure_acc = global_zones.getRegionSOAAccessor<double>(FID_ZP);
 
     const double* zone_rho = zones.getRawPtr<double>(FID_ZR);
     const double* zone_energy_density = zones.getRawPtr<double>(FID_ZE);

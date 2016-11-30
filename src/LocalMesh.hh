@@ -177,8 +177,8 @@ public:
             const int* map_pt2crn_first,
             const int* map_crn2crn_next,
             const ptr_t* pt_local2global,
-            DoubleAccessor pt_weighted_mass,
-            Double2Accessor pt_force);
+            DoubleSOAAccessor pt_weighted_mass,
+            Double2SOAAccessor pt_force);
 
     LogicalUnstructured local_points_by_gid;
     LogicalStructured zone_pts;
