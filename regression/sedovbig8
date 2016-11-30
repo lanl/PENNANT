@@ -15,6 +15,6 @@ cp ${HOME}/gitlab/pennant-spmd/pennant .
 cp ${HOME}/gitlab/pennant-spmd/test/sedovbig/sedovbig3x30.pnt sedovbig.pnt
 
 mpirun -n 1 --map-by ppr:1:socket --bind-to none ./pennant 8 ./sedovbig.pnt \
- -ll:cpu 8 -ll:util 3 -ll:dma 1 -ll:csize 5000 2>&1 | tee sedovbig.1x8
+ -ll:cpu 16 -ll:util 3 -ll:dma 1 -ll:csize 5000 2>&1 | tee sedovbig.1x8
 # -ll:cpu 8 -ll:util 2 -ll:dma 1 -hl:prof 1 -logfile prof_%.log 2>&1 | tee sedovbig.1x8
 #-ll:cpu 8 -ll:util 2 -ll:dma 1 -hl:spy -logfile spy_%.log 2>&1 | tee sedovbig.1x8
