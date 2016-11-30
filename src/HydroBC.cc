@@ -20,7 +20,7 @@ using namespace std;
 
 /*static*/
 void HydroBC::applyFixedBC(
-        const GenerateMesh* generate_mesh,
+        const ptr_t* pt_local2globalID,
         const double2 vfix,
         const vector<int>& mapbp,
         double2* pu,
@@ -31,7 +31,7 @@ void HydroBC::applyFixedBC(
     #pragma ivdep
     for (int b = bfirst; b < blast; ++b) {
         int p = mapbp[b];
-        ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(p));
+        ptr_t pt_ptr = pt_local2globalID[p];
 
         pu[p] = project(pu[p], vfix);
         double2 old_pf = pf.read(pt_ptr);

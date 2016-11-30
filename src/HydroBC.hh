@@ -27,7 +27,7 @@ class HydroBC {
 public:
 
     static void applyFixedBC(
-            const GenerateMesh* generate_mesh,
+            const ptr_t* pt_local2globalID,
             const double2 vfix,
             const std::vector<int>& mapbp,
             double2* pu,

@@ -69,6 +69,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones,
     add_region_requirement(RegionRequirement(mesh_points, READ_ONLY, EXCLUSIVE, mesh_points));
     add_field(7/*idx*/, FID_PXP);
     add_field(7/*idx*/, FID_PX0);
+    add_field(7/*idx*/, FID_PT_LOCAL2GLOBAL);
     add_region_requirement(RegionRequirement(mesh_edges, READ_WRITE, EXCLUSIVE, mesh_edges));
     add_field(8/*idx*/, FID_EX);
     add_region_requirement(RegionRequirement(mesh_zones, READ_WRITE, EXCLUSIVE, mesh_zones));
@@ -136,10 +137,11 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     const double2* side_force_pres = hydro_sides_and_corners.getRawPtr<double2>(FID_SFP);
     const double2* side_force_visc = hydro_sides_and_corners.getRawPtr<double2>(FID_SFQ);
 
-    assert(task->regions[7].privilege_fields.size() == 2);
+    assert(task->regions[7].privilege_fields.size() == 3);
     LogicalStructured mesh_points(ctx, runtime, regions[7]);
     const double2* pt_x_pred = mesh_points.getRawPtr<double2>(FID_PXP);
     const double2* pt_x0 = mesh_points.getRawPtr<double2>(FID_PX0);
+    const ptr_t* pt_local2globalID = mesh_points.getRawPtr<ptr_t>(FID_PT_LOCAL2GLOBAL);
 
     assert(task->regions[13].privilege_fields.size() == 1);
     LogicalUnstructured local_points_by_gid(ctx, runtime, regions[13]);
@@ -207,14 +209,6 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
     args_serializer.setBitStream(task->args);
     args_serializer.restore(&args);
 
-    InputParameters input_params;
-    input_params.meshtype = args.meshtype;
-    input_params.directs.nzones_x = args.nzones_x;
-    input_params.directs.nzones_y = args.nzones_y;
-    input_params.directs.ntasks = args.num_subregions;
-    input_params.directs.task_id = args.my_color;
-    GenerateMesh* generate_mesh = new GenerateMesh(input_params);
-
     assert(task->futures.size() == 1);
     Future f1 = task->futures[0];
     TimeStep time_step = f1.get_result<TimeStep>();
@@ -229,18 +223,18 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
         for (int x = 0; x < args.boundary_conditions_x.size(); ++x) {
             int bfirst = bcx_chunks_CRS[args.bcx_point_chunk_CRS_offsets[x] + pt_chunk];
             int blast = bcx_chunks_CRS[args.bcx_point_chunk_CRS_offsets[x] + pt_chunk + 1];
-            HydroBC::applyFixedBC(generate_mesh, vfixx, args.boundary_conditions_x[x],
+            HydroBC::applyFixedBC(pt_local2globalID, vfixx, args.boundary_conditions_x[x],
                     pt_vel0, point_force, bfirst, blast);
         }
         for (int y = 0; y < args.boundary_conditions_y.size(); ++y) {
             int bfirst = bcy_chunks_CRS[args.bcy_point_chunk_CRS_offsets[y] + pt_chunk];
             int blast = bcy_chunks_CRS[args.bcy_point_chunk_CRS_offsets[y] + pt_chunk + 1];
-            HydroBC::applyFixedBC(generate_mesh, vfixy, args.boundary_conditions_y[y],
+            HydroBC::applyFixedBC(pt_local2globalID, vfixy, args.boundary_conditions_y[y],
                     pt_vel0, point_force, bfirst, blast);
         }
 
         // 5. compute accelerations
-        Hydro::calcAccel(generate_mesh, point_force, point_mass,
+        Hydro::calcAccel(pt_local2globalID, point_force, point_mass,
             pt_accel, pfirst, plast);
 
         // ===== Corrector step =====

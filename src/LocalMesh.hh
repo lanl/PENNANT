@@ -176,7 +176,7 @@ public:
             const int num_pt_chunks,
             const int* map_pt2crn_first,
             const int* map_crn2crn_next,
-            const GenerateMesh* generate_mesh,
+            const ptr_t* pt_local2global,
             DoubleAccessor pt_weighted_mass,
             Double2Accessor pt_force);
 
@@ -239,7 +239,7 @@ private:
             int* map_pt2crn_first,
             int* map_crn2crn_next);
 
-    void initParallel();
+    void initParallel(const ptr_t* pt_local2global);
 
     void writeMeshStats();
 

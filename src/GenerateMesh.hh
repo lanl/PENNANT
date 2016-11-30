@@ -39,8 +39,6 @@ public:
             std::vector<int>& master_points_counts,
             std::vector<int>& master_points) const;
 
-    long long int pointLocalToGlobalID(int p) const;
-
 protected:
     std::string meshtype;                   // generated mesh type
     int global_nzones_x, global_nzones_y;   // global number of zones, in x and y
@@ -105,6 +103,8 @@ protected:
             std::vector<int>& slave_color,
             std::vector<int>& master_points_counts,
             std::vector<int>& master_points) const;
+
+    long long int pointLocalToGlobalID(int p) const;
 
     long long int pointLocalToGlobalIDPie(int p) const;
 

@@ -79,6 +79,7 @@ enum PointFields {
     FID_PU,
     FID_PU0,
     FID_MAP_PT2CRN_FIRST,
+    FID_PT_LOCAL2GLOBAL,
 };
 
 enum ZonePtsCRSFields {
@@ -155,6 +156,7 @@ typedef RegionAccessor<AccessorType::SOA<sizeof(double2)>, double2> Double2SOAAc
 typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
 typedef RegionAccessor<AccessorType::Generic, double2> Double2Accessor;
 typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;
+typedef RegionAccessor<AccessorType::Generic, ptr_t> PtrTAccessor;
 
 
 class Parallel {

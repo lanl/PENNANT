@@ -75,7 +75,7 @@ public:
             double2* crnr_force_tot);
 
     static void calcAccel(
-            const GenerateMesh* generate_mesh,
+            const ptr_t* pt_local2globalID,
             const Double2SOAAccessor pf,
             const DoubleSOAAccessor pmass,
             double2* pt_accel,

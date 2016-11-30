@@ -32,6 +32,7 @@ HaloTask::HaloTask(LogicalRegion mesh_sides,
     add_field(0/*idx*/, FID_MAP_CRN2CRN_NEXT);
     add_region_requirement(RegionRequirement(mesh_points, READ_ONLY, EXCLUSIVE, mesh_points));
     add_field(1/*idx*/, FID_MAP_PT2CRN_FIRST);
+    add_field(1/*idx*/, FID_PT_LOCAL2GLOBAL);
     add_region_requirement(RegionRequirement(hydro_sides_and_corners, READ_ONLY, EXCLUSIVE, hydro_sides_and_corners));
     add_field(2/*idx*/, FID_CMASWT);
     add_field(2/*idx*/, FID_CFTOT);
@@ -57,9 +58,10 @@ void HaloTask::cpu_run(const Task *task,
     LogicalStructured sides(ctx, runtime, regions[0]);
     const int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
 
-	assert(task->regions[1].privilege_fields.size() == 1);
+	assert(task->regions[1].privilege_fields.size() == 2);
     LogicalStructured points(ctx, runtime, regions[1]);
     const int* map_pt2crn_first = points.getRawPtr<int>(FID_MAP_PT2CRN_FIRST);
+    const ptr_t* pt_local2globalID = points.getRawPtr<ptr_t>(FID_PT_LOCAL2GLOBAL);
 
 	assert(task->regions[2].privilege_fields.size() == 2);
 	LogicalStructured sides_and_corners(ctx, runtime, regions[2]);
@@ -80,20 +82,12 @@ void HaloTask::cpu_run(const Task *task,
     args_serializer.setBitStream(task->args);
     args_serializer.restore(&args);
 
-    InputParameters input_params;
-    input_params.meshtype = args.meshtype;
-    input_params.directs.nzones_x = args.nzones_x;
-    input_params.directs.nzones_y = args.nzones_y;
-    input_params.directs.ntasks = args.num_subregions;
-    input_params.directs.task_id = args.my_color;
-    GenerateMesh* generate_mesh = new GenerateMesh(input_params);
-
     LocalMesh::sumOnProc(corner_mass, corner_force,
             point_chunks_CRS,
             args.num_point_chunks,
             map_pt2crn_first,
             map_crn2crn_next,
-            generate_mesh,
+            pt_local2globalID,
             pt_weighted_mass, pt_force);
 
 }

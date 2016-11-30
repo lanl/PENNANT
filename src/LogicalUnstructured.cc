@@ -164,6 +164,15 @@ void LogicalUnstructured::addField(FieldID FID)
 
 
 template <>
+void LogicalUnstructured::addField<ptr_t>(FieldID FID)
+{
+    addField(FID);
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
+    allocator.allocate_field(sizeof(ptr_t), FID);
+}
+
+
+template <>
 void LogicalUnstructured::addField<double2>(FieldID FID)
 {
     addField(FID);

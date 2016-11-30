@@ -130,6 +130,7 @@ void LocalMesh::init() {
     points.allocate(num_pts);
     double2* pt_x = points.getRawPtr<double2>(FID_PX);
     int* map_pt2crn_first = points.getRawPtr<int>(FID_MAP_PT2CRN_FIRST);
+    ptr_t* point_local_to_globalID = points.getRawPtr<ptr_t>(FID_PT_LOCAL2GLOBAL);
 
     populateInverseMap(map_side2pt1, map_pt2crn_first,
             map_crn2crn_next);   // for corner-to-point gathers
@@ -137,7 +138,16 @@ void LocalMesh::init() {
     edges.allocate(num_edges);
     double2* edge_x = edges.getRawPtr<double2>(FID_EX);
 
-    initParallel();
+    IndexIterator itr = pt_x_init_by_gid.getIterator();
+    int i = 0;
+    while (itr.has_next()) {
+           ptr_t pt_ptr = itr.next();
+        point_local_to_globalID[i] = pt_ptr;
+           i++;
+    }
+    assert(i == num_pts);
+
+    initParallel(point_local_to_globalID);
 
     writeMeshStats();
 
@@ -191,6 +201,7 @@ void LocalMesh::allocateFields()
     points.addField<double2>(FID_PX);
     points.addField<double2>(FID_PXP);
     points.addField<int>(FID_MAP_PT2CRN_FIRST);
+    points.addField<ptr_t>(FID_PT_LOCAL2GLOBAL);
     sides.addField<int>(FID_MAP_CRN2CRN_NEXT);
     sides.addField<double>(FID_SAREA);
     sides.addField<double>(FID_SVOL);
@@ -629,7 +640,7 @@ void LocalMesh::sumOnProc(
         const int num_pt_chunks,
 	    const int* map_pt2crn_first,
 	    const int* map_crn2crn_next,
-	    const GenerateMesh* generate_mesh,
+	    const ptr_t* pt_local2global,
 	    DoubleAccessor pt_weighted_mass,
 	    Double2Accessor pt_force)
 {
@@ -637,7 +648,7 @@ void LocalMesh::sumOnProc(
         int pfirst = pt_chunks_CRS[point_chunk];
         int plast = pt_chunks_CRS[point_chunk+1];
         for (int point = pfirst; point < plast; ++point) {
-        		ptr_t pt_ptr(generate_mesh->pointLocalToGlobalID(point));
+        		ptr_t pt_ptr = pt_local2global[point];
             double mass = double();
             double2 force = double2();
             for (int corner = map_pt2crn_first[point]; corner >= 0; corner = map_crn2crn_next[corner]) {
@@ -652,7 +663,7 @@ void LocalMesh::sumOnProc(
 }
 
 
-void LocalMesh::initParallel() {
+void LocalMesh::initParallel(const ptr_t* pt_local2global) {
     if (num_subregions == 1) return;
 
     vector<int> master_points_counts, master_points;
@@ -670,7 +681,7 @@ void LocalMesh::initParallel() {
     for (unsigned  slave = 0; slave < master_points_counts.size(); slave++) {
         for (unsigned pt = 0; pt < master_points_counts[slave]; pt++) {
             all_slaved_pts_map[0].points.insert(
-                    generate_mesh->pointLocalToGlobalID(master_points[pt + previous_slaved_pts_count]));
+                    pt_local2global[master_points[pt + previous_slaved_pts_count]].value);
         }
         previous_slaved_pts_count += master_points_counts[slave];
     }
@@ -680,9 +691,9 @@ void LocalMesh::initParallel() {
         Coloring my_slaved_pts_map;
         for (unsigned pt = 0; pt < slaved_points_counts[master]; pt++) {
             my_slaved_pts_map[1+master].points.insert(
-                    generate_mesh->pointLocalToGlobalID(slaved_points[pt + previous_master_pts_count]));
+                    pt_local2global[slaved_points[pt + previous_master_pts_count]]);
             all_slaved_pts_map[1+master].points.insert(
-                    generate_mesh->pointLocalToGlobalID(slaved_points[pt + previous_master_pts_count]));
+                    pt_local2global[slaved_points[pt + previous_master_pts_count]]);
         }
         previous_master_pts_count += slaved_points_counts[master];
         halos_points[1+master].partition(my_slaved_pts_map, true);

@@ -73,6 +73,35 @@ offsetsAreDense(const Rect<DIM> &bounds,
     return true;
 }
 
+
+template <>
+ptr_t* LogicalStructured::getRawPtr<ptr_t>(FieldID FID)
+{
+    getPRegion();
+
+    ptr_t *mData = nullptr;
+
+    PtrTAccessor tAcc = pregion.get_field_accessor(FID).typeify<ptr_t>();
+    Domain tDom = runtime->get_index_space_domain(
+                ctx, ispace);
+    Rect<1> subrect;
+    ByteOffset inOffsets[1];
+    auto subGridBounds = tDom.get_rect<1>();
+
+    mData = tAcc.template raw_rect_ptr<1>(
+                subGridBounds, subrect, inOffsets);
+
+    // Sanity.
+    if (!mData || (subrect != subGridBounds) ||
+            !offsetsAreDense<1, ptr_t>(subGridBounds, inOffsets)) {
+        // Signifies that something went south.
+        mData = nullptr;
+        assert(mData != nullptr);
+    }
+    return mData;
+}
+
+
 template <>
 double2* LogicalStructured::getRawPtr<double2>(FieldID FID)
 {
