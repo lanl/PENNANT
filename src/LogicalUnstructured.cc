@@ -213,6 +213,28 @@ PhysicalRegion LogicalUnstructured::getPRegion()
 
 
 template <>
+Double2SOAAccessor LogicalUnstructured::getRegionSOAAccessor<double2>(FieldID FID)
+{
+    getPRegion();
+    Double2Accessor generic =
+            pregion.get_field_accessor(FID).typeify<double2>();
+    assert(generic.can_convert<AccessorType::SOA<0>>());
+    return generic.convert<AccessorType::SOA<sizeof(double2)>>();
+}
+
+
+template <>
+DoubleSOAAccessor LogicalUnstructured::getRegionSOAAccessor<double>(FieldID FID)
+{
+    getPRegion();
+    DoubleAccessor generic =
+            pregion.get_field_accessor(FID).typeify<double>();
+    assert(generic.can_convert<AccessorType::SOA<0>>());
+    return generic.convert<AccessorType::SOA<sizeof(double)>>();
+}
+
+
+template <>
 Double2Accessor LogicalUnstructured::getRegionAccessor<double2>(FieldID FID)
 {
     getPRegion();

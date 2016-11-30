@@ -76,8 +76,8 @@ public:
 
     static void calcAccel(
             const GenerateMesh* generate_mesh,
-            const Double2Accessor pf,
-            const DoubleAccessor pmass,
+            const Double2SOAAccessor pf,
+            const DoubleSOAAccessor pmass,
             double2* pt_accel,
             const int pfirst,
             const int plast);

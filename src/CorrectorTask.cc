@@ -143,7 +143,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 
     assert(task->regions[13].privilege_fields.size() == 1);
     LogicalUnstructured local_points_by_gid(ctx, runtime, regions[13]);
-    const DoubleAccessor point_mass = local_points_by_gid.getRegionAccessor<double>(FID_PMASWT);
+    const DoubleSOAAccessor point_mass = local_points_by_gid.getRegionSOAAccessor<double>(FID_PMASWT);
 
     assert(task->regions[14].privilege_fields.size() == 1);
     LogicalStructured point_chunks(ctx, runtime, regions[14]);
@@ -167,7 +167,7 @@ TimeStep CorrectorTask::cpu_run(const Task *task,
 
     assert(task->regions[6].privilege_fields.size() == 1);
     LogicalUnstructured local_write_points_by_gid(ctx, runtime, regions[6]);
-    Double2Accessor point_force = local_write_points_by_gid.getRegionAccessor<double2>(FID_PF);
+    Double2SOAAccessor point_force = local_write_points_by_gid.getRegionSOAAccessor<double2>(FID_PF);
 
     assert(task->regions[2].privilege_fields.size() == 4);
     LogicalStructured hydro_write_zones(ctx, runtime, regions[2]);

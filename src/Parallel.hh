@@ -150,6 +150,8 @@ enum TaskIDs {
 	MIN_REDOP_ID,
 };
 
+typedef RegionAccessor<AccessorType::SOA<sizeof(double)>, double> DoubleSOAAccessor;
+typedef RegionAccessor<AccessorType::SOA<sizeof(double2)>, double2> Double2SOAAccessor;
 typedef RegionAccessor<AccessorType::Generic, double> DoubleAccessor;
 typedef RegionAccessor<AccessorType::Generic, double2> Double2Accessor;
 typedef RegionAccessor<AccessorType::Generic, int> IntAccessor;

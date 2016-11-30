@@ -31,7 +31,7 @@ public:
             const double2 vfix,
             const std::vector<int>& mapbp,
             double2* pu,
-            Double2Accessor& pf,
+            Double2SOAAccessor& pf,
             const int bfirst,
             const int blast);
 
