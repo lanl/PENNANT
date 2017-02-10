@@ -103,7 +103,9 @@ void Hydro::init() {
     cftot = Memory::alloc<double2>(nums);
 
     // initialize hydro vars
-    #pragma omp parallel for schedule(static)
+    #pragma omp parallel
+    {
+    #pragma omp  for schedule(static)
     for (int zch = 0; zch < numzch; ++zch) {
         int zfirst = mesh->zchzfirst[zch];
         int zlast = mesh->zchzlast[zch];
@@ -136,7 +138,7 @@ void Hydro::init() {
         }
     }  // for sch
 
-    #pragma omp parallel for schedule(static)
+    #pragma omp for schedule(static)
     for (int pch = 0; pch < numpch; ++pch) {
         int pfirst = mesh->pchpfirst[pch];
         int plast = mesh->pchplast[pch];
@@ -146,8 +148,11 @@ void Hydro::init() {
             fill(&pu[pfirst], &pu[plast], double2(0., 0.));
     }  // for pch
 
-    resetDtHydro();
-
+    #pragma omp single
+    {
+        resetDtHydro();
+    }
+    } // omp parallel
 }
 
 
