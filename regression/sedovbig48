@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N6 --constraint="ib_fdr,e5-2660_v3"
+#SBATCH -N6 --constraint="ib:fdr&cpu_model:E5-2660_v3"
 
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 

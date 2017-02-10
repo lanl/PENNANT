@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -N1 --constraint="ib_fdr&e5-2660_v3"
+#SBATCH -N2 --constraint="ib:fdr&cpu_model:E5-2660_v3" --exclude="cn211"
 
 module load gcc/4.9.3 openmpi/1.10.0-gcc_4.9.3
 
@@ -12,7 +12,7 @@ export GASNET_BACKTRACE=1
 mkdir -p ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/leblanc/leblanc
 cd ${HOME}/local/benchmarks/pennant/xeonE5-2660v3/pennant-spmd/leblanc/leblanc
 cp ${HOME}/gitlab/pennant-spmd/pennant .
-cp ${HOME}/gitlab/pennant-spmd/test/leblanc/leblanc_long1x30.pnt leblanc.pnt
+cp ${HOME}/gitlab/pennant-spmd/test/leblanc/leblanc_long2x30.pnt leblanc.pnt
 
-mpirun -n 1 --map-by ppr:1:node --bind-to none ./pennant 16 ./leblanc.pnt \
- -ll:cpu 16 -ll:util 2 -ll:dma 1 -ll:csize 5000 2>&1 | tee leblanc.1x16
+mpirun -n 4 --map-by ppr:1:socket --bind-to socket ./pennant 16 ./leblanc.pnt \
+ -ll:cpu 4 -ll:util 3 -ll:dma 1 -ll:csize 5000 2>&1 | tee leblanc.2x8
