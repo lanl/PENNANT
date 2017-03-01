@@ -1,7 +1,7 @@
 cstop   30
 tstop   1.0
 meshtype rect
-meshparams 17280 17280 1.125 1.125
+meshparams 21600 21600 1.125 1.125
 subregion 0.0 0.025  0.0 0.025
 rinitsub 1.0
 einitsub 5027.7
@@ -10,6 +10,6 @@ bcy     0.0 1.125
 ssmin   0.1
 q1      0.1
 q2      1.0
-dtinit  781e-10
+dtinit  625e-10
 dtreport 100
 chunksize 512

@@ -10,6 +10,6 @@ bcy     0.0 1.125
 ssmin   0.1
 q1      0.1
 q2      1.0
-dtinit  1666-10
+dtinit  1666e-10
 dtreport 100
 chunksize 512
