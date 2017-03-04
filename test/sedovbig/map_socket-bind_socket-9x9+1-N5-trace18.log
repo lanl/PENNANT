@@ -1,0 +1,64 @@
+********************
+Running PENNANT v0.9
+********************
+
+Running with 81 Legion Tasks
+pennant: /home/scohen/Projects/legion/runtime/realm/idx_impl.cc:884: void Realm::ElementMask::enable(Realm::coord_t, size_t): Assertion `start >= 0' failed.
+BACKTRACE (0, 2b86a24ec700)
+----------
+  ../../pennant : Realm::RuntimeImpl::realm_backtrace(int)+0x4b
+  /lib64/libc.so.6 : ()+0x35250
+  /lib64/libc.so.6 : gsignal()+0x37
+  /lib64/libc.so.6 : abort()+0x148
+  /lib64/libc.so.6 : ()+0x2e146
+  /lib64/libc.so.6 : ()+0x2e1f2
+  ../../pennant : Realm::ElementMask::enable(long long, unsigned long)+0x15e
+  ../../pennant : Legion::Internal::InnerContext::create_index_partition(Legion::Internal::RegionTreeForest*, Legion::IndexSpace, std::map<unsigned int, Legion::ColoredPoints<ptr_t>, std::less<unsigned int>, std::allocator<std::pair<unsigned int const, Legion::ColoredPoints<ptr_t> > > > const&, bool, int)+0x295
+  ../../pennant : Legion::Internal::Runtime::create_index_partition(Legion::Internal::TaskContext*, Legion::IndexSpace, std::map<unsigned int, Legion::ColoredPoints<ptr_t>, std::less<unsigned int>, std::allocator<std::pair<unsigned int const, Legion::ColoredPoints<ptr_t> > > > const&, bool, int)+0x5d
+  ../../pennant : Legion::Runtime::create_index_partition(Legion::Internal::TaskContext*, Legion::IndexSpace, std::map<unsigned int, Legion::ColoredPoints<ptr_t>, std::less<unsigned int>, std::allocator<std::pair<unsigned int const, Legion::ColoredPoints<ptr_t> > > > const&, bool, int)+0x2b
+  ../../pennant : LogicalUnstructured::partition(std::map<unsigned int, Legion::ColoredPoints<ptr_t>, std::less<unsigned int>, std::allocator<std::pair<unsigned int const, Legion::ColoredPoints<ptr_t> > > >, bool)+0x66
+  ../../pennant : GlobalMesh::init()+0x689
+  ../../pennant : GlobalMesh::GlobalMesh(InputParameters const&, Legion::Internal::TaskContext*, Legion::Runtime*)+0x1fe
+  ../../pennant : Parallel::run(InputParameters, Legion::Internal::TaskContext*, Legion::Runtime*)+0x41
+  ../../pennant : top_level_task(Legion::Task const*, std::vector<Legion::PhysicalRegion, std::allocator<Legion::PhysicalRegion> > const&, Legion::Internal::TaskContext*, Legion::Runtime*)+0x400
+  ../../pennant : void Legion::LegionTaskWrapper::legion_task_wrapper<&(top_level_task(Legion::Task const*, std::vector<Legion::PhysicalRegion, std::allocator<Legion::PhysicalRegion> > const&, Legion::Internal::TaskContext*, Legion::Runtime*))>(void const*, unsigned long, void const*, unsigned long, Realm::Processor)+0x3a
+  ../../pennant : Realm::LocalTaskProcessor::execute_task(unsigned int, Realm::ByteArrayRef const&)+0x6c
+  ../../pennant : Realm::Task::execute_on_processor(Realm::Processor)+0x171
+  ../../pennant : Realm::UserThreadTaskScheduler::execute_task(Realm::Task*)+0x16
+  ../../pennant : Realm::ThreadedTaskScheduler::scheduler_loop()+0x543
+  ../../pennant : Realm::UserThread::uthread_entry()+0xd3
+  /lib64/libc.so.6 : ()+0x46cf0
+
+----------
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 1 in communicator MPI COMMUNICATOR 3 CREATE FROM 0 
+with errorcode 1.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+Command exited with non-zero status 1
+	Command being timed: "../../pennant 81 ./sedovbig18x30.pnt -ll:cpu 9 -ll:util 1 -ll:dma 1 -ll:csize 120000 -ll:stacksize 20 -hl:prof 1 -logfile trace-9x9+1-sedov18-%.log -level allocation=2"
+	User time (seconds): 71.87
+	System time (seconds): 3.85
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:15.86
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 400228
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 0
+	Minor (reclaiming a frame) page faults: 95231
+	Voluntary context switches: 841
+	Involuntary context switches: 34
+	Swaps: 0
+	File system inputs: 8
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 1
