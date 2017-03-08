@@ -16,16 +16,16 @@
 
 #include "Parallel.hh"
 
-class CalcDtTask : public TaskLauncher {
+class CalcDtTask: public TaskLauncher {
 public:
-	CalcDtTask(CalcDtTaskArgs *args);
-	static const char * const TASK_NAME;
-	static const int TASK_ID = CALCDT_TASK_ID;
-	static const bool CPU_BASE_LEAF = true;
+  CalcDtTask(CalcDtTaskArgs *args);
+  static const char * const TASK_NAME;
+  static const int TASK_ID = CALCDT_TASK_ID;
+  static const bool CPU_BASE_LEAF = true;
 
-	static TimeStep cpu_run(const Task *task,
-			  const std::vector<PhysicalRegion> &regions,
-			  Context ctx, HighLevelRuntime* rt);
+  static TimeStep cpu_run(const Task *task,
+      const std::vector<PhysicalRegion> &regions, Context ctx,
+      HighLevelRuntime* rt);
 };
 
 #endif /* SRC_CALCDTTASK_HH_ */

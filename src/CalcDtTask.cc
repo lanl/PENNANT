@@ -15,26 +15,23 @@
 
 #include "Driver.hh"
 
-
-CalcDtTask::CalcDtTask(CalcDtTaskArgs *args)
-	 : TaskLauncher(CalcDtTask::TASK_ID, TaskArgument(static_cast<void*>(args), sizeof(CalcDtTaskArgs)))
-{
-    add_future(args->dt_hydro);
+CalcDtTask::CalcDtTask(CalcDtTaskArgs *args) :
+      TaskLauncher(CalcDtTask::TASK_ID,
+        TaskArgument(static_cast<void*>(args), sizeof(CalcDtTaskArgs))) {
+  add_future(args->dt_hydro);
 }
 
-/*static*/ const char * const CalcDtTask::TASK_NAME = "CalcDtTask";
-
+/*static*/const char * const CalcDtTask::TASK_NAME = "CalcDtTask";
 
 /*static*/
 TimeStep CalcDtTask::cpu_run(const Task *task,
-		const std::vector<PhysicalRegion> &regions,
-        Context ctx, HighLevelRuntime* runtime)
-{
-    assert(task->arglen == sizeof(CalcDtTaskArgs));
-    CalcDtTaskArgs args = *(const CalcDtTaskArgs*)task->args;
+    const std::vector<PhysicalRegion> &regions, Context ctx,
+    HighLevelRuntime* runtime) {
+  assert(task->arglen == sizeof(CalcDtTaskArgs));
+  CalcDtTaskArgs args = *(const CalcDtTaskArgs*) task->args;
 
-    args.dt_hydro = task->futures[0]; // Cannot pass future through task->args
+  args.dt_hydro = task->futures[0];  // Cannot pass future through task->args
 
-    return Driver::calcGlobalDt(args);
+  return Driver::calcGlobalDt(args);
 }
 

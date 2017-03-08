@@ -37,19 +37,19 @@
  */
 
 struct Add2ReductionOp {
-	static const ReductionOpID redop_id = ADD2_REDOP_ID;
+  static const ReductionOpID redop_id = ADD2_REDOP_ID;
 
-	typedef double2 LHS;
-    typedef double2 RHS;
-    static const double2 identity;
+  typedef double2 LHS;
+  typedef double2 RHS;
+  static const double2 identity;
 
-    template <bool EXCLUSIVE>
-    static void apply(LHS &lhs, RHS rhs);
+  template<bool EXCLUSIVE>
+  static void apply(LHS &lhs, RHS rhs);
 
-    template <bool EXCLUSIVE>
-    static void fold(RHS &rhs1, RHS rhs2);
+  template<bool EXCLUSIVE>
+  static void fold(RHS &rhs1, RHS rhs2);
 
 };
 
 #endif
- 
+

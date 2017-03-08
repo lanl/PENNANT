@@ -14,21 +14,22 @@
 #ifndef SRC_LOGICALSTRUCTURED_HH_
 #define SRC_LOGICALSTRUCTURED_HH_
 
-
 #include "LogicalUnstructured.hh"
 
-
-class LogicalStructured : public LogicalUnstructured {
+class LogicalStructured: public LogicalUnstructured {
 public:
-    LogicalStructured(Context ctx, HighLevelRuntime *runtime);
-    LogicalStructured(Context ctx, HighLevelRuntime *runtime, PhysicalRegion pregion);
-    void allocate(int nElements);
-    int size() const { return nElements; }
-    template <typename TYPE>
-      TYPE* getRawPtr(FieldID FID);
+  LogicalStructured(Context ctx, HighLevelRuntime *runtime);
+  LogicalStructured(Context ctx, HighLevelRuntime *runtime,
+      PhysicalRegion pregion);
+  void allocate(int nElements);
+  int size() const {
+    return nElements;
+  }
+  template<typename TYPE>
+  TYPE* getRawPtr(FieldID FID);
 
 private:
-    int nElements;
+  int nElements;
 };
 
 #endif /* SRC_LOGICALSTRUCTURED_HH_ */

@@ -19,18 +19,16 @@
 class WriteXY;
 class ExportGold;
 
-
-class WriteTask : public TaskLauncher {
+class WriteTask: public TaskLauncher {
 public:
-	WriteTask(LogicalRegion lregion_zone,
-			void *args, const size_t &size);
-	static const char * const TASK_NAME;
-	static const int TASK_ID = WRITE_TASK_ID;
-	static const bool CPU_BASE_LEAF = true;
+  WriteTask(LogicalRegion lregion_zone, void *args, const size_t &size);
+  static const char * const TASK_NAME;
+  static const int TASK_ID = WRITE_TASK_ID;
+  static const bool CPU_BASE_LEAF = true;
 
-	static void cpu_run(const Task *task,
-			  const std::vector<PhysicalRegion> &regions,
-			  Context ctx, HighLevelRuntime* rt);
+  static void cpu_run(const Task *task,
+      const std::vector<PhysicalRegion> &regions, Context ctx,
+      HighLevelRuntime* rt);
 };
 
 #endif /* SRC_WRITETASK_HH_ */

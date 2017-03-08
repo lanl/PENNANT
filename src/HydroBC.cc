@@ -17,26 +17,20 @@
 
 using namespace std;
 
-
 /*static*/
-void HydroBC::applyFixedBC(
-        const ptr_t* pt_local2globalID,
-        const double2 vfix,
-        const vector<int>& mapbp,
-        double2* pu,
-        Double2SOAAccessor& pf,
-        const int bfirst,
-        const int blast) {
+void HydroBC::applyFixedBC(const ptr_t* pt_local2globalID, const double2 vfix,
+    const vector<int>& mapbp, double2* pu, Double2SOAAccessor& pf,
+    const int bfirst, const int blast) {
 
-    #pragma ivdep
-    for (int b = bfirst; b < blast; ++b) {
-        int p = mapbp[b];
-        ptr_t pt_ptr = pt_local2globalID[p];
+#pragma ivdep
+  for (int b = bfirst; b < blast; ++b) {
+    int p = mapbp[b];
+    ptr_t pt_ptr = pt_local2globalID[p];
 
-        pu[p] = project(pu[p], vfix);
-        double2 old_pf = pf.read(pt_ptr);
-        pf.write(pt_ptr, project(old_pf, vfix));
-    }
+    pu[p] = project(pu[p], vfix);
+    double2 old_pf = pf.read(pt_ptr);
+    pf.write(pt_ptr, project(old_pf, vfix));
+  }
 
 }
 

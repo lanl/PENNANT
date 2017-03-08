@@ -22,20 +22,14 @@
 // forward declarations
 class LocalMesh;
 
-
 class HydroBC {
 public:
 
-    static void applyFixedBC(
-            const ptr_t* pt_local2globalID,
-            const double2 vfix,
-            const std::vector<int>& mapbp,
-            double2* pu,
-            Double2SOAAccessor& pf,
-            const int bfirst,
-            const int blast);
+  static void applyFixedBC(const ptr_t* pt_local2globalID, const double2 vfix,
+      const std::vector<int>& mapbp, double2* pu, Double2SOAAccessor& pf,
+      const int bfirst, const int blast);
 
-}; // class HydroBC
-
+};
+// class HydroBC
 
 #endif /* HYDROBC_HH_ */

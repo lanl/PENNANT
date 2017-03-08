@@ -16,21 +16,18 @@
 
 #include "Parallel.hh"
 
-class HaloTask : public TaskLauncher {
+class HaloTask: public TaskLauncher {
 public:
-	HaloTask(LogicalRegion mesh_sides,
-            LogicalRegion mesh_points,
-            LogicalRegion mesh_local_points,
-            LogicalRegion point_chunks,
-            LogicalRegion hydro_sides_and_corners,
-            void *args, const size_t &size);
-	static const char * const TASK_NAME;
-	static const int TASK_ID = HALO_TASK_ID;
-	static const bool CPU_BASE_LEAF = true;
+  HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
+      LogicalRegion mesh_local_points, LogicalRegion point_chunks,
+      LogicalRegion hydro_sides_and_corners, void *args, const size_t &size);
+  static const char * const TASK_NAME;
+  static const int TASK_ID = HALO_TASK_ID;
+  static const bool CPU_BASE_LEAF = true;
 
-	static void cpu_run(const Task *task,
-			  const std::vector<PhysicalRegion> &regions,
-			  Context ctx, HighLevelRuntime* rt);
+  static void cpu_run(const Task *task,
+      const std::vector<PhysicalRegion> &regions, Context ctx,
+      HighLevelRuntime* rt);
 };
 
 #endif /* SRC_HALOTASK_HH_ */

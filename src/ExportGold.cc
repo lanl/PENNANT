@@ -23,431 +23,414 @@
 
 using namespace std;
 
+ExportGold::ExportGold(LocalMesh* m) :
+      mesh(m),
+      num_subregions(1),
+      mype(0) {
+}
 
-ExportGold::ExportGold(LocalMesh* m) : mesh(m),
-		num_subregions(1),
-		mype(0) {}
+ExportGold::~ExportGold() {
+}
 
-ExportGold::~ExportGold() {}
+void ExportGold::write(const string& basename, const int cycle,
+    const double time, const DoubleAccessor& zr, const DoubleAccessor& ze,
+    const DoubleAccessor& zp) {
 
+  writeCaseFile(basename);
 
-void ExportGold::write(
-        const string& basename,
-        const int cycle,
-        const double time,
-        const DoubleAccessor& zr,
-        const DoubleAccessor& ze,
-        const DoubleAccessor& zp) {
+  sortZones();
+  writeGeoFile(basename, cycle, time);
 
-    writeCaseFile(basename);
-
-    sortZones();
-    writeGeoFile(basename, cycle, time);
-
-    writeVarFile(basename, "zr", zr);
-    writeVarFile(basename, "ze", ze);
-    writeVarFile(basename, "zp", zp);
+  writeVarFile(basename, "zr", zr);
+  writeVarFile(basename, "ze", ze);
+  writeVarFile(basename, "zp", zp);
 
 }
 
+void ExportGold::writeCaseFile(const string& basename) {
 
-void ExportGold::writeCaseFile(
-        const string& basename) {
+  if (mype > 0) return;
 
-    if (mype > 0) return;
+  // open file
+  const string filename = basename + ".case";
+  ofstream ofs(filename.c_str());
+  if (!ofs.good()) {
+    cerr << "Cannot open file " << filename << " for writing" << endl;
+    exit(1);
+  }
 
-    // open file
-    const string filename = basename + ".case";
-    ofstream ofs(filename.c_str());
+  // write case info
+  ofs << "#" << endl;
+  ofs << "# Created by PENNANT" << endl;
+  ofs << "#" << endl;
+
+  ofs << "FORMAT" << endl;
+  ofs << "type: ensight gold" << endl;
+
+  ofs << "GEOMETRY" << endl;
+  ofs << "model: " << basename << ".geo" << endl;
+
+  ofs << "VARIABLE" << endl;
+  ofs << "scalar per element: zr " << basename << ".zr" << endl;
+  ofs << "scalar per element: ze " << basename << ".ze" << endl;
+  ofs << "scalar per element: zp " << basename << ".zp" << endl;
+
+  ofs.close();
+
+}
+
+void ExportGold::writeGeoFile(const string& basename, const int cycle,
+    const double time) {
+
+  // open file
+  ofstream ofs;
+  if (mype == 0) {
+    const string filename = basename + ".geo";
+    ofs.open(filename.c_str());
     if (!ofs.good()) {
-        cerr << "Cannot open file " << filename << " for writing"
-             << endl;
-        exit(1);
+      cerr << "Cannot open file " << filename << " for writing" << endl;
+      exit(1);
     }
+  }
 
-    // write case info
-    ofs << "#" << endl;
-    ofs << "# Created by PENNANT" << endl;
-    ofs << "#" << endl;
+  // write general header
+  if (mype == 0) {
+    ofs << scientific;
+    ofs << "cycle = " << setw(8) << cycle << endl;
+    ofs << setprecision(8);
+    ofs << "t = " << setw(15) << time << endl;
+    ofs << "node id assign" << endl;
+    ofs << "element id given" << endl;
 
-    ofs << "FORMAT" << endl;
-    ofs << "type: ensight gold" << endl;
+    // write header for the one "part" (entire mesh)
+    ofs << "part" << endl;
+    ofs << setw(10) << 1 << endl;
+    ofs << "universe" << endl;
+  }  // if mype_ == 0
 
-    ofs << "GEOMETRY" << endl;
-    ofs << "model: " << basename << ".geo" << endl;
+  // gather node info to PE 0
+  const int nump = mesh->num_pts;
+  const double2* px;  // JPG = mesh->pt_x_;
 
-    ofs << "VARIABLE" << endl;
-    ofs << "scalar per element: zr " << basename << ".zr" << endl;
-    ofs << "scalar per element: ze " << basename << ".ze" << endl;
-    ofs << "scalar per element: zp " << basename << ".zp" << endl;
+  int gnump = nump;
+  //Parallel::globalSum(gnump);
+  vector<int> penump(mype == 0 ? num_subregions : 0);
+  //Parallel::gather(nump, &penump[0]);
+  vector<int> peoffset(mype == 0 ? num_subregions + 1 : 1);
+  partial_sum(penump.begin(), penump.end(), &peoffset[1]);
+  int offset;
+  //Parallel::scatter(&peoffset[0], offset);
+  vector<double2> gpx(mype == 0 ? gnump : 0);
+  //Parallel::gatherv(&px[0], nump, &gpx[0], &penump[0]);
 
-    ofs.close();
+  // write node info
+  if (mype == 0) {
+    ofs << "coordinates" << endl;
+    ofs << setw(10) << gnump << endl;
+    ofs << setprecision(5);
+    for (int p = 0; p < gnump; ++p)
+      ofs << setw(12) << gpx[p].x << endl;
+    for (int p = 0; p < gnump; ++p)
+      ofs << setw(12) << gpx[p].y << endl;
+    // Ensight expects z-coordinates, so write 0 for those
+    for (int p = 0; p < gnump; ++p)
+      ofs << setw(12) << 0. << endl;
+  }  // if mype_
 
-}
+  const int* mapsp1 = nullptr;  //mesh->map_side2pt1;
 
+  const int ntris = tris.size();
+  const int nquads = quads.size();
+  const int nothers = others.size();
 
-void ExportGold::writeGeoFile(
-        const string& basename,
-        const int cycle,
-        const double time) {
+  if (mype == 0) {
+    pentris.resize(num_subregions);
+    penquads.resize(num_subregions);
+    penothers.resize(num_subregions);
+  }
+  //Parallel::gather(ntris, &pentris[0]);
+  //Parallel::gather(nquads, &penquads[0]);
+  //Parallel::gather(nothers, &penothers[0]);
 
-    // open file
-    ofstream ofs;
-    if (mype == 0) {
-        const string filename = basename + ".geo";
-        ofs.open(filename.c_str());
-        if (!ofs.good()) {
-            cerr << "Cannot open file " << filename << " for writing"
-                 << endl;
-            exit(1);
-        }
+  gntris = accumulate(pentris.begin(), pentris.end(), 0);
+  gnquads = accumulate(penquads.begin(), penquads.end(), 0);
+  gnothers = accumulate(penothers.begin(), penothers.end(), 0);
+
+  vector<int> pesizes(mype == 0 ? num_subregions : 0);
+
+  // gather triangle info to PE 0
+  vector<int> trip(3 * ntris);
+  vector<int> gtris(gntris), gtrip(3 * gntris);
+  //Parallel::gatherv(&tris[0], ntris, &gtris[0], &pentris[0]);
+  if (mype == 0) {
+    for (int pe = 0; pe < num_subregions; ++pe)
+      pesizes[pe] = pentris[pe] * 3;
+  }
+  for (int t = 0; t < ntris; ++t) {
+    int z = tris[t];
+    int sbase = mapzs[z];
+    for (int i = 0; i < 3; ++i) {
+      trip[t * 3 + i] = mapsp1[sbase + i] + offset;
     }
+  }
+  //Parallel::gatherv(&trip[0], 3 * ntris, &gtrip[0], &pesizes[0]);
 
-    // write general header
-    if (mype == 0) {
-        ofs << scientific;
-        ofs << "cycle = " << setw(8) << cycle << endl;
-        ofs << setprecision(8);
-        ofs << "t = " << setw(15) << time << endl;
-        ofs << "node id assign" << endl;
-        ofs << "element id given" << endl;
-
-        // write header for the one "part" (entire mesh)
-        ofs << "part" << endl;
-        ofs << setw(10) << 1 << endl;
-        ofs << "universe" << endl;
-    } // if mype_ == 0
-
-    // gather node info to PE 0
-    const int nump = mesh->num_pts;
-    const double2* px; // JPG = mesh->pt_x_;
-
-    int gnump = nump;
-    //Parallel::globalSum(gnump);
-    vector<int> penump(mype == 0 ? num_subregions : 0);
-    //Parallel::gather(nump, &penump[0]);
-    vector<int> peoffset(mype == 0 ? num_subregions + 1 : 1);
-    partial_sum(penump.begin(), penump.end(), &peoffset[1]);
-    int offset;
-    //Parallel::scatter(&peoffset[0], offset);
-    vector<double2> gpx(mype == 0 ? gnump : 0);
-    //Parallel::gatherv(&px[0], nump, &gpx[0], &penump[0]);
-
-    // write node info
-    if (mype == 0) {
-        ofs << "coordinates" << endl;
-        ofs << setw(10) << gnump << endl;
-        ofs << setprecision(5);
-        for (int p = 0; p < gnump; ++p)
-            ofs << setw(12) << gpx[p].x << endl;
-        for (int p = 0; p < gnump; ++p)
-            ofs << setw(12) << gpx[p].y << endl;
-        // Ensight expects z-coordinates, so write 0 for those
-        for (int p = 0; p < gnump; ++p)
-            ofs << setw(12) << 0. << endl;
-    } // if mype_
-
-    const int* mapsp1 = nullptr; //mesh->map_side2pt1;
-
-    const int ntris = tris.size();
-    const int nquads = quads.size();
-    const int nothers = others.size();
-
-    if (mype == 0) {
-        pentris.resize(num_subregions);
-        penquads.resize(num_subregions);
-        penothers.resize(num_subregions);
+  // write triangles
+  if (mype == 0 && gntris > 0) {
+    ofs << "tria3" << endl;
+    ofs << setw(10) << gntris << endl;
+    for (int t = 0; t < gntris; ++t)
+      ofs << setw(10) << gtris[t] + 1 << endl;
+    for (int t = 0; t < gntris; ++t) {
+      for (int i = 0; i < 3; ++i)
+        ofs << setw(10) << gtrip[t * 3 + i] + 1;
+      ofs << endl;
     }
-    //Parallel::gather(ntris, &pentris[0]);
-    //Parallel::gather(nquads, &penquads[0]);
-    //Parallel::gather(nothers, &penothers[0]);
+  }  // if mype_ == 0 ...
 
-    gntris = accumulate(pentris.begin(), pentris.end(), 0);
-    gnquads = accumulate(penquads.begin(), penquads.end(), 0);
-    gnothers = accumulate(penothers.begin(), penothers.end(), 0);
-
-    vector<int> pesizes(mype == 0 ? num_subregions : 0);
-
-    // gather triangle info to PE 0
-    vector<int> trip(3 * ntris);
-    vector<int> gtris(gntris), gtrip(3 * gntris);
-    //Parallel::gatherv(&tris[0], ntris, &gtris[0], &pentris[0]);
-    if (mype == 0) {
-        for (int pe = 0; pe < num_subregions; ++pe)
-            pesizes[pe] = pentris[pe] * 3;
+  // gather quad info to PE 0
+  vector<int> quadp(4 * nquads);
+  vector<int> gquads(gnquads), gquadp(4 * gnquads);
+  //Parallel::gatherv(&quads[0], nquads, &gquads[0], &penquads[0]);
+  if (mype == 0) {
+    for (int pe = 0; pe < num_subregions; ++pe)
+      pesizes[pe] = penquads[pe] * 4;
+  }
+  for (int q = 0; q < nquads; ++q) {
+    int z = quads[q];
+    int sbase = mapzs[z];
+    for (int i = 0; i < 4; ++i) {
+      quadp[q * 4 + i] = mapsp1[sbase + i] + offset;
     }
-    for (int t = 0; t < ntris; ++t) {
-        int z = tris[t];
-        int sbase = mapzs[z];
-        for (int i = 0; i < 3; ++i) {
-            trip[t * 3 + i] = mapsp1[sbase + i] + offset;
-        }
+  }
+  //Parallel::gatherv(&quadp[0], 4 * nquads, &gquadp[0], &pesizes[0]);
+
+  // write quads
+  if (mype == 0 && gnquads > 0) {
+    ofs << "quad4" << endl;
+    ofs << setw(10) << gnquads << endl;
+    for (int q = 0; q < gnquads; ++q)
+      ofs << setw(10) << gquads[q] + 1 << endl;
+    for (int q = 0; q < gnquads; ++q) {
+      for (int i = 0; i < 4; ++i)
+        ofs << setw(10) << gquadp[q * 4 + i] + 1;
+      ofs << endl;
     }
-    //Parallel::gatherv(&trip[0], 3 * ntris, &gtrip[0], &pesizes[0]);
+  }  // if mype_ == 0 ...
 
-    // write triangles
-    if (mype == 0 && gntris > 0) {
-        ofs << "tria3" << endl;
-        ofs << setw(10) << gntris << endl;
-        for (int t = 0; t < gntris; ++t)
-            ofs << setw(10) << gtris[t] + 1 << endl;
-        for (int t = 0; t < gntris; ++t) {
-            for (int i = 0; i < 3; ++i)
-                ofs << setw(10) << gtrip[t * 3 + i] + 1;
-            ofs << endl;
-        }
-    } // if mype_ == 0 ...
-
-    // gather quad info to PE 0
-    vector<int> quadp(4 * nquads);
-    vector<int> gquads(gnquads), gquadp(4 * gnquads);
-    //Parallel::gatherv(&quads[0], nquads, &gquads[0], &penquads[0]);
-    if (mype == 0) {
-        for (int pe = 0; pe < num_subregions; ++pe)
-            pesizes[pe] = penquads[pe] * 4;
-    }
-    for (int q = 0; q < nquads; ++q) {
-        int z = quads[q];
-        int sbase = mapzs[z];
-        for (int i = 0; i < 4; ++i) {
-            quadp[q * 4 + i] = mapsp1[sbase + i] + offset;
-        }
-    }
-    //Parallel::gatherv(&quadp[0], 4 * nquads, &gquadp[0], &pesizes[0]);
-
-    // write quads
-    if (mype == 0 && gnquads > 0) {
-        ofs << "quad4" << endl;
-        ofs << setw(10) << gnquads << endl;
-        for (int q = 0; q < gnquads; ++q)
-            ofs << setw(10) << gquads[q] + 1 << endl;
-        for (int q = 0; q < gnquads; ++q) {
-            for (int i = 0; i < 4; ++i)
-                ofs << setw(10) << gquadp[q * 4 + i] + 1;
-            ofs << endl;
-        }
-    } // if mype_ == 0 ...
-
-    // gather other info to PE 0
-    vector<int> othernump(nothers), otherp;
-    vector<int> gothers(gnothers), gothernump(gnothers);
-    //Parallel::gatherv(&others[0], nothers, &gothers[0], &penothers[0]);
-    for (int n = 0; n < nothers; ++n) {
-        int z = others[n];
-        int sbase = mapzs[z];
+  // gather other info to PE 0
+  vector<int> othernump(nothers), otherp;
+  vector<int> gothers(gnothers), gothernump(gnothers);
+  //Parallel::gatherv(&others[0], nothers, &gothers[0], &penothers[0]);
+  for (int n = 0; n < nothers; ++n) {
+    int z = others[n];
+    int sbase = mapzs[z];
 //        othernump[n] = mesh->zoneNPts(z);
-  //      for (int i = 0; i < mesh->zoneNPts(z); ++i) {
+    //      for (int i = 0; i < mesh->zoneNPts(z); ++i) {
     //        otherp.push_back(mapsp1[sbase + i] + offset);
-      //  }
+    //  }
+  }
+  //Parallel::gatherv(&othernump[0], nothers, &gothernump[0], &penothers[0]);
+  int size = otherp.size();
+  //Parallel::gather(size, &pesizes[0]);
+  int gsize = accumulate(pesizes.begin(), pesizes.end(), 0);
+  vector<int> gotherp(gsize);
+  //Parallel::gatherv(&otherp[0], size, &gotherp[0], &pesizes[0]);
+
+  // write others
+  if (mype == 0 && gnothers > 0) {
+    ofs << "nsided" << endl;
+    ofs << setw(10) << gnothers << endl;
+    for (int n = 0; n < gnothers; ++n)
+      ofs << setw(10) << gothers[n] + 1 << endl;
+    for (int n = 0; n < gnothers; ++n)
+      ofs << setw(10) << gothernump[n] << endl;
+    int gp = 0;
+    for (int n = 0; n < gnothers; ++n) {
+      for (int i = 0; i < gothernump[n]; ++i)
+        ofs << setw(10) << gotherp[gp + i] + 1;
+      ofs << endl;
+      gp += gothernump[n];
     }
-    //Parallel::gatherv(&othernump[0], nothers, &gothernump[0], &penothers[0]);
-    int size = otherp.size();
-    //Parallel::gather(size, &pesizes[0]);
-    int gsize = accumulate(pesizes.begin(), pesizes.end(), 0);
-    vector<int> gotherp(gsize);
-    //Parallel::gatherv(&otherp[0], size, &gotherp[0], &pesizes[0]);
+  }  // if mype_ == 0 ...
 
-    // write others
-    if (mype == 0 && gnothers > 0) {
-        ofs << "nsided" << endl;
-        ofs << setw(10) << gnothers << endl;
-        for (int n = 0; n < gnothers; ++n)
-            ofs << setw(10) << gothers[n] + 1 << endl;
-        for (int n = 0; n < gnothers; ++n)
-            ofs << setw(10) << gothernump[n] << endl;
-        int gp = 0;
-        for (int n = 0; n < gnothers; ++n) {
-            for (int i = 0; i < gothernump[n]; ++i)
-                ofs << setw(10) << gotherp[gp + i] + 1;
-            ofs << endl;
-            gp += gothernump[n];
-        }
-    } // if mype_ == 0 ...
-
-    if (mype == 0) ofs.close();
+  if (mype == 0) ofs.close();
 
 }
 
+void ExportGold::writeVarFile(const string& basename, const string& varname,
+    const double* var) {
 
-void ExportGold::writeVarFile(
-        const string& basename,
-        const string& varname,
-        const double* var) {
-
-    // open file
-    ofstream ofs;
-    if (mype == 0) {
-        const string filename = basename + "." + varname;
-        ofs.open(filename.c_str());
-        if (!ofs.good()) {
-            cerr << "Cannot open file " << filename << " for writing"
-                 << endl;
-            exit(1);
-        }
-    } // if mype_ == 0
-
-    // write header
-    if (mype == 0) {
-        ofs << scientific << setprecision(5);
-        ofs << varname << endl;
-        ofs << "part" << endl;
-        ofs << setw(10) << 1 << endl;
-    } // if mype_ == 0
-
-    int ntris = tris.size();
-    int nquads = quads.size();
-    int nothers = others.size();
-
-    // gather values on triangles to PE 0
-    vector<double> tvar(ntris), gtvar(gntris);
-    for (int t = 0; t < ntris; ++t) {
-        tvar[t] = var[tris[t]];
+  // open file
+  ofstream ofs;
+  if (mype == 0) {
+    const string filename = basename + "." + varname;
+    ofs.open(filename.c_str());
+    if (!ofs.good()) {
+      cerr << "Cannot open file " << filename << " for writing" << endl;
+      exit(1);
     }
-    //Parallel::gatherv(&tvar[0], ntris, &gtvar[0], &pentris[0]);
+  }  // if mype_ == 0
 
-    // write values on triangles
-    if (mype == 0 && gntris > 0) {
-        ofs << "tria3" << endl;
-        for (int t = 0; t < gntris; ++t) {
-            ofs << setw(12) << gtvar[t] << endl;
-        }
-    } // if mype_ == 0 ...
+  // write header
+  if (mype == 0) {
+    ofs << scientific << setprecision(5);
+    ofs << varname << endl;
+    ofs << "part" << endl;
+    ofs << setw(10) << 1 << endl;
+  }  // if mype_ == 0
 
-    // gather values on quads to PE 0
-    vector<double> qvar(nquads), gqvar(gnquads);
-    for (int q = 0; q < nquads; ++q) {
-        qvar[q] = var[quads[q]];
+  int ntris = tris.size();
+  int nquads = quads.size();
+  int nothers = others.size();
+
+  // gather values on triangles to PE 0
+  vector<double> tvar(ntris), gtvar(gntris);
+  for (int t = 0; t < ntris; ++t) {
+    tvar[t] = var[tris[t]];
+  }
+  //Parallel::gatherv(&tvar[0], ntris, &gtvar[0], &pentris[0]);
+
+  // write values on triangles
+  if (mype == 0 && gntris > 0) {
+    ofs << "tria3" << endl;
+    for (int t = 0; t < gntris; ++t) {
+      ofs << setw(12) << gtvar[t] << endl;
     }
-    //Parallel::gatherv(&qvar[0], nquads, &gqvar[0], &penquads[0]);
+  }  // if mype_ == 0 ...
 
-    // write values on quads
-    if (mype == 0 && gnquads > 0) {
-        ofs << "quad4" << endl;
-        for (int q = 0; q < gnquads; ++q) {
-            ofs << setw(12) << gqvar[q] << endl;
-        }
-    } // if mype_ == 0 ...
+  // gather values on quads to PE 0
+  vector<double> qvar(nquads), gqvar(gnquads);
+  for (int q = 0; q < nquads; ++q) {
+    qvar[q] = var[quads[q]];
+  }
+  //Parallel::gatherv(&qvar[0], nquads, &gqvar[0], &penquads[0]);
 
-    // gather values on others to PE 0
-    vector<double> ovar(nothers), govar(gnothers);
-    for (int n = 0; n < nothers; ++n) {
-        ovar[n] = var[others[n]];
+  // write values on quads
+  if (mype == 0 && gnquads > 0) {
+    ofs << "quad4" << endl;
+    for (int q = 0; q < gnquads; ++q) {
+      ofs << setw(12) << gqvar[q] << endl;
     }
-    //Parallel::gatherv(&ovar[0], nothers, &govar[0], &penothers[0]);
+  }  // if mype_ == 0 ...
 
-    // write values on others
-    if (mype == 0 && gnothers > 0) {
-        ofs << "nsided" << endl;
-        for (int n = 0; n < gnothers; ++n) {
-            ofs << setw(12) << govar[n] << endl;
-        }
-    } // if mype_ == 0 ...
+  // gather values on others to PE 0
+  vector<double> ovar(nothers), govar(gnothers);
+  for (int n = 0; n < nothers; ++n) {
+    ovar[n] = var[others[n]];
+  }
+  //Parallel::gatherv(&ovar[0], nothers, &govar[0], &penothers[0]);
 
-    if (mype == 0) ofs.close();
+  // write values on others
+  if (mype == 0 && gnothers > 0) {
+    ofs << "nsided" << endl;
+    for (int n = 0; n < gnothers; ++n) {
+      ofs << setw(12) << govar[n] << endl;
+    }
+  }  // if mype_ == 0 ...
+
+  if (mype == 0) ofs.close();
 
 }
 
+void ExportGold::writeVarFile(const string& basename, const string& varname,
+    const DoubleAccessor& var) {
 
-void ExportGold::writeVarFile(
-        const string& basename,
-        const string& varname,
-        const DoubleAccessor& var) {
-
-    // open file
-    ofstream ofs;
-    if (mype == 0) {
-        const string filename = basename + "." + varname;
-        ofs.open(filename.c_str());
-        if (!ofs.good()) {
-            cerr << "Cannot open file " << filename << " for writing"
-                 << endl;
-            exit(1);
-        }
-    } // if mype_ == 0
-
-    // write header
-    if (mype == 0) {
-        ofs << scientific << setprecision(5);
-        ofs << varname << endl;
-        ofs << "part" << endl;
-        ofs << setw(10) << 1 << endl;
-    } // if mype_ == 0
-
-    int ntris = tris.size();
-    int nquads = quads.size();
-    int nothers = others.size();
-
-    // gather values on triangles to PE 0
-    vector<double> tvar(ntris), gtvar(gntris);
-    for (int t = 0; t < ntris; ++t) {
-    		ptr_t zone_ptr(tris[t]);
-        tvar[t] = var.read(zone_ptr);
+  // open file
+  ofstream ofs;
+  if (mype == 0) {
+    const string filename = basename + "." + varname;
+    ofs.open(filename.c_str());
+    if (!ofs.good()) {
+      cerr << "Cannot open file " << filename << " for writing" << endl;
+      exit(1);
     }
-    //Parallel::gatherv(&tvar[0], ntris, &gtvar[0], &pentris[0]);
+  }  // if mype_ == 0
 
-    // write values on triangles
-    if (mype == 0 && gntris > 0) {
-        ofs << "tria3" << endl;
-        for (int t = 0; t < gntris; ++t) {
-            ofs << setw(12) << gtvar[t] << endl;
-        }
-    } // if mype_ == 0 ...
+  // write header
+  if (mype == 0) {
+    ofs << scientific << setprecision(5);
+    ofs << varname << endl;
+    ofs << "part" << endl;
+    ofs << setw(10) << 1 << endl;
+  }  // if mype_ == 0
 
-    // gather values on quads to PE 0
-    vector<double> qvar(nquads), gqvar(gnquads);
-    for (int q = 0; q < nquads; ++q) {
-    		ptr_t zone_ptr(quads[q]);
-        qvar[q] = var.read(zone_ptr);
+  int ntris = tris.size();
+  int nquads = quads.size();
+  int nothers = others.size();
+
+  // gather values on triangles to PE 0
+  vector<double> tvar(ntris), gtvar(gntris);
+  for (int t = 0; t < ntris; ++t) {
+    ptr_t zone_ptr(tris[t]);
+    tvar[t] = var.read(zone_ptr);
+  }
+  //Parallel::gatherv(&tvar[0], ntris, &gtvar[0], &pentris[0]);
+
+  // write values on triangles
+  if (mype == 0 && gntris > 0) {
+    ofs << "tria3" << endl;
+    for (int t = 0; t < gntris; ++t) {
+      ofs << setw(12) << gtvar[t] << endl;
     }
-    //Parallel::gatherv(&qvar[0], nquads, &gqvar[0], &penquads[0]);
+  }  // if mype_ == 0 ...
 
-    // write values on quads
-    if (mype == 0 && gnquads > 0) {
-        ofs << "quad4" << endl;
-        for (int q = 0; q < gnquads; ++q) {
-            ofs << setw(12) << gqvar[q] << endl;
-        }
-    } // if mype_ == 0 ...
+  // gather values on quads to PE 0
+  vector<double> qvar(nquads), gqvar(gnquads);
+  for (int q = 0; q < nquads; ++q) {
+    ptr_t zone_ptr(quads[q]);
+    qvar[q] = var.read(zone_ptr);
+  }
+  //Parallel::gatherv(&qvar[0], nquads, &gqvar[0], &penquads[0]);
 
-    // gather values on others to PE 0
-    vector<double> ovar(nothers), govar(gnothers);
-    for (int n = 0; n < nothers; ++n) {
-    		ptr_t zone_ptr(others[n]);
-        ovar[n] = var.read(zone_ptr);
+  // write values on quads
+  if (mype == 0 && gnquads > 0) {
+    ofs << "quad4" << endl;
+    for (int q = 0; q < gnquads; ++q) {
+      ofs << setw(12) << gqvar[q] << endl;
     }
-    //Parallel::gatherv(&ovar[0], nothers, &govar[0], &penothers[0]);
+  }  // if mype_ == 0 ...
 
-    // write values on others
-    if (mype == 0 && gnothers > 0) {
-        ofs << "nsided" << endl;
-        for (int n = 0; n < gnothers; ++n) {
-            ofs << setw(12) << govar[n] << endl;
-        }
-    } // if mype_ == 0 ...
+  // gather values on others to PE 0
+  vector<double> ovar(nothers), govar(gnothers);
+  for (int n = 0; n < nothers; ++n) {
+    ptr_t zone_ptr(others[n]);
+    ovar[n] = var.read(zone_ptr);
+  }
+  //Parallel::gatherv(&ovar[0], nothers, &govar[0], &penothers[0]);
 
-    if (mype == 0) ofs.close();
+  // write values on others
+  if (mype == 0 && gnothers > 0) {
+    ofs << "nsided" << endl;
+    for (int n = 0; n < gnothers; ++n) {
+      ofs << setw(12) << govar[n] << endl;
+    }
+  }  // if mype_ == 0 ...
+
+  if (mype == 0) ofs.close();
 
 }
 
 void ExportGold::sortZones() {
 
-    const int numz = mesh->num_zones;
+  const int numz = mesh->num_zones;
 
-    mapzs.resize(numz);
+  mapzs.resize(numz);
 
-    // sort zones by size, create an inverse map
-    int scount = 0;
-    for (int z = 0; z < numz; ++z) {
-        int zsize = 0; //mesh->zoneNPts(z);
-        if (zsize == 3)
-            tris.push_back(z);
-        else if (zsize == 4)
-            quads.push_back(z);
-        else // zsize > 4
-            others.push_back(z);
-        mapzs[z] = scount;
-        scount += zsize;
-    } // for z
+  // sort zones by size, create an inverse map
+  int scount = 0;
+  for (int z = 0; z < numz; ++z) {
+    int zsize = 0;  //mesh->zoneNPts(z);
+    if (zsize == 3)
+      tris.push_back(z);
+    else if (zsize == 4)
+      quads.push_back(z);
+    else
+      // zsize > 4
+      others.push_back(z);
+    mapzs[z] = scount;
+    scount += zsize;
+  }  // for z
 
 }
 

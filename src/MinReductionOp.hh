@@ -37,17 +37,17 @@
  */
 
 struct MinReductionOp {
-	static const ReductionOpID redop_id = MIN_REDOP_ID;
+  static const ReductionOpID redop_id = MIN_REDOP_ID;
 
-	typedef TimeStep LHS;
-    typedef TimeStep RHS;
-    static const TimeStep identity;
+  typedef TimeStep LHS;
+  typedef TimeStep RHS;
+  static const TimeStep identity;
 
-    template <bool EXCLUSIVE>
-    static void apply(LHS &lhs, RHS rhs);
+  template<bool EXCLUSIVE>
+  static void apply(LHS &lhs, RHS rhs);
 
-    template <bool EXCLUSIVE>
-    static void fold(RHS &rhs1, RHS rhs2);
+  template<bool EXCLUSIVE>
+  static void fold(RHS &rhs1, RHS rhs2);
 
 };
 

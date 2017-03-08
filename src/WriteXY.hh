@@ -20,20 +20,13 @@
 // forward declarations
 class LocalMesh;
 
-
 class WriteXY {
 public:
 
-    static void write(
-            const std::string& basename,
-            const DoubleAccessor& zr,
-            const DoubleAccessor& ze,
-            const DoubleAccessor& zp,
-			IndexIterator& zr_itr,
-			IndexIterator& ze_itr,
-			IndexIterator& zp_itr);
+  static void write(const std::string& basename, const DoubleAccessor& zr,
+      const DoubleAccessor& ze, const DoubleAccessor& zp, IndexIterator& zr_itr,
+      IndexIterator& ze_itr, IndexIterator& zp_itr);
 
 };
-
 
 #endif /* WRITEXY_HH_ */

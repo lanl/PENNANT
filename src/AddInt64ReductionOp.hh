@@ -37,17 +37,17 @@
  */
 
 struct AddInt64ReductionOp {
-	static const ReductionOpID redop_id = ADD_INT64_REDOP_ID;
+  static const ReductionOpID redop_id = ADD_INT64_REDOP_ID;
 
-	typedef int64_t LHS;
-    typedef int64_t RHS;
-    static const int64_t identity;
+  typedef int64_t LHS;
+  typedef int64_t RHS;
+  static const int64_t identity;
 
-    template <bool EXCLUSIVE>
-    static void apply(LHS &lhs, RHS rhs);
+  template<bool EXCLUSIVE>
+  static void apply(LHS &lhs, RHS rhs);
 
-    template <bool EXCLUSIVE>
-    static void fold(RHS &rhs1, RHS rhs2);
+  template<bool EXCLUSIVE>
+  static void fold(RHS &rhs1, RHS rhs2);
 
 };
 

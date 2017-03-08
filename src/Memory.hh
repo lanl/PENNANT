@@ -15,7 +15,6 @@
 
 #include <cstdlib>
 
-
 // Namespace Memory provides functions to allocate and free memory.
 // Currently these are just wrappers around std::malloc and free,
 // but they are abstracted here to make it easier to replace them
@@ -25,14 +24,16 @@ namespace AbstractedMemory {
 
 template<typename T>
 inline T* alloc(const int count) {
-    return (T*) std::malloc(count * sizeof(T));
+  return (T*) std::malloc(count * sizeof(T));
 }
 
 template<typename T>
 inline void free(T* ptr) {
-    std::free(ptr);
+  std::free(ptr);
 }
 
-};  // namespace AbstractedMemory
+}
+;
+// namespace AbstractedMemory
 
 #endif /* MEMORY_HH_ */

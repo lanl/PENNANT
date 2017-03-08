@@ -308,7 +308,7 @@ void LocalMesh::populateChunks(const int* map_side2zone, int** point_chunks_CRS,
 
 void LocalMesh::populateInverseMap(const int* map_side2pt1,
     int* map_pt2crn_first, int* map_crn2crn_next) {
-  vector < pair<int, int> > pcpair(num_sides);
+  vector<pair<int, int> > pcpair(num_sides);
   for (int c = 0; c < num_corners; ++c)
     pcpair[c] = make_pair(map_side2pt1[c], c);
   sort(pcpair.begin(), pcpair.end());

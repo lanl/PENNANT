@@ -16,20 +16,17 @@
 
 #include "Parallel.hh"
 
-class PredictorPointTask : public TaskLauncher {
+class PredictorPointTask: public TaskLauncher {
 public:
-	PredictorPointTask(
-            LogicalRegion mesh_points,
-            LogicalRegion point_chunks,
-            LogicalRegion hydro_points,
-            void *args, const size_t &size);
-	static const char * const TASK_NAME;
-	static const int TASK_ID = PREDICTOR_POINT_TASK_ID;
-	static const bool CPU_BASE_LEAF = true;
+  PredictorPointTask(LogicalRegion mesh_points, LogicalRegion point_chunks,
+      LogicalRegion hydro_points, void *args, const size_t &size);
+  static const char * const TASK_NAME;
+  static const int TASK_ID = PREDICTOR_POINT_TASK_ID;
+  static const bool CPU_BASE_LEAF = true;
 
-	static void cpu_run(const Task *task,
-			  const std::vector<PhysicalRegion> &regions,
-			  Context ctx, HighLevelRuntime* rt);
+  static void cpu_run(const Task *task,
+      const std::vector<PhysicalRegion> &regions, Context ctx,
+      HighLevelRuntime* rt);
 };
 
 #endif /* SRC_PREDICTORPOINTTASK_HH_ */

@@ -15,25 +15,15 @@
 
 #include "Vec2.hh"
 
-
 class TTS {
 public:
 
-static void calcForce(
-        const double* zarea,
-        const double* zr,
-        const double* zss,
-        const double* sarea,
-        const double* smf,
-        const double2* ssurfp,
-        double2* sf,
-        const int sfirst,
-        const int slast,
-        const int* map_side2zone,
-        const double ssmin,
-        const double alfa);
+  static void calcForce(const double* zarea, const double* zr,
+      const double* zss, const double* sarea, const double* smf,
+      const double2* ssurfp, double2* sf, const int sfirst, const int slast,
+      const int* map_side2zone, const double ssmin, const double alfa);
 
-}; // class TTS
-
+};
+// class TTS
 
 #endif /* TTS_HH_ */
