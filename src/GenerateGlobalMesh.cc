@@ -51,8 +51,8 @@ int GenerateGlobalMesh::numberOfZones() const {
   return global_nzones_x * global_nzones_y;
 }
 
-void GenerateGlobalMesh::colorPartitions(Coloring *zone_map,
-    Coloring *pt_map) const {
+void GenerateGlobalMesh::colorPartitions(Coloring* zone_map,
+    Coloring* pt_map) const {
   if (meshtype == "pie")
     colorPartitionsPie(zone_map, pt_map);
   else if (meshtype == "rect")
@@ -79,8 +79,8 @@ void GenerateGlobalMesh::setupHaloCommunication(int color,
   }
 }
 
-void GenerateGlobalMesh::colorPartitionsPie(Coloring *zone_map,
-    Coloring *pt_map) const {
+void GenerateGlobalMesh::colorPartitionsPie(Coloring* zone_map,
+    Coloring* pt_map) const {
   colorZones(zone_map);
 
   for (int proc_index_y = 0; proc_index_y < num_proc_y; proc_index_y++) {
@@ -104,8 +104,8 @@ void GenerateGlobalMesh::colorPartitionsPie(Coloring *zone_map,
   }
 }
 
-void GenerateGlobalMesh::colorPartitionsHex(Coloring *zone_map,
-    Coloring *pt_map) const {
+void GenerateGlobalMesh::colorPartitionsHex(Coloring* zone_map,
+    Coloring* pt_map) const {
   colorZones(zone_map);
 
   for (int proc_index_y = 0; proc_index_y < num_proc_y; proc_index_y++) {
@@ -145,8 +145,8 @@ void GenerateGlobalMesh::colorPartitionsHex(Coloring *zone_map,
   }  // proc_index_y
 }
 
-void GenerateGlobalMesh::colorPartitionsRect(Coloring *zone_map,
-    Coloring *local_pt_map) const {
+void GenerateGlobalMesh::colorPartitionsRect(Coloring* zone_map,
+    Coloring* local_pt_map) const {
   colorZones(zone_map);
 
   for (int proc_index_y = 0; proc_index_y < num_proc_y; proc_index_y++) {
@@ -166,7 +166,7 @@ void GenerateGlobalMesh::colorPartitionsRect(Coloring *zone_map,
   }
 }
 
-void GenerateGlobalMesh::colorZones(Coloring *zone_map) const {
+void GenerateGlobalMesh::colorZones(Coloring* zone_map) const {
   for (int proc_index_y = 0; proc_index_y < num_proc_y; proc_index_y++) {
     const int zone_y_start = yStart(proc_index_y);
     const int zone_y_stop = yStart(proc_index_y + 1);

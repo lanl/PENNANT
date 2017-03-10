@@ -13,7 +13,7 @@
 
 #include "CorrectorTask.hh"
 
-#include<iostream>
+#include <iostream>
 
 #include "Hydro.hh"
 #include "HydroBC.hh"
@@ -29,7 +29,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
     LogicalRegion point_chunks, LogicalRegion side_chunks,
     LogicalRegion zone_chunks, LogicalRegion hydro_zones,
     LogicalRegion hydro_sides_and_corners, LogicalRegion hydro_points,
-    LogicalRegion bcx_chunks, LogicalRegion bcy_chunks, void *args,
+    LogicalRegion bcx_chunks, LogicalRegion bcy_chunks, void* args,
     const size_t &size) :
       TaskLauncher(CorrectorTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
@@ -114,7 +114,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
 /*static*/const char * const CorrectorTask::TASK_NAME = "CorrectorTask";
 
 /*static*/
-TimeStep CorrectorTask::cpu_run(const Task *task,
+TimeStep CorrectorTask::cpu_run(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* runtime) {
   assert(regions.size() == 19);

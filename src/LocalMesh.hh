@@ -82,9 +82,9 @@ public:
 
   // find plane with constant x, y value
   static std::vector<int> getXPlane(const double c, const int num_pts,
-      const double2 *pt_x);
+      const double2* pt_x);
   static std::vector<int> getYPlane(const double c, const int num_pts,
-      const double2 *pt_x);
+      const double2* pt_x);
 
   // compute chunks for a given plane
   static void getPlaneChunks(const std::vector<int>& mapbp,

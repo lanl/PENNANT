@@ -31,6 +31,5 @@ void HydroBC::applyFixedBC(const ptr_t* pt_local2globalID, const double2 vfix,
     double2 old_pf = pf.read(pt_ptr);
     pf.write(pt_ptr, project(old_pf, vfix));
   }
-
 }
 

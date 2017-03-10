@@ -28,7 +28,7 @@
 using namespace std;
 
 DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
-    LogicalRegion all_zones, std::vector<LogicalRegion> halo_pts, void *args,
+    LogicalRegion all_zones, std::vector<LogicalRegion> halo_pts, void* args,
     const size_t &size) :
       TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
@@ -48,7 +48,7 @@ DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
 /*static*/const char * const DriverTask::TASK_NAME = "DriverTask";
 
 /*static*/
-RunStat DriverTask::cpu_run(const Task *task,
+RunStat DriverTask::cpu_run(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* runtime) {
   assert(regions.size() > 1);

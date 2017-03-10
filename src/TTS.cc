@@ -12,7 +12,7 @@
 
 #include "TTS.hh"
 
-#include<algorithm>
+#include <algorithm>
 
 using namespace std;
 
@@ -44,8 +44,6 @@ void TTS::calcForce(const double* zarea, const double* zr, const double* zss,
     double sdp = sstmp * (srho - zr[z]);
     double2 sqq = -sdp * ssurfp[s];
     sf[s] = sqq;
-
   }
-
 }
 

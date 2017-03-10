@@ -51,7 +51,6 @@ InputFile::InputFile(const char* filename) {
   }  // while true
 
   ifs.close();
-
 }
 
 InputFile::~InputFile() {

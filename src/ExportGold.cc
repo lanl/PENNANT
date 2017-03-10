@@ -44,7 +44,6 @@ void ExportGold::write(const string& basename, const int cycle,
   writeVarFile(basename, "zr", zr);
   writeVarFile(basename, "ze", ze);
   writeVarFile(basename, "zp", zp);
-
 }
 
 void ExportGold::writeCaseFile(const string& basename) {
@@ -76,7 +75,6 @@ void ExportGold::writeCaseFile(const string& basename) {
   ofs << "scalar per element: zp " << basename << ".zp" << endl;
 
   ofs.close();
-
 }
 
 void ExportGold::writeGeoFile(const string& basename, const int cycle,
@@ -255,7 +253,6 @@ void ExportGold::writeGeoFile(const string& basename, const int cycle,
   }  // if mype_ == 0 ...
 
   if (mype == 0) ofs.close();
-
 }
 
 void ExportGold::writeVarFile(const string& basename, const string& varname,
@@ -330,7 +327,6 @@ void ExportGold::writeVarFile(const string& basename, const string& varname,
   }  // if mype_ == 0 ...
 
   if (mype == 0) ofs.close();
-
 }
 
 void ExportGold::writeVarFile(const string& basename, const string& varname,
@@ -408,7 +404,6 @@ void ExportGold::writeVarFile(const string& basename, const string& varname,
   }  // if mype_ == 0 ...
 
   if (mype == 0) ofs.close();
-
 }
 
 void ExportGold::sortZones() {
@@ -431,6 +426,5 @@ void ExportGold::sortZones() {
     mapzs[z] = scount;
     scount += zsize;
   }  // for z
-
 }
 

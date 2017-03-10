@@ -66,7 +66,6 @@ void PolyGas::calcEOS(const double* zr, const double* ze, double* zp,
     z0per[z0] = perx;
     zss[z] = sqrt(csqd);
   }
-
 }
 
 /*static*/
@@ -78,7 +77,6 @@ void PolyGas::calcForce(const double* zp, const double2* ssurfp, double2* sf,
     int z = map_side2zone[s];
     double2 sfx = -zp[z] * ssurfp[s];
     sf[s] = sfx;
-
   }
 }
 

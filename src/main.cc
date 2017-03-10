@@ -33,11 +33,11 @@
 
 using namespace std;
 
-InputParameters parseInputFile(InputFile *inp);
+InputParameters parseInputFile(InputFile* inp);
 
-void top_level_task(const Task *task,
+void top_level_task(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime *runtime) {
+    HighLevelRuntime* runtime) {
   const InputArgs &command_args = HighLevelRuntime::get_input_args();
 
   if (command_args.argc < 3) {
@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
   return HighLevelRuntime::start(argc, argv);
 }
 
-InputParameters parseInputFile(InputFile *inp) {
+InputParameters parseInputFile(InputFile* inp) {
   InputParameters value;
   DirectInputParameters direct_values;
 

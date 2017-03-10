@@ -32,7 +32,7 @@ enum idx {
 };
 
 PredictorPointTask::PredictorPointTask(LogicalRegion mesh_points,
-    LogicalRegion point_chunks, LogicalRegion hydro_points, void *args,
+    LogicalRegion point_chunks, LogicalRegion hydro_points, void* args,
     const size_t &size) :
       TaskLauncher(PredictorPointTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
@@ -57,7 +57,7 @@ PredictorPointTask::PredictorPointTask(LogicalRegion mesh_points,
     "PredictorPointTask";
 
 /*static*/
-void PredictorPointTask::cpu_run(const Task *task,
+void PredictorPointTask::cpu_run(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* runtime) {
   assert(regions.size() == SIX);

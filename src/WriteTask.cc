@@ -20,7 +20,7 @@
 
 using namespace std;
 
-WriteTask::WriteTask(LogicalRegion lregion_global_zones, void *args,
+WriteTask::WriteTask(LogicalRegion lregion_global_zones, void* args,
     const size_t &size) :
       TaskLauncher(WriteTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
@@ -34,7 +34,7 @@ WriteTask::WriteTask(LogicalRegion lregion_global_zones, void *args,
 /*static*/const char * const WriteTask::TASK_NAME = "WriteTask";
 
 /*static*/
-void WriteTask::cpu_run(const Task *task,
+void WriteTask::cpu_run(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* rt) {
   assert(regions.size() == 1);

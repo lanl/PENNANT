@@ -13,11 +13,11 @@
 # limitations under the License.
 #
 
-LG_RT_DIR := ${HOME}/github/legion/runtime
-GASNET_ROOT= ${HOME}/opt/gasnet/1.26.4
-GASNET=$(GASNET_ROOT)
-CONDUIT=ibv
-USE_GASNET=1
+LG_RT_DIR ?= ${HOME}/github/legion/runtime
+GASNET_ROOT ?= ${HOME}/opt/gasnet/1.26.4
+GASNET ?= $(GASNET_ROOT)
+CONDUIT ?= ibv
+USE_GASNET ?= 1
 
 ifndef LG_RT_DIR
 $(error LG_RT_DIR variable is not defined, aborting build)

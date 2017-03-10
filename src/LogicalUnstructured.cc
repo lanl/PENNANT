@@ -15,7 +15,7 @@
 
 #include "Vec2.hh"
 
-LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
+LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
     IndexSpace i_space) :
       LogicalUnstructured(ctx, runtime) {
   ispace = i_space;
@@ -23,7 +23,7 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
   *ispaceID = ispace.get_id();
 }
 
-LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
+LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
     PhysicalRegion pregion) :
       destroy_ispace(false),
       ispace(pregion.get_logical_region().get_index_space()),
@@ -44,7 +44,7 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
   *lregionID = pregion.get_logical_region().get_tree_id();
 }
 
-LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
+LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
     LogicalRegion lregion) :
       destroy_ispace(false),
       ispace(lregion.get_index_space()),
@@ -64,7 +64,7 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime,
   *lregionID = lregion.get_tree_id();
 }
 
-LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime *runtime) :
+LogicalUnstructured::LogicalUnstructured(Context ctx, HighLevelRuntime* runtime) :
       destroy_ispace(false),
       ispaceID(nullptr),
       ipartID(nullptr),

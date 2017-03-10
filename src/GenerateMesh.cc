@@ -27,7 +27,6 @@ GenerateMesh::GenerateMesh(const InputParameters& input_params) :
       my_color(input_params.directs.task_id) {
   calcPartitions();
   calcLocalConstants(my_color);
-
 }
 
 void GenerateMesh::generate(vector<double2>& pointpos,
@@ -329,7 +328,6 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
     slave_colors.push_back(slvpe);
     master_points_counts.push_back(1);
   }
-
 }
 
 void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
@@ -450,7 +448,6 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
     slave_colors.push_back(slvpe);
     master_points_counts.push_back(1);
   }
-
 }
 
 void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
@@ -582,7 +579,6 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
     slave_colors.push_back(slvpe);
     master_points_counts.push_back(2);
   }
-
 }
 
 void GenerateMesh::calcPartitions() {

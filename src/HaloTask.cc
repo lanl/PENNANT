@@ -21,7 +21,7 @@
 
 HaloTask::HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
     LogicalRegion mesh_local_points, LogicalRegion point_chunks,
-    LogicalRegion hydro_sides_and_corners, void *args, const size_t &size) :
+    LogicalRegion hydro_sides_and_corners, void* args, const size_t &size) :
       TaskLauncher(HaloTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(mesh_sides, READ_ONLY, EXCLUSIVE, mesh_sides));
@@ -45,10 +45,10 @@ HaloTask::HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
   add_field(4, FID_POINT_CHUNKS_CRS);
 }
 
-/*static*/const char * const HaloTask::TASK_NAME = "HaloTask";
+/*static*/const char* const HaloTask::TASK_NAME = "HaloTask";
 
 /*static*/
-void HaloTask::cpu_run(const Task *task,
+void HaloTask::cpu_run(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* runtime) {
   assert(regions.size() == 5);
@@ -88,6 +88,5 @@ void HaloTask::cpu_run(const Task *task,
   LocalMesh::sumOnProc(corner_mass, corner_force, point_chunks_CRS,
     args.num_point_chunks, map_pt2crn_first, map_crn2crn_next,
     pt_local2globalID, pt_weighted_mass, pt_force);
-
 }
 

@@ -374,12 +374,11 @@ void LocalMesh::writeMeshStats() {
   cout << "Zone chunks:  " << gnumzch << endl;
   cout << "Chunk size:  " << chunk_size << endl;
   cout << "------------------------" << endl;
-
 }
 
 /*static*/
 vector<int> LocalMesh::getXPlane(const double c, const int num_pts,
-    const double2 *pt_x) {
+    const double2* pt_x) {
   vector<int> mapbp;
   const double eps = 1.e-12;
 
@@ -389,12 +388,11 @@ vector<int> LocalMesh::getXPlane(const double c, const int num_pts,
     }
   }
   return mapbp;
-
 }
 
 /*static*/
 vector<int> LocalMesh::getYPlane(const double c, const int num_pts,
-    const double2 *pt_x) {
+    const double2* pt_x) {
   vector<int> mapbp;
   const double eps = 1.e-12;
 
@@ -404,7 +402,6 @@ vector<int> LocalMesh::getYPlane(const double c, const int num_pts,
     }
   }
   return mapbp;
-
 }
 
 /*static*/
@@ -445,7 +442,6 @@ void LocalMesh::calcCtrs(const int sfirst, const int slast, const double2* px,
   for (int z = zfirst; z < zlast; ++z) {
     zx[z] /= (double) zoneNPts(z, zone_pts_ptr);
   }
-
 }
 
 /*static*/
@@ -491,7 +487,6 @@ void LocalMesh::calcVols(const int sfirst, const int slast, const double2* px,
     cerr << "Exiting..." << endl;
     exit(1);
   }
-
 }
 
 void LocalMesh::calcSideMassFracs(const int side_chunk,
@@ -531,7 +526,6 @@ void LocalMesh::calcEdgeLen(const int sfirst, const int slast,
     const int e = map_side2edge[s];
 
     edge_len[e] = length(pt_x_pred[p2] - pt_x_pred[p1]);
-
   }
 }
 
@@ -577,7 +571,6 @@ void LocalMesh::sumOnProc(const double* corner_mass,
       pt_force.write(pt_ptr, force);
     }
   }
-
 }
 
 void LocalMesh::initParallel(const ptr_t* pt_local2global) {

@@ -18,12 +18,12 @@
 
 class CalcDtTask: public TaskLauncher {
 public:
-  CalcDtTask(CalcDtTaskArgs *args);
+  CalcDtTask(CalcDtTaskArgs* args);
   static const char * const TASK_NAME;
   static const int TASK_ID = CALCDT_TASK_ID;
   static const bool CPU_BASE_LEAF = true;
 
-  static TimeStep cpu_run(const Task *task,
+  static TimeStep cpu_run(const Task* task,
       const std::vector<PhysicalRegion> &regions, Context ctx,
       HighLevelRuntime* rt);
 };

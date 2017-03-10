@@ -15,12 +15,12 @@
 
 #include "Vec2.hh"
 
-LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime) :
+LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime* runtime) :
       LogicalUnstructured(ctx, runtime),
       nElements(-1) {
 }
 
-LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime *runtime,
+LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime* runtime,
     PhysicalRegion pregion) :
       LogicalUnstructured(ctx, runtime, pregion),
       nElements(-2) {
@@ -52,7 +52,7 @@ void LogicalStructured::allocate(int nStrucs) {
  */
 template<unsigned DIM, typename T>
 static inline bool offsetsAreDense(const Rect<DIM> &bounds,
-    const LegionRuntime::Accessor::ByteOffset *offset) {
+    const LegionRuntime::Accessor::ByteOffset* offset) {
   off_t exp_offset = sizeof(T);
   for (unsigned i = 0; i < DIM; i++) {
     bool found = false;
@@ -71,7 +71,7 @@ template<>
 ptr_t* LogicalStructured::getRawPtr<ptr_t>(FieldID FID) {
   getPRegion();
 
-  ptr_t *mData = nullptr;
+  ptr_t* mData = nullptr;
 
   PtrTAccessor tAcc = pregion.get_field_accessor(FID).typeify<ptr_t>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
@@ -95,7 +95,7 @@ template<>
 double2* LogicalStructured::getRawPtr<double2>(FieldID FID) {
   getPRegion();
 
-  double2 *mData = nullptr;
+  double2* mData = nullptr;
 
   Double2Accessor tAcc = pregion.get_field_accessor(FID).typeify<double2>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
@@ -119,7 +119,7 @@ template<>
 double* LogicalStructured::getRawPtr<double>(FieldID FID) {
   getPRegion();
 
-  double *mData = nullptr;
+  double* mData = nullptr;
 
   DoubleAccessor tAcc = pregion.get_field_accessor(FID).typeify<double>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
@@ -143,7 +143,7 @@ template<>
 int* LogicalStructured::getRawPtr<int>(FieldID FID) {
   getPRegion();
 
-  int *mData = nullptr;
+  int* mData = nullptr;
 
   IntAccessor tAcc = pregion.get_field_accessor(FID).typeify<int>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);

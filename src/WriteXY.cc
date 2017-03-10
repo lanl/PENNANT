@@ -46,6 +46,5 @@ void WriteXY::write(const string& basename, const DoubleAccessor& zr,
     << endl;
   }
   ofs.close();
-
 }
 

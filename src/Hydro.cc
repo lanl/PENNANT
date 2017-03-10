@@ -300,7 +300,6 @@ void Hydro::advPosFull(const double dt, const double2* pt_vel0,
     pt_vel[p] = pt_vel0[p] + pt_accel[p] * dt;
     pt_x[p] = pt_x0[p] + 0.5 * (pt_vel[p] + pt_vel0[p]) * dt;
   }
-
 }
 
 /*static*/
@@ -347,7 +346,6 @@ void Hydro::calcAccel(const ptr_t* pt_local2globalID,
     ptr_t pt_ptr = pt_local2globalID[p];
     pt_accel[p] = pf.read(pt_ptr) / max(pmass.read(pt_ptr), fuzz);
   }
-
 }
 
 /*static*/
@@ -385,9 +383,7 @@ void Hydro::calcWork(const double dt, const int* map_side2pt1,
 
     zone_energy_tot[z] += dwork;
     zone_work[z] += dwork;
-
   }
-
 }
 
 /*static*/
@@ -401,7 +397,6 @@ void Hydro::calcWorkRate(const double dt, const double* zone_vol,
     double dvol = zone_vol[z] - zone_vol0[z];
     zone_work_rate[z] = (zone_work[z] + zone_pressure[z] * dvol) * dtinv;
   }
-
 }
 
 /*static*/
@@ -466,7 +461,6 @@ void Hydro::calcDtCourant(double& dtrec, char* msgdtrec, const int zfirst,
     dtrec = dtnew;
     snprintf(msgdtrec, 80, "Hydro Courant limit for z = %d", zmin);
   }
-
 }
 
 /*static*/
@@ -485,7 +479,6 @@ void Hydro::calcDtVolume(const double dtlast, double& dtrec, char* msgdtrec,
     dtrec = dtnew;
     snprintf(msgdtrec, 80, "Hydro dV/V limit for z = %d", zmax);
   }
-
 }
 
 /*static*/
@@ -509,7 +502,6 @@ void Hydro::calcDtHydro(const double dtlast, const int zfirst, const int zlast,
       }
     }
   }
-
 }
 
 void Hydro::writeEnergyCheck() {
@@ -568,7 +560,6 @@ void Hydro::writeEnergyCheck() {
     cout << "(internal = " << setw(14) << ei << ", kinetic = " << setw(14) << ek
          << ")" << endl;
   }
-
 }
 
 void Hydro::copyZonesToLegion(LogicalUnstructured& global_zones) {

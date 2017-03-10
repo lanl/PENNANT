@@ -31,7 +31,6 @@ template<typename T>
 inline void free(T* ptr) {
   std::free(ptr);
 }
-
 }
 ;
 // namespace AbstractedMemory

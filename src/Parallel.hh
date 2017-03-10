@@ -112,7 +112,7 @@ struct TimeStep {
       this->dt = rhs.dt;
       snprintf(this->message, 80, "%s", rhs.message);
     }
-    return *this;
+    return* this;
   }
   inline friend bool operator<(const TimeStep &l, const TimeStep &r) {
     return l.dt < r.dt;
@@ -164,25 +164,25 @@ class Parallel {
 public:
 
   static void run(InputParameters input_params, Context ctx,
-      HighLevelRuntime *runtime);
+      HighLevelRuntime* runtime);
 
   static Future globalSum(double local_value, DynamicCollective& dc_reduction,
-      Runtime *runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
+      Runtime* runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
   static const TaskID sumTaskID = GLOBAL_SUM_TASK_ID;
-  static double globalSumTask(const Task *task,
+  static double globalSumTask(const Task* task,
       const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime *runtime);
+      HighLevelRuntime* runtime);
 
   static Future globalSumInt64(int64_t local_value,
-      DynamicCollective& dc_reduction, Runtime *runtime, Context ctx,
+      DynamicCollective& dc_reduction, Runtime* runtime, Context ctx,
       Predicate pred = Predicate::TRUE_PRED);
   static const TaskID sumInt64TaskID = GLOBAL_SUM_INT64_TASK_ID;
-  static int64_t globalSumInt64Task(const Task *task,
+  static int64_t globalSumInt64Task(const Task* task,
       const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime *runtime);
+      HighLevelRuntime* runtime);
 
   static Future globalMin(Future local_value, DynamicCollective& dc_reduction,
-      Runtime *runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
+      Runtime* runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
 };
 // class Parallel
 
@@ -271,19 +271,19 @@ enum Variants {
 
 namespace TaskHelper {
 template<typename T>
-void base_cpu_wrapper(const Task *task,
+void base_cpu_wrapper(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime *runtime) {
+    HighLevelRuntime* runtime) {
   T::cpu_run(task, regions, ctx, runtime);
 }
 
 #ifdef USE_CUDA
 template<typename T>
-void base_gpu_wrapper(const Task *task,
+void base_gpu_wrapper(const Task* task,
     const std::vector<PhysicalRegion> &regions,
-    Context ctx, HighLevelRuntime *runtime)
+    Context ctx, HighLevelRuntime* runtime)
 {
-  const int *p = (int*)task->local_args;
+  const int* p = (int*)task->local_args;
   T::gpu_run(*p, regions);
 }
 #endif

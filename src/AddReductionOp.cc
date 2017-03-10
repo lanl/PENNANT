@@ -22,7 +22,7 @@ void AddReductionOp::apply<true>(LHS &lhs, RHS rhs) {
 
 template<>
 void AddReductionOp::apply<false>(LHS &lhs, RHS rhs) {
-  int64_t *target = (int64_t *) &lhs;
+  int64_t* target = (int64_t*) &lhs;
   union {
     int64_t as_int;
     double as_T;
@@ -40,7 +40,7 @@ void AddReductionOp::fold<true>(RHS &rhs1, RHS rhs2) {
 
 template<>
 void AddReductionOp::fold<false>(RHS &rhs1, RHS rhs2) {
-  int64_t *target = (int64_t *) &rhs1;
+  int64_t* target = (int64_t*) &rhs1;
   union {
     int64_t as_int;
     double as_T;

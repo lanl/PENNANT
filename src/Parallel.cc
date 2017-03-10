@@ -27,7 +27,7 @@
 #include "WriteTask.hh"
 
 void Parallel::run(InputParameters input_params, Context ctx,
-    HighLevelRuntime *runtime) {
+    HighLevelRuntime* runtime) {
   GlobalMesh global_mesh(input_params, ctx, runtime);
   MustEpochLauncher must_epoch_launcher;
   const int num_subregions_ = input_params.directs.ntasks;
@@ -120,7 +120,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
 }
 
 Future Parallel::globalSum(double local_value, DynamicCollective& dc_reduction,
-    Runtime *runtime, Context ctx, Predicate pred) {
+    Runtime* runtime, Context ctx, Predicate pred) {
   TaskLauncher launcher(sumTaskID,
     TaskArgument(&local_value, sizeof(local_value)), pred,
     0 /*default mapper*/);
@@ -134,7 +134,7 @@ Future Parallel::globalSum(double local_value, DynamicCollective& dc_reduction,
 }
 
 Future Parallel::globalSumInt64(int64_t local_value,
-    DynamicCollective& dc_reduction, Runtime *runtime, Context ctx,
+    DynamicCollective& dc_reduction, Runtime* runtime, Context ctx,
     Predicate pred) {
   TaskLauncher launcher(sumInt64TaskID,
     TaskArgument(&local_value, sizeof(local_value)), pred,
@@ -148,22 +148,22 @@ Future Parallel::globalSumInt64(int64_t local_value,
   return ff2;
 }
 
-double Parallel::globalSumTask(const Task *task,
+double Parallel::globalSumTask(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime *runtime) {
-  double value = *(const double *) (task->args);
+    HighLevelRuntime* runtime) {
+  double value = *(const double*) (task->args);
   return value;
 }
 
-int64_t Parallel::globalSumInt64Task(const Task *task,
+int64_t Parallel::globalSumInt64Task(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime *runtime) {
-  int64_t value = *(const int64_t *) (task->args);
+    HighLevelRuntime* runtime) {
+  int64_t value = *(const int64_t*) (task->args);
   return value;
 }
 
 Future Parallel::globalMin(Future local_value, DynamicCollective& dc_reduction,
-    Runtime *runtime, Context ctx, Predicate pred) {
+    Runtime* runtime, Context ctx, Predicate pred) {
   runtime->defer_dynamic_collective_arrival(ctx, dc_reduction, local_value);
   dc_reduction = runtime->advance_dynamic_collective(ctx, dc_reduction);
   Future ff2 = runtime->get_dynamic_collective_result(ctx, dc_reduction);
@@ -177,7 +177,7 @@ static size_t archiveScalar(Type scalar, void* bit_stream) {
 }
 
 static size_t archiveString(std::string name, void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t size_size = archiveScalar(name.length() + 1, (void*) serialized);
   serialized += size_size;
@@ -193,7 +193,7 @@ static size_t archiveString(std::string name, void* bit_stream) {
 
 template<class Type>
 static size_t archiveVector(std::vector<Type> vec, void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t size_size = archiveScalar(vec.size(), (void*) serialized);
   serialized += size_size;
@@ -207,7 +207,7 @@ static size_t archiveVector(std::vector<Type> vec, void* bit_stream) {
 template<class Type>
 static size_t archiveTensor(std::vector<std::vector<Type>> tensor,
     void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t size_size = archiveScalar(tensor.size(), (void*) serialized);
   serialized += size_size;
@@ -235,7 +235,7 @@ void SPMDArgsSerializer::archive(SPMDArgs* spmd_args) {
   bit_stream = malloc(bit_stream_size);
   free_bit_stream = true;
 
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t stream_size = 0;
   stream_size += archiveScalar(spmd_args->add_reduction,
@@ -284,7 +284,7 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args) {
   bit_stream = malloc(bit_stream_size);
   free_bit_stream = true;
 
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t stream_size = 0;
   stream_size += archiveScalar(docycle_args->min_reduction,
@@ -348,15 +348,15 @@ static size_t restoreScalar(Type* scalar, void* bit_stream) {
 }
 
 static size_t restoreString(std::string* name, void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t n_chars;
   size_t size_size = restoreScalar(&n_chars, (void*) serialized);
   serialized += size_size;
 
   size_t string_size = n_chars * sizeof(char);
-  char *buffer = (char *) malloc(string_size);
-  memcpy((void *) buffer, (void *) serialized, string_size);
+  char* buffer = (char*) malloc(string_size);
+  memcpy((void*) buffer, (void*) serialized, string_size);
   *name = std::string(buffer);
 
   return size_size + string_size;
@@ -364,7 +364,7 @@ static size_t restoreString(std::string* name, void* bit_stream) {
 
 template<class Type>
 static size_t restoreVector(std::vector<Type>* vec, void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t n_entries;
   size_t size_size = restoreScalar(&n_entries, (void*) serialized);
@@ -380,7 +380,7 @@ static size_t restoreVector(std::vector<Type>* vec, void* bit_stream) {
 template<class Type>
 static size_t restoreTensor(std::vector<std::vector<Type>>* tensor,
     void* bit_stream) {
-  unsigned char *serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*) (bit_stream);
 
   size_t n_entries;
   size_t size_size = restoreScalar(&n_entries, (void*) serialized);
@@ -402,7 +402,7 @@ void SPMDArgsSerializer::restore(SPMDArgs* spmd_args) {
   assert(spmd_args != nullptr);
   assert(bit_stream != nullptr);
 
-  unsigned char *serialized_args = (unsigned char *) bit_stream;
+  unsigned char* serialized_args = (unsigned char*) bit_stream;
 
   bit_stream_size = 0;
   bit_stream_size += restoreScalar(&(spmd_args->add_reduction),
@@ -431,7 +431,7 @@ void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* docycle_args) {
   assert(docycle_args != nullptr);
   assert(bit_stream != nullptr);
 
-  unsigned char *serialized_args = (unsigned char *) bit_stream;
+  unsigned char* serialized_args = (unsigned char*) bit_stream;
 
   bit_stream_size = 0;
   bit_stream_size += restoreScalar(&(docycle_args->min_reduction),
