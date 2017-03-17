@@ -21,7 +21,7 @@ class ExportGold;
 
 class WriteTask: public TaskLauncher {
 public:
-  WriteTask(LogicalRegion lregion_zone, void* args, const size_t &size);
+  WriteTask(LogicalRegion lregion_zone, void* args, const size_t& size);
   static const char * const TASK_NAME;
   static const int TASK_ID = WRITE_TASK_ID;
   static const bool CPU_BASE_LEAF = true;

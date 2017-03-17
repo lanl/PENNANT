@@ -29,7 +29,7 @@ using namespace std;
 
 DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
     LogicalRegion all_zones, std::vector<LogicalRegion> halo_pts, void* args,
-    const size_t &size) :
+    const size_t& size) :
       TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(my_zones, WRITE_DISCARD, EXCLUSIVE, all_zones));

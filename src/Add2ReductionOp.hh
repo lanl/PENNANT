@@ -44,10 +44,10 @@ struct Add2ReductionOp {
   static const double2 identity;
 
   template<bool EXCLUSIVE>
-  static void apply(LHS &lhs, RHS rhs);
+  static void apply(LHS& lhs, RHS rhs);
 
   template<bool EXCLUSIVE>
-  static void fold(RHS &rhs1, RHS rhs2);
+  static void fold(RHS& rhs1, RHS rhs2);
 
 };
 

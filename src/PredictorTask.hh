@@ -22,7 +22,7 @@ public:
       LogicalRegion mesh_zone_pts, LogicalRegion mesh_points,
       LogicalRegion side_chunks, LogicalRegion mesh_edges,
       LogicalRegion hydro_zones, LogicalRegion hydro_sides_and_corners,
-      LogicalRegion hydro_points, void* args, const size_t &size);
+      LogicalRegion hydro_points, void* args, const size_t& size);
   static const char * const TASK_NAME;
   static const int TASK_ID = PREDICTOR_TASK_ID;
   static const bool CPU_BASE_LEAF = true;

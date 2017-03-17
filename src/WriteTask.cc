@@ -21,7 +21,7 @@
 using namespace std;
 
 WriteTask::WriteTask(LogicalRegion lregion_global_zones, void* args,
-    const size_t &size) :
+    const size_t& size) :
       TaskLauncher(WriteTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(lregion_global_zones, READ_ONLY, EXCLUSIVE,

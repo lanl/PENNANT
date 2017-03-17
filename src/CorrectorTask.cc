@@ -30,7 +30,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
     LogicalRegion zone_chunks, LogicalRegion hydro_zones,
     LogicalRegion hydro_sides_and_corners, LogicalRegion hydro_points,
     LogicalRegion bcx_chunks, LogicalRegion bcy_chunks, void* args,
-    const size_t &size) :
+    const size_t& size) :
       TaskLauncher(CorrectorTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(mesh_zones, READ_ONLY, EXCLUSIVE, mesh_zones));

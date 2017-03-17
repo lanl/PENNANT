@@ -48,7 +48,7 @@ public:
   int num_zone_chunks;
   int num_side_chunks;
 
-  static inline int mapSideToSideNext(const int &s, const int* map_side2zone,
+  static inline int mapSideToSideNext(const int& s, const int* map_side2zone,
       const int* zone_pts_ptr) {
     const int z = map_side2zone[s];
     const int sbase = zone_pts_ptr[z];
@@ -57,7 +57,7 @@ public:
     return snext;
   }
 
-  static inline int mapSideToSidePrev(const int &s, const int* map_side2zone,
+  static inline int mapSideToSidePrev(const int& s, const int* map_side2zone,
       const int* zone_pts_ptr) {
     const int z = map_side2zone[s];
     const int sbase = zone_pts_ptr[z];
@@ -66,7 +66,7 @@ public:
     return sprev;
   }
 
-  static inline int zoneNPts(const int &i, const int* zone_pts_ptr) {
+  static inline int zoneNPts(const int& i, const int* zone_pts_ptr) {
     return zone_pts_ptr[i + 1] - zone_pts_ptr[i];
   }
 

@@ -42,8 +42,8 @@ public:
   ~ExportGold();
 
   void write(const std::string& basename, const int cycle, const double time,
-      const DoubleAccessor &zr, const DoubleAccessor &ze,
-      const DoubleAccessor &zp);
+      const DoubleAccessor& zr, const DoubleAccessor& ze,
+      const DoubleAccessor& zp);
 
   void writeCaseFile(const std::string& basename);
 

@@ -103,51 +103,51 @@ struct TimeStep {
     dt = std::numeric_limits<double>::max();
     snprintf(message, 80, "Error: uninitialized");
   }
-  TimeStep(const TimeStep &copy) {
+  TimeStep(const TimeStep& copy) {
     dt = copy.dt;
     snprintf(message, 80, "%s", copy.message);
   }
-  inline TimeStep& operator=(const TimeStep &rhs) {
+  inline TimeStep& operator=(const TimeStep& rhs) {
     if (this != &rhs) {
       this->dt = rhs.dt;
       snprintf(this->message, 80, "%s", rhs.message);
     }
-    return* this;
+    return *this;
   }
-  inline friend bool operator<(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator<(const TimeStep& l, const TimeStep& r) {
     return l.dt < r.dt;
   }
-  inline friend bool operator>(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator>(const TimeStep& l, const TimeStep& r) {
     return r < l;
   }
-  inline friend bool operator<=(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator<=(const TimeStep& l, const TimeStep& r) {
     return !(l > r);
   }
-  inline friend bool operator>=(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator>=(const TimeStep& l, const TimeStep& r) {
     return !(l < r);
   }
-  inline friend bool operator==(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator==(const TimeStep& l, const TimeStep& r) {
     return l.dt == r.dt;
   }
-  inline friend bool operator!=(const TimeStep &l, const TimeStep &r) {
+  inline friend bool operator!=(const TimeStep& l, const TimeStep& r) {
     return !(l == r);
   }
 };
 
 enum TaskIDs {
-  TOP_LEVEL_TASK_ID,
-  CALCDT_TASK_ID,
-  CORRECTOR_TASK_ID,
-  DRIVER_TASK_ID,
-  HALO_TASK_ID,
-  PREDICTOR_POINT_TASK_ID,
+  TOP_LEVEL_TASK_ID,  // Top-level task
+  CALCDT_TASK_ID,  // Calculate dt
+  CORRECTOR_TASK_ID,  // Apply corrections
+  DRIVER_TASK_ID,  // Driver?
+  HALO_TASK_ID,  // Transfer points in halo
+  PREDICTOR_POINT_TASK_ID,  //
   PREDICTOR_TASK_ID,
   WRITE_TASK_ID,
-  GLOBAL_SUM_TASK_ID,
-  GLOBAL_SUM_INT64_TASK_ID,
-  ADD_REDOP_ID,
-  ADD_INT64_REDOP_ID,
-  ADD2_REDOP_ID,
+  GLOBAL_SUM_TASK_ID,  // Global sum for double
+  GLOBAL_SUM_INT64_TASK_ID,  // Global sum for integer
+  ADD_REDOP_ID,  // Additive reduction operator for double
+  ADD_INT64_REDOP_ID,  // Additive reduction operator for integer
+  ADD2_REDOP_ID,  //
   MIN_REDOP_ID,
 };
 
@@ -243,7 +243,8 @@ struct DoCycleTasksArgs {
   std::string meshtype;
   std::vector<std::vector<int>> boundary_conditions_x;
   std::vector<std::vector<int>> boundary_conditions_y;
-  // offsets into concatantated start/stop indeces for boundary pt chunks, compressed row storage
+
+  // offsets into concatenated start/stop indices for boundary pt chunks, compressed row storage
   std::vector<int> bcx_point_chunk_CRS_offsets;
   std::vector<int> bcy_point_chunk_CRS_offsets;
 };
@@ -299,6 +300,5 @@ void base_gpu_wrapper(const Task* task,
   }
 
 }
-;
 
 #endif /* PARALLEL_HH_ */

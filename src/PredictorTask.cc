@@ -46,7 +46,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
     LogicalRegion mesh_zone_pts, LogicalRegion mesh_points,
     LogicalRegion side_chunks, LogicalRegion mesh_edges,
     LogicalRegion hydro_zones, LogicalRegion hydro_sides_and_corners,
-    LogicalRegion hydro_points, void* args, const size_t &size) :
+    LogicalRegion hydro_points, void* args, const size_t& size) :
       TaskLauncher(PredictorTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(mesh_sides, READ_ONLY, EXCLUSIVE, mesh_sides));

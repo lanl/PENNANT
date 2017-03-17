@@ -38,7 +38,7 @@ InputParameters parseInputFile(InputFile* inp);
 void top_level_task(const Task* task,
     const std::vector<PhysicalRegion> &regions, Context ctx,
     HighLevelRuntime* runtime) {
-  const InputArgs &command_args = HighLevelRuntime::get_input_args();
+  const InputArgs& command_args = HighLevelRuntime::get_input_args();
 
   if (command_args.argc < 3) {
     cerr << "Usage: pennant <ntasks> <filename>" << endl;

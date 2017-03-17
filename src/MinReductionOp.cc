@@ -16,13 +16,13 @@
 const TimeStep MinReductionOp::identity = TimeStep();
 
 template<>
-void MinReductionOp::apply<true>(LHS &lhs, RHS rhs) {
+void MinReductionOp::apply<true>(LHS& lhs, RHS rhs) {
   lhs.dt = std::min(lhs.dt, rhs.dt);
   if (lhs.dt == rhs.dt) snprintf(lhs.message, 80, "%s", rhs.message);
 }
 
 template<>
-void MinReductionOp::apply<false>(LHS &lhs, RHS rhs) {
+void MinReductionOp::apply<false>(LHS& lhs, RHS rhs) {
   int64_t* target = (int64_t*) &lhs.dt;
   union {
     int64_t as_int;
@@ -36,13 +36,13 @@ void MinReductionOp::apply<false>(LHS &lhs, RHS rhs) {
 }
 
 template<>
-void MinReductionOp::fold<true>(RHS &rhs1, RHS rhs2) {
+void MinReductionOp::fold<true>(RHS& rhs1, RHS rhs2) {
   rhs1.dt = std::min(rhs1.dt, rhs2.dt);
   if (rhs1.dt == rhs2.dt) snprintf(rhs1.message, 80, "%s", rhs2.message);
 }
 
 template<>
-void MinReductionOp::fold<false>(RHS &rhs1, RHS rhs2) {
+void MinReductionOp::fold<false>(RHS& rhs1, RHS rhs2) {
   int64_t* target = (int64_t*) &rhs1.dt;
   union {
     int64_t as_int;

@@ -25,7 +25,7 @@ class Hydro;
 class DriverTask: public TaskLauncher {
 public:
   DriverTask(int my_color, LogicalRegion my_zones, LogicalRegion all_zones,
-      std::vector<LogicalRegion> halo_pts, void* args, const size_t &size);
+      std::vector<LogicalRegion> halo_pts, void* args, const size_t& size);
   static const char * const TASK_NAME;
   static const int TASK_ID = DRIVER_TASK_ID;
   static const bool CPU_BASE_LEAF = false;
@@ -38,7 +38,7 @@ public:
 class Driver {
 public:
 
-  Driver(const InputParameters &params, DynamicCollective add_reduction,
+  Driver(const InputParameters& params, DynamicCollective add_reduction,
       DynamicCollective add_int64_reduction, DynamicCollective min_reduction,
       PhaseBarrier pbarrier_as_master,
       std::vector<PhaseBarrier> masters_pbarriers, const PhysicalRegion& zones,

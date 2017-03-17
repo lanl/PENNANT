@@ -33,7 +33,7 @@ enum idx {
 
 PredictorPointTask::PredictorPointTask(LogicalRegion mesh_points,
     LogicalRegion point_chunks, LogicalRegion hydro_points, void* args,
-    const size_t &size) :
+    const size_t& size) :
       TaskLauncher(PredictorPointTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(hydro_points, READ_ONLY, EXCLUSIVE, hydro_points));

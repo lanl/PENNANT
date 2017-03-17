@@ -21,7 +21,7 @@
 
 HaloTask::HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
     LogicalRegion mesh_local_points, LogicalRegion point_chunks,
-    LogicalRegion hydro_sides_and_corners, void* args, const size_t &size) :
+    LogicalRegion hydro_sides_and_corners, void* args, const size_t& size) :
       TaskLauncher(HaloTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(mesh_sides, READ_ONLY, EXCLUSIVE, mesh_sides));
