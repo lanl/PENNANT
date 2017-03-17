@@ -423,8 +423,7 @@ void Hydro::sumEnergy(const double* zetot, const double* zarea,
   // multiply by 2\pi for cylindrical geometry
   ei += sumi * 2 * M_PI;
 
-  // compute kinetic energy
-  // in each individual zone:
+  // compute kinetic energy in each individual zone:
   // zone ke = zone mass * (volume-weighted average of .5 * u ^ 2)
   //         = zm sum(c in z) [cvol / zvol * .5 * u ^ 2]
   //         = sum(c in z) [zm * cvol / zvol * .5 * u ^ 2]

@@ -104,7 +104,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
   add_field(TEN, FID_E_DBL_TEMP);
 }
 
-/*static*/const char * const PredictorTask::TASK_NAME = "PredictorTask";
+/*static*/ const char* const PredictorTask::TASK_NAME = "PredictorTask";
 
 /*static*/
 void PredictorTask::cpu_run(const Task* task,
@@ -233,7 +233,6 @@ void PredictorTask::cpu_run(const Task* task,
       map_side2zone, zone_pts_ptr, zone_rho_pred, crnr_weighted_mass);
 
     // 3. compute material state (half-advanced)
-    // PolyGascalcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0, zone_energy_density, zone_work_rate, zone_mass, time_step.dt,
     PolyGas::calcStateAtHalf(zone_rho, zone_vol_pred, zone_vol0,
       zone_energy_density, zone_work_rate, zone_mass, time_step.dt,
       zone_pressure, zone_sound_speed, zfirst, zlast, args.gamma, args.ssmin);

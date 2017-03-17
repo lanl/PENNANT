@@ -21,7 +21,7 @@ CalcDtTask::CalcDtTask(CalcDtTaskArgs* args) :
   add_future(args->dt_hydro);
 }
 
-/*static*/const char * const CalcDtTask::TASK_NAME = "CalcDtTask";
+/*static*/ const char* const CalcDtTask::TASK_NAME = "CalcDtTask";
 
 /*static*/
 TimeStep CalcDtTask::cpu_run(const Task* task,

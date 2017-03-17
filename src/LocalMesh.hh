@@ -141,7 +141,7 @@ public:
   LogicalStructured point_chunks;
 
 private:
-  int chunk_size;                 // max size for processing chunks
+  int chunk_size;  // max size for processing chunks
 
   LogicalUnstructured pt_x_init_by_gid;
 

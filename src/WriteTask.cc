@@ -31,7 +31,7 @@ WriteTask::WriteTask(LogicalRegion lregion_global_zones, void* args,
   add_field(0/*idx*/, FID_ZP);
 }
 
-/*static*/const char * const WriteTask::TASK_NAME = "WriteTask";
+/*static*/ const char* const WriteTask::TASK_NAME = "WriteTask";
 
 /*static*/
 void WriteTask::cpu_run(const Task* task,

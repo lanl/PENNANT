@@ -51,7 +51,7 @@ void top_level_task(const Task* task,
   InputFile inp(filename);
 
   string probname(filename);
-  // strip .pnt suffix from filename
+  // strip ".pnt" suffix from filename
   int len = probname.length();
   if (probname.substr(len - 4, 4) == ".pnt")
     probname = probname.substr(0, len - 4);
@@ -73,20 +73,22 @@ void top_level_task(const Task* task,
 int main(int argc, char **argv) {
   HighLevelRuntime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
 
-  HighLevelRuntime::register_legion_task < top_level_task > (TOP_LEVEL_TASK_ID, Processor::LOC_PROC, true/*single*/, false/*index*/, AUTO_GENERATE_ID, TaskConfigOptions(), "top_level_task");
+  HighLevelRuntime::register_legion_task<top_level_task>(TOP_LEVEL_TASK_ID,
+    Processor::LOC_PROC, true /*single*/, false /*index*/, AUTO_GENERATE_ID,
+    TaskConfigOptions(), "top_level_task");
 
   HighLevelRuntime::register_legion_task<TimeStep, CalcDtTask::cpu_run>(
-    CALCDT_TASK_ID, Processor::LOC_PROC, true/*single*/, true/*index*/,
+    CALCDT_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(CalcDtTask::CPU_BASE_LEAF),
     CalcDtTask::TASK_NAME);
 
   HighLevelRuntime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(
-    CORRECTOR_TASK_ID, Processor::LOC_PROC, true/*single*/, true/*index*/,
+    CORRECTOR_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF),
     CorrectorTask::TASK_NAME);
 
   HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(
-    DRIVER_TASK_ID, Processor::LOC_PROC, true/*single*/, true/*index*/,
+    DRIVER_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF),
     DriverTask::TASK_NAME);
 
@@ -99,19 +101,20 @@ int main(int argc, char **argv) {
   TaskHelper::register_cpu_variants<WriteTask>();
 
   HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(
-    GLOBAL_SUM_TASK_ID, Processor::LOC_PROC, true/*single*/, true/*index*/,
+    GLOBAL_SUM_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(true), "globalSumTask");
 
   HighLevelRuntime::register_legion_task<int64_t, Parallel::globalSumInt64Task>(
-    GLOBAL_SUM_INT64_TASK_ID, Processor::LOC_PROC, true/*single*/,
-    true/*index*/, AUTO_GENERATE_ID, TaskConfigOptions(true),
+    GLOBAL_SUM_INT64_TASK_ID, Processor::LOC_PROC, true /*single*/,
+    true /*index*/, AUTO_GENERATE_ID, TaskConfigOptions(true),
     "globalSumInt64Task");
 
-  Runtime::register_reduction_op < AddReductionOp > (AddReductionOp::redop_id);
-  Runtime::register_reduction_op < Add2ReductionOp > (Add2ReductionOp::redop_id);
-  Runtime::register_reduction_op < AddInt64ReductionOp > (AddInt64ReductionOp::redop_id);
+  Runtime::register_reduction_op<AddReductionOp>(AddReductionOp::redop_id);
+  Runtime::register_reduction_op<Add2ReductionOp>(Add2ReductionOp::redop_id);
+  Runtime::register_reduction_op<AddInt64ReductionOp>(
+    AddInt64ReductionOp::redop_id);
 
-  Runtime::register_reduction_op < MinReductionOp > (MinReductionOp::redop_id);
+  Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
 
   return HighLevelRuntime::start(argc, argv);
 }

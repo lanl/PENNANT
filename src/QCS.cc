@@ -21,6 +21,12 @@
 
 using namespace std;
 
+// QCS = Artificial Viscosity Tensor (Q) from Campbell-Shashkov Algorithm
+//
+// Artificial viscosity is a fictitious term commonly introduced into
+// fluid-flow equations to correctly handle shock regions with large
+// discontinuities in the problem-state variables.
+
 void QCS::calcForce(double2* sf, const int sfirst, const int slast,
     const int nums, const int numz, const double2* pu, const double2* ex,
     const double2* zx, const double* elen, const int* map_side2zone,
@@ -39,8 +45,7 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
   double* c0cos = AbstractedMemory::alloc<double>(clast - cfirst);
   double2* c0qe = AbstractedMemory::alloc<double2>(2 * (clast - cfirst));
 
-  // [1] Find the right, left, top, bottom  edges to use for the
-  //     limiters
+  // [1] Find the right, left, top, bottom edges to use for the limiters
   // *** NOT IMPLEMENTED IN PENNANT ***
 
   // [2] Compute corner divergence and related quantities
@@ -82,7 +87,7 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
   AbstractedMemory::free(c0qe);
 }
 
-// Routine number [2]  in the full algorithm
+// Routine number [2] in the full algorithm
 //     [2.1] Find the corner divergence
 //     [2.2] Compute the cos angle for c
 //     [2.3] Find the evolution factor c0evol(c)
@@ -149,7 +154,7 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
     up3 = 0.5 * (pu[p1] + pu[p]);
     xp3 = ex[e1];
 
-    // compute 2d cartesian volume of corner
+    // compute 2d Cartesian volume of corner
     double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
     c0area[c0] = cvolume;
 
@@ -194,7 +199,7 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
   AbstractedMemory::free(z0uc);
 }
 
-// Routine number [4]  in the full algorithm CS2DQforce(...)
+// Routine number [4] in the full algorithm CS2DQforce(...)
 void QCS::setQCnForce(const double* c0div, const double* c0du,
     const double* c0evol, double2* c0qe, const int sfirst, const int slast,
     const double2* pu, const double* zrp, const double* zss, const double* elen,
@@ -248,7 +253,7 @@ void QCS::setQCnForce(const double* c0div, const double* c0du,
   AbstractedMemory::free(c0rmu);
 }
 
-// Routine number [5]  in the full algorithm CS2DQforce(...)
+// Routine number [5] in the full algorithm CS2DQforce(...)
 void QCS::setForce(const double* c0area, const double2* c0qe, double* c0cos,
     double2* sfq, const int sfirst, const int slast, const double* elen,
     const int* map_side2zone, const int* zone_pts_ptr,
@@ -267,7 +272,7 @@ void QCS::setForce(const double* c0area, const double2* c0qe, double* c0cos,
     c0cos[c0] = ((csin2 < 1.e-4) ? 0. : c0cos[c0]);
   }  // for c
 
-  // [5.2] Set-Up the forces on corners
+  // [5.2] Set up the forces on corners
 #pragma ivdep
   for (int s = sfirst; s < slast; ++s) {
     // Associated corners 1 and 2, and edge

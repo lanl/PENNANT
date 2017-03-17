@@ -26,7 +26,7 @@ public:
       LogicalRegion hydro_sides_and_corners, LogicalRegion hydro_points,
       LogicalRegion bcx_chunks, LogicalRegion bcy_chunks, void* args,
       const size_t& size);
-  static const char * const TASK_NAME;
+  static const char* const TASK_NAME;
   static const int TASK_ID = CORRECTOR_TASK_ID;
   static const bool CPU_BASE_LEAF = true;
 

@@ -45,7 +45,7 @@ DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
   }
 }
 
-/*static*/const char * const DriverTask::TASK_NAME = "DriverTask";
+/*static*/ const char* const DriverTask::TASK_NAME = "DriverTask";
 
 /*static*/
 RunStat DriverTask::cpu_run(const Task* task,

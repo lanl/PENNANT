@@ -34,7 +34,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
 
   // we're going to use a must epoch launcher, so we need at least as many
   //  processors in our system as we have subregions - check that now
-  std::set < Processor > all_procs;
+  std::set<Processor> all_procs;
   Realm::Machine::get_machine().get_all_processors(all_procs);
   int num_loc_procs = 0;
   for (std::set<Processor>::const_iterator it = all_procs.begin();
@@ -52,7 +52,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
     exit(1);
   }
 
-  Rect < 1 > launch_bounds(Point < 1 > (0), Point < 1 > (num_subregions_ - 1));
+  Rect<1>launch_bounds(Point<1>(0), Point<1>(num_subregions_ - 1));
 
   double zero = 0.0;
   DynamicCollective add_reduction = runtime->create_dynamic_collective(ctx,

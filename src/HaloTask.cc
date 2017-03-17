@@ -45,7 +45,7 @@ HaloTask::HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
   add_field(4, FID_POINT_CHUNKS_CRS);
 }
 
-/*static*/const char* const HaloTask::TASK_NAME = "HaloTask";
+/*static*/ const char* const HaloTask::TASK_NAME = "HaloTask";
 
 /*static*/
 void HaloTask::cpu_run(const Task* task,

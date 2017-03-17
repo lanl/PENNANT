@@ -26,78 +26,98 @@ using namespace LegionRuntime::Accessor;
 // Parallel provides helper functions and variables for
 // running in distributed parallel mode using Legion.
 
+// FID = field id
+// _Z = zone, _S = side, _C = corner, _P = point
+
+// Zone: a quadrangular or hexagonal 2D subvolume of the 2D grid
 enum ZoneFields {
-  FID_ZR,
-  FID_ZE,
-  FID_ZP,
-  FID_ZX,
-  FID_ZVOL,
-  FID_ZAREA,
-  FID_ZVOL0,
-  FID_ZDL,
-  FID_ZM,
-  FID_ZETOT,
-  FID_ZWR,
-  FID_ZSS,
-  FID_ZDU,
-  FID_Z_DBL2_TEMP,
-  FID_Z_DBL_TEMP1,
-  FID_Z_DBL_TEMP2,
+  FID_ZR,           // zone rho (mass density per volume)
+  FID_ZE,           // zone energy density (per mass)
+  FID_ZP,           // zone pressure
+  FID_ZX,           // zone 2D location
+  FID_ZVOL,         // zone volume (actually an area, since Pennant is 2D)
+  FID_ZAREA,        // zone surface area (actually perimeter, since Pennant is 2D)
+  FID_ZVOL0,        // zone volume initial (at the start of a timestep)
+  FID_ZDL,          // zone characteristic length (?)
+  FID_ZM,           // zone total mass
+  FID_ZETOT,        // zone total energy
+  FID_ZWR,          // zone work rate (dE + P*dV)/dt
+  FID_ZSS,          // zone speed of sound
+  FID_ZDU,          // zone change in velocity
+  // Temporaries
+  FID_Z_DBL2_TEMP,  // double2
+  FID_Z_DBL_TEMP1,  // double
+  FID_Z_DBL_TEMP2,  // double
 };
 
+// Side: a triangular 2D subvolume of a zone
+// Corner: a quadrangular 2D subvolume of a zone
+// Each zone has 4 sides and 4 corners
+// Each corner overlaps 2 sides and vice versa
 enum SidesAndCornersFields {
-  FID_SAREA,
-  FID_SVOL,
-  FID_SMF,
-  FID_CMASWT,
-  FID_SFP,
-  FID_SFQ,
-  FID_SFT,
-  FID_CFTOT,
-  FID_SMAP_SIDE_TO_PT1,
-  FID_SMAP_SIDE_TO_PT2,
-  FID_SMAP_SIDE_TO_ZONE,
-  FID_SMAP_SIDE_TO_EDGE,
-  FID_MAP_CRN2CRN_NEXT,
-  FID_S_DBL_TEMP,
+  FID_SAREA,   // side area (actually a length, since Pennant is 2D)
+  FID_SVOL,    // side volume (fraction of zone volume assigned to this side)
+  FID_SMF,     // side mass fraction (side area / zone area)
+  FID_CMASWT,  // corner weighted mass (some combination of corner's two sides)
+  FID_SFP,     // side 2D force due to pressure
+  FID_SFQ,     // side 2D force due to artificial viscosity
+  FID_SFT,     // side 2D force due to TTS algorithm
+  FID_CFTOT,   // corner total force
+  // Maps
+  FID_SMAP_SIDE_TO_PT1,  // side start point (farthest clockwise)
+  FID_SMAP_SIDE_TO_PT2,  // side end point (farthest counterclockwise)
+  FID_SMAP_SIDE_TO_ZONE, // side's zone
+  FID_SMAP_SIDE_TO_EDGE, // side's edge
+  // There is no side-to-corner map; each side has the same index as the corner
+  // associated with its start point
+  FID_MAP_CRN2CRN_NEXT,  // the next corner moving around the corner's point
+  // Temporaries
+  FID_S_DBL_TEMP,  // double
 };
 
+// Edge: a 1D segment along the edge of a zone
+// Each side has 1 edge; each corner has half of 2 edges
 enum EdgeFields {
-  FID_EX,
-  FID_E_DBL2_TEMP,
-  FID_E_DBL_TEMP,
+  FID_EX,  // the midpoint between the edge's 2 points
+  // Temporaries
+  FID_E_DBL2_TEMP,  // double2
+  FID_E_DBL_TEMP,   // double
 };
 
+// Point: the points defining the edges of the zones
+// Each edge or side has 2 points; each corner has 1; each zone has 4 or 6
+// Ghost point: a point belonging to a local zone but not owned locally
 enum PointFields {
-  FID_PF,
-  FID_PMASWT,
-  FID_GHOST_PF,
-  FID_GHOST_PMASWT,
-  FID_PX0,
-  FID_PX,
-  FID_PXP,
-  FID_PU,
-  FID_PU0,
-  FID_MAP_PT2CRN_FIRST,
-  FID_PT_LOCAL2GLOBAL,
+  FID_PF,            // point force
+  FID_PMASWT,        // point weighted mass (sum over point's corners)
+  FID_GHOST_PF,      // ghost-point force
+  FID_GHOST_PMASWT,  // ghost-point weighted mass
+  FID_PX0,           // point initial location (at start of timestep)
+  FID_PX,            // point 2D location (at end of timestep)
+  FID_PXP,           // point partial-step location (at midpoint of timestep)
+  FID_PU,            // point 2D velocity (at end of timestep)
+  FID_PU0,           // point initial velocity (at start of timestep)
+  // Maps
+  FID_MAP_PT2CRN_FIRST,  // first corner (iterate using corner-to-corner map)
+  FID_PT_LOCAL2GLOBAL,   // point global index
 };
 
 enum ZonePtsCRSFields {
-  FID_ZONE_PTS_PTR,
-  FID_ZONE_CHUNKS_CRS,
-  FID_SIDE_CHUNKS_CRS,
-  FID_POINT_CHUNKS_CRS,
-  FID_BCX_CHUNKS_CRS,
-  FID_BCY_CHUNKS_CRS,
+  FID_ZONE_PTS_PTR,      //
+  FID_ZONE_CHUNKS_CRS,   //
+  FID_SIDE_CHUNKS_CRS,   //
+  FID_POINT_CHUNKS_CRS,  //
+  FID_BCX_CHUNKS_CRS,    //
+  FID_BCY_CHUNKS_CRS,    //
 };
 
 struct RunStat {
-  int cycle;
-  double time;
+  int cycle;    // number of iterations completed
+  double time;  // amount of simulation time elapsed
 };
 
 struct TimeStep {
-  double dt;
+  double dt;  // amount of simulation time elapsed during this iteration
   char message[80];
   TimeStep() {
     dt = std::numeric_limits<double>::max();
@@ -135,20 +155,55 @@ struct TimeStep {
 };
 
 enum TaskIDs {
-  TOP_LEVEL_TASK_ID,  // Top-level task
-  CALCDT_TASK_ID,  // Calculate dt
-  CORRECTOR_TASK_ID,  // Apply corrections
-  DRIVER_TASK_ID,  // Driver?
-  HALO_TASK_ID,  // Transfer points in halo
-  PREDICTOR_POINT_TASK_ID,  //
-  PREDICTOR_TASK_ID,
-  WRITE_TASK_ID,
-  GLOBAL_SUM_TASK_ID,  // Global sum for double
-  GLOBAL_SUM_INT64_TASK_ID,  // Global sum for integer
-  ADD_REDOP_ID,  // Additive reduction operator for double
-  ADD_INT64_REDOP_ID,  // Additive reduction operator for integer
-  ADD2_REDOP_ID,  //
-  MIN_REDOP_ID,
+  // Top level: reads params, sets up Legion, launches DriverTask
+  TOP_LEVEL_TASK_ID, // top_level_task
+
+  // Calculate dt: try to slightly increase the timestep each iteration, but
+  // take the minimum of all suggestions returned from various CorrectorTask
+  // if that's smaller or use the time to the end of the simulation
+  CALCDT_TASK_ID, // CalcDtTask
+
+  // Corrector: applies boundary conditions, computes the state of the hydro
+  // system and updates forces across the grid for the second half of the
+  // timestep. Updates energies and suggests the next timestep size.
+  CORRECTOR_TASK_ID, // CorrectorTask
+
+  // Driver: simulation top level, contains parameters, runs iterations
+  // Each iteration goes: PredictorPoint, Predictor, Halo, Corrector, CalcDt
+  DRIVER_TASK_ID, // DriverTask
+
+  // Halo summation: does a partial sum of local corner elements to points in
+  // the halo of the local chunk
+  HALO_TASK_ID, // HaloTask
+
+  // Point predictor: moves grid points to midpoint of timestep
+  PREDICTOR_POINT_TASK_ID,  // PredictorPointTask
+
+  // Predictor: computes the new grid after point movement, then computes the
+  // state of the hydrodynamic system and updates forces across the grid up
+  // to the midpoint of the timestep
+  PREDICTOR_TASK_ID,  // PredictorTask
+
+  // Write: save the simulation results to disk
+  WRITE_TASK_ID,  // WriteTask
+
+  // Global sum for double
+  GLOBAL_SUM_TASK_ID,  // Parallel::globalSumTask
+
+  // Global sum for integer
+  GLOBAL_SUM_INT64_TASK_ID,  // Parallel::globalSumInt64Task
+
+  // Additive reduction operator for double
+  ADD_REDOP_ID,  // AddReductionOp
+
+  // Additive reduction operator for integer
+  ADD_INT64_REDOP_ID,  // AddInt64ReductionOp
+
+  // Additive reduction operator for double2 (2D vectors)
+  ADD2_REDOP_ID,  // Add2ReductionOp
+
+  // Minimum timestep reduction
+  MIN_REDOP_ID,  // MinReductionOp
 };
 
 typedef RegionAccessor<AccessorType::SOA<sizeof(double)>, double> DoubleSOAAccessor;

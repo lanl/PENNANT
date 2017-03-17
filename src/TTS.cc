@@ -16,19 +16,25 @@
 
 using namespace std;
 
+// TTS = Temporary Triangular Subzoning
+//
+// This algorithm prevents certain kinds of grid-shape distortions (such as
+// "hourglassing" by estimating a pressure for each side and adding a force
+// to each side based on the difference between the zone and side pressures
+
 void TTS::calcForce(const double* zarea, const double* zr, const double* zss,
     const double* sarea, const double* smf, const double2* ssurfp, double2* sf,
     const int sfirst, const int slast, const int* map_side2zone,
-    const double ssmin, const double alfa) {
+    const double ssmin, const double alpha) {
 
   //  Side density:
   //    srho = sm/sv = zr (sm/zm) / (sv/zv)
   //  Side pressure:
-  //    sp   = zp + alfa dpdr (srho-zr)
+  //    sp   = zp + alpha dpdr (srho-zr)
   //         = zp + sdp
   //  Side delta pressure:
-  //    sdp  = alfa dpdr (srho-zr)
-  //         = alfa c**2 (srho-zr)
+  //    sdp  = alpha dpdr (srho-zr)
+  //         = alpha c**2 (srho-zr)
   //
   //    Notes: smf stores (sm/zm)
   //           svfac stores (sv/zv)
@@ -40,7 +46,7 @@ void TTS::calcForce(const double* zarea, const double* zr, const double* zss,
     double svfacinv = zarea[z] / sarea[s];
     double srho = zr[z] * smf[s] * svfacinv;
     double sstmp = max(zss[z], ssmin);
-    sstmp = alfa * sstmp * sstmp;
+    sstmp = alpha * sstmp * sstmp;
     double sdp = sstmp * (srho - zr[z]);
     double2 sqq = -sdp * ssurfp[s];
     sf[s] = sqq;
