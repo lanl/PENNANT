@@ -25,7 +25,7 @@ LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime* runtime,
       LogicalUnstructured(ctx, runtime, pregion),
       nElements(-2) {
   Domain Dom = runtime->get_index_space_domain(ctx, ispace);
-  Rect < 1 > rect = Dom.get_rect<1>();
+  Rect<1> rect = Dom.get_rect<1>();
   nElements = static_cast<int>(rect.volume());
 }
 
@@ -36,8 +36,8 @@ void LogicalStructured::allocate(int nStrucs) {
 
   nElements = nStrucs;
 
-  Rect < 1 > rect(Point < 1 > (0), Point < 1 > (nStrucs - 1));
-  ispace = runtime->create_index_space(ctx, Domain::from_rect < 1 > (rect));
+  Rect<1> rect(Point<1>(0), Point<1>(nStrucs - 1));
+  ispace = runtime->create_index_space(ctx, Domain::from_rect<1>(rect));
   destroy_ispace = true;
   char buf[43];
   sprintf(buf, "LogicalStruc::iSpace %d", nStrucs);
@@ -75,11 +75,11 @@ ptr_t* LogicalStructured::getRawPtr<ptr_t>(FieldID FID) {
 
   PtrTAccessor tAcc = pregion.get_field_accessor(FID).typeify<ptr_t>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect < 1 > subrect;
+  Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
-  mData = tAcc.template raw_rect_ptr < 1 > (subGridBounds, subrect, inOffsets);
+  mData = tAcc.template raw_rect_ptr<1> (subGridBounds, subrect, inOffsets);
 
   // Sanity.
   if (!mData || (subrect != subGridBounds)
@@ -99,11 +99,11 @@ double2* LogicalStructured::getRawPtr<double2>(FieldID FID) {
 
   Double2Accessor tAcc = pregion.get_field_accessor(FID).typeify<double2>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect < 1 > subrect;
+  Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
-  mData = tAcc.template raw_rect_ptr < 1 > (subGridBounds, subrect, inOffsets);
+  mData = tAcc.template raw_rect_ptr<1>(subGridBounds, subrect, inOffsets);
 
   // Sanity.
   if (!mData || (subrect != subGridBounds)
@@ -123,11 +123,11 @@ double* LogicalStructured::getRawPtr<double>(FieldID FID) {
 
   DoubleAccessor tAcc = pregion.get_field_accessor(FID).typeify<double>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect < 1 > subrect;
+  Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
-  mData = tAcc.template raw_rect_ptr < 1 > (subGridBounds, subrect, inOffsets);
+  mData = tAcc.template raw_rect_ptr<1>(subGridBounds, subrect, inOffsets);
 
   // Sanity.
   if (!mData || (subrect != subGridBounds)
@@ -147,11 +147,11 @@ int* LogicalStructured::getRawPtr<int>(FieldID FID) {
 
   IntAccessor tAcc = pregion.get_field_accessor(FID).typeify<int>();
   Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect < 1 > subrect;
+  Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
-  mData = tAcc.template raw_rect_ptr < 1 > (subGridBounds, subrect, inOffsets);
+  mData = tAcc.template raw_rect_ptr<1>(subGridBounds, subrect, inOffsets);
 
   // Sanity.
   if (!mData || (subrect != subGridBounds)
