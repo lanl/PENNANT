@@ -1,4 +1,4 @@
-cstop   30
+cstop   3
 tstop   1.0
 meshtype rect
 meshparams 1080 1080 1.125 1.125
