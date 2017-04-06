@@ -40,11 +40,11 @@ GEN_GPU_SRC	?= 				# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?=
-CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-variable -D__STDC_FORMAT_MACROS -DDISABLE_BARRIER_MIGRATION -g
+CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-variable -D__STDC_FORMAT_MACROS -DDISABLE_BARRIER_MIGRATION #-g #-pg
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -L/usr/lib64 -lpmi
-LEGION_LD_FLAGS	?= -L/usr/lib64 -lpmi
+LD_FLAGS	?= -L/usr/lib64 -lpmi #-g #-pg
+LEGION_LD_FLAGS	?= -L/usr/lib64 -lpmi #-g #-pg
 
 ###########################################################################
 #

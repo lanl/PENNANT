@@ -54,6 +54,19 @@ public:
       const int* map_side2edge, const int* zone_pts_ptr, const double q1,
       const double q2);
 
+private:
+  static double* c0area;
+  static double* c0evol;
+  static double* c0du;
+  static double* c0div;
+  static double* c0cos;
+  static double2* c0qe;
+
+  static double2* z0uc;
+  static double* z0tmp;;
+
+  static int iter;
+
 };
 // class QCS
 
