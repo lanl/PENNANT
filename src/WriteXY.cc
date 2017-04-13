@@ -31,19 +31,19 @@ void WriteXY::write(const string& basename, const DoubleAccessor& zr,
   while (zr_itr.has_next()) {
     ptr_t zone_ptr = zr_itr.next();
     ofs << setw(5) << (zone_ptr.value + 1) << setw(18) << zr.read(zone_ptr)
-    << endl;
+        << endl;
   }
   ofs << "#  ze" << endl;
   while (ze_itr.has_next()) {
     ptr_t zone_ptr = ze_itr.next();
     ofs << setw(5) << (zone_ptr.value + 1) << setw(18) << ze.read(zone_ptr)
-    << endl;
+        << endl;
   }
   ofs << "#  zp" << endl;
   while (zp_itr.has_next()) {
     ptr_t zone_ptr = zp_itr.next();
     ofs << setw(5) << (zone_ptr.value + 1) << setw(18) << zp.read(zone_ptr)
-    << endl;
+        << endl;
   }
   ofs.close();
 }

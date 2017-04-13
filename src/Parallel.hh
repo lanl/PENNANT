@@ -36,7 +36,7 @@ enum ZoneFields {
   FID_ZP,           // zone pressure
   FID_ZX,           // zone 2D location
   FID_ZVOL,         // zone volume (actually an area, since Pennant is 2D)
-  FID_ZAREA,        // zone surface area (actually perimeter, since Pennant is 2D)
+  FID_ZAREA,      // zone surface area (actually perimeter, since Pennant is 2D)
   FID_ZVOL0,        // zone volume initial (at the start of a timestep)
   FID_ZDL,          // zone characteristic length (?)
   FID_ZM,           // zone total mass
@@ -66,8 +66,8 @@ enum SidesAndCornersFields {
   // Maps
   FID_SMAP_SIDE_TO_PT1,  // side start point (farthest clockwise)
   FID_SMAP_SIDE_TO_PT2,  // side end point (farthest counterclockwise)
-  FID_SMAP_SIDE_TO_ZONE, // side's zone
-  FID_SMAP_SIDE_TO_EDGE, // side's edge
+  FID_SMAP_SIDE_TO_ZONE,  // side's zone
+  FID_SMAP_SIDE_TO_EDGE,  // side's edge
   // There is no side-to-corner map; each side has the same index as the corner
   // associated with its start point
   FID_MAP_CRN2CRN_NEXT,  // the next corner moving around the corner's point
@@ -156,25 +156,25 @@ struct TimeStep {
 
 enum TaskIDs {
   // Top level: reads params, sets up Legion, launches DriverTask
-  TOP_LEVEL_TASK_ID, // top_level_task
+  TOP_LEVEL_TASK_ID,  // top_level_task
 
   // Calculate dt: try to slightly increase the timestep each iteration, but
   // take the minimum of all suggestions returned from various CorrectorTask
   // if that's smaller or use the time to the end of the simulation
-  CALCDT_TASK_ID, // CalcDtTask
+  CALCDT_TASK_ID,  // CalcDtTask
 
   // Corrector: applies boundary conditions, computes the state of the hydro
   // system and updates forces across the grid for the second half of the
   // timestep. Updates energies and suggests the next timestep size.
-  CORRECTOR_TASK_ID, // CorrectorTask
+  CORRECTOR_TASK_ID,  // CorrectorTask
 
   // Driver: simulation top level, contains parameters, runs iterations
   // Each iteration goes: PredictorPoint, Predictor, Halo, Corrector, CalcDt
-  DRIVER_TASK_ID, // DriverTask
+  DRIVER_TASK_ID,  // DriverTask
 
   // Halo summation: does a partial sum of local corner elements to points in
   // the halo of the local chunk
-  HALO_TASK_ID, // HaloTask
+  HALO_TASK_ID,  // HaloTask
 
   // Point predictor: moves grid points to midpoint of timestep
   PREDICTOR_POINT_TASK_ID,  // PredictorPointTask
@@ -344,16 +344,12 @@ void base_gpu_wrapper(const Task* task,
 }
 #endif
 
-  template<typename T>
-  void register_cpu_variants(void)
-  {
-    HighLevelRuntime::register_legion_task<base_cpu_wrapper<T> >(T::TASK_ID, Processor::LOC_PROC,
-                                                                 false/*single*/, true/*index*/,
-                                                                 AUTO_GENERATE_ID,
-                                                                 TaskConfigOptions(T::CPU_BASE_LEAF),
-                                                                 T::TASK_NAME);
-  }
-
+template<typename T>
+void register_cpu_variants(void) {
+  HighLevelRuntime::register_legion_task<base_cpu_wrapper<T>>(T::TASK_ID,
+    Processor::LOC_PROC, false /* single */, true /* index */, AUTO_GENERATE_ID,
+    TaskConfigOptions(T::CPU_BASE_LEAF), T::TASK_NAME);
+}
 }
 
 #endif /* PARALLEL_HH_ */

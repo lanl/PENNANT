@@ -111,7 +111,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
   add_field(18, FID_BCY_CHUNKS_CRS);
 }
 
-/*static*/ const char* const CorrectorTask::TASK_NAME = "CorrectorTask";
+/*static*/const char* const CorrectorTask::TASK_NAME = "CorrectorTask";
 
 /*static*/
 TimeStep CorrectorTask::cpu_run(const Task* task,

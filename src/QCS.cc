@@ -43,13 +43,16 @@ using namespace std;
 //
 //double accum1 = 0, accum2 = 0, accum3 = 0;
 
-void QCS::calcForce(double2* sf, const int sfirst, const int slast,
-    const int nums, const int numz, const double2* pu, const double2* ex,
-    const double2* zx, const double* elen, const int* map_side2zone,
-    const int* map_side2pt1, const int* map_side2pt2, const int* zone_pts_ptr,
-    const int* map_side2edge, const double2* pt_x_pred, const double* zrp,
-    const double* zss, const double qgamma, const double q1, const double q2,
-    int zfirst, int zlast, double* zdu, const Temp& temp) {
+void QCS::calcForce(double2*__restrict__ sf, const int sfirst, const int slast,
+    const int nums, const int numz, const double2*__restrict__ pu,
+    const double2*__restrict__ ex, const double2*__restrict__ zx,
+    const double*__restrict__ elen, const int*__restrict__ map_side2zone,
+    const int*__restrict__ map_side2pt1, const int*__restrict__ map_side2pt2,
+    const int*__restrict__ zone_pts_ptr, const int*__restrict__ map_side2edge,
+    const double2*__restrict__ pt_x_pred, const double*__restrict__ zrp,
+    const double*__restrict__ zss, const double qgamma, const double q1,
+    const double q2, int zfirst, int zlast, double*__restrict__ zdu,
+    const Temp& temp) {
   int cfirst = sfirst;
   int clast = slast;
 
@@ -93,10 +96,12 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
 //     [2.3] Find the evolution factor c0evol(c)
 //           and the Delta u(c) = du(c)
 void QCS::setCornerDiv(const int sfirst, const int slast, const int nums,
-    const int numz, const double2* pu, const double2* ex, const double2* zx,
-    const double* elen, const int* map_side2zone, const int* map_side2pt1,
-    const int* map_side2pt2, const int* zone_pts_ptr, const double2* pt_x_pred,
-    const int* map_side2edge, const Temp& temp) {
+    const int numz, const double2*__restrict__ pu,
+    const double2*__restrict__ ex, const double2*__restrict__ zx,
+    const double*__restrict__ elen, const int*__restrict__ map_side2zone,
+    const int*__restrict__ map_side2pt1, const int*__restrict__ map_side2pt2,
+    const int*__restrict__ zone_pts_ptr, const double2*__restrict__ pt_x_pred,
+    const int*__restrict__ map_side2edge, const Temp& temp) {
 
   double*__restrict__ c0area = temp.c0area;
   double*__restrict__ c0div = temp.c0div;
@@ -221,11 +226,13 @@ void QCS::setCornerDiv(const int sfirst, const int slast, const int nums,
 }
 
 // Routine number [4] in the full algorithm CS2DQforce(...)
-void QCS::setQCnForce(const int sfirst, const int slast, const double2* pu,
-    const double* zrp, const double* zss, const double* elen,
+void QCS::setQCnForce(const int sfirst, const int slast,
+    const double2*__restrict__ pu, const double*__restrict__ zrp,
+    const double*__restrict__ zss, const double*__restrict__ elen,
     const double qgamma, const double q1, const double q2,
-    const int* map_side2zone, const int* zone_pts_ptr, const int* map_side2pt1,
-    const int* map_side2pt2, const int* map_side2edge, const Temp& temp) {
+    const int*__restrict__ map_side2zone, const int*__restrict__ zone_pts_ptr,
+    const int*__restrict__ map_side2pt1, const int*__restrict__ map_side2pt2,
+    const int*__restrict__ map_side2edge, const Temp& temp) {
 
   double*__restrict__ c0div = temp.c0div;
   double*__restrict__ c0evol = temp.c0evol;
@@ -279,9 +286,10 @@ void QCS::setQCnForce(const int sfirst, const int slast, const double2* pu,
 }
 
 // Routine number [5] in the full algorithm CS2DQforce(...)
-void QCS::setForce(double2* sfq, const int sfirst, const int slast,
-    const double* elen, const int* map_side2zone, const int* zone_pts_ptr,
-    const int* map_side2edge, const Temp& temp) {
+void QCS::setForce(double2*__restrict__ sfq, const int sfirst, const int slast,
+    const double*__restrict__ elen, const int*__restrict__ map_side2zone,
+    const int*__restrict__ zone_pts_ptr, const int*__restrict__ map_side2edge,
+    const Temp& temp) {
 
   double*__restrict__ c0area = temp.c0area;
   double*__restrict__ c0cos = temp.c0cos;
@@ -323,11 +331,13 @@ void QCS::setForce(double2* sfq, const int sfirst, const int slast,
 
 // Routine number [6] in the full algorithm
 void QCS::setVelDiff(const int sfirst, const int slast, const int nums,
-    const int numz, int zfirst, int zlast, const double2* pu, const double* zss,
-    double* zdu, const double* elen, const double2* pt_x_pred,
-    const int* map_side2pt1, const int* map_side2pt2, const int* map_side2zone,
-    const int* map_side2edge, const int* zone_pts_ptr, const double q1,
-    const double q2, const Temp& temp) {
+    const int numz, int zfirst, int zlast, const double2*__restrict__ pu,
+    const double*__restrict__ zss, double*__restrict__ zdu,
+    const double*__restrict__ elen, const double2*__restrict__ pt_x_pred,
+    const int*__restrict__ map_side2pt1, const int*__restrict__ map_side2pt2,
+    const int*__restrict__ map_side2zone, const int*__restrict__ map_side2edge,
+    const int*__restrict__ zone_pts_ptr, const double q1, const double q2,
+    const Temp& temp) {
 
   double*__restrict__ z0tmp = temp.z0tmp;
 

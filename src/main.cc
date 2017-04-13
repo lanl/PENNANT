@@ -27,6 +27,7 @@
 #include "InputParameters.hh"
 #include "MinReductionOp.hh"
 #include "Parallel.hh"
+//#include "PennantMapper.cc"
 #include "PredictorPointTask.hh"
 #include "PredictorTask.hh"
 #include "WriteTask.hh"
@@ -71,6 +72,7 @@ void top_level_task(const Task* task,
 }
 
 int main(int argc, char **argv) {
+//  register_mappers();
   HighLevelRuntime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
 
   HighLevelRuntime::register_legion_task<top_level_task>(TOP_LEVEL_TASK_ID,

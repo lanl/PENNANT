@@ -79,7 +79,7 @@ ptr_t* LogicalStructured::getRawPtr<ptr_t>(FieldID FID) {
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
-  mData = tAcc.template raw_rect_ptr<1> (subGridBounds, subrect, inOffsets);
+  mData = tAcc.template raw_rect_ptr<1>(subGridBounds, subrect, inOffsets);
 
   // Sanity.
   if (!mData || (subrect != subGridBounds)

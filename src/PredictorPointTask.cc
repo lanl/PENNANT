@@ -53,8 +53,7 @@ PredictorPointTask::PredictorPointTask(LogicalRegion mesh_points,
   add_field(FIVE, FID_POINT_CHUNKS_CRS);
 }
 
-/*static*/ const char* const PredictorPointTask::TASK_NAME =
-    "PredictorPointTask";
+/*static*/const char* const PredictorPointTask::TASK_NAME = "PredictorPointTask";
 
 /*static*/
 void PredictorPointTask::cpu_run(const Task* task,

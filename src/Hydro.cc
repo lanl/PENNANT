@@ -281,7 +281,8 @@ Future Hydro::doCycle(Future future_step) {
 
 /*static*/
 void Hydro::advPosHalf(const double dt, const int pfirst, const int plast,
-    const double2* pt_x0, const double2* pt_vel0, double2* pt_x_pred) {
+    const double2*__restrict__ pt_x0, const double2*__restrict__ pt_vel0,
+    double2*__restrict__ pt_x_pred) {
   double dth = 0.5 * dt;
 
 #pragma ivdep
@@ -320,10 +321,11 @@ void Hydro::calcCrnrMass(const int sfirst, const int slast,
 }
 
 /*static*/
-void Hydro::sumCrnrForce(const double2* side_force_pres,
-    const double2* side_force_visc, const double2* side_force_tts,
-    const int* map_side2zone, const int* zone_pts_ptr, const int sfirst,
-    const int slast, double2* crnr_force_tot) {
+void Hydro::sumCrnrForce(const double2*__restrict__ side_force_pres,
+    const double2*__restrict__ side_force_visc,
+    const double2*__restrict__ side_force_tts,
+    const int*__restrict__ map_side2zone, const int*__restrict__ zone_pts_ptr,
+    const int sfirst, const int slast, double2*__restrict__ crnr_force_tot) {
 
 #pragma ivdep
   for (int s = sfirst; s < slast; ++s) {
@@ -350,8 +352,9 @@ void Hydro::calcAccel(const ptr_t* pt_local2globalID,
 }
 
 /*static*/
-void Hydro::calcRho(const double* zvol, const double* zm, double* zr,
-    const int zfirst, const int zlast) {
+void Hydro::calcRho(const double*__restrict__ zvol,
+    const double*__restrict__ zm, double*__restrict__ zr, const int zfirst,
+    const int zlast) {
 #pragma ivdep
   for (int z = zfirst; z < zlast; ++z) {
     zr[z] = zm[z] / zvol[z];
@@ -359,12 +362,14 @@ void Hydro::calcRho(const double* zvol, const double* zm, double* zr,
 }
 
 /*static*/
-void Hydro::calcWork(const double dt, const int* map_side2pt1,
-    const int* map_side2pt2, const int* map_side2zone, const int* zone_pts_ptr,
-    const double2* side_force_pres, const double2* side_force_visc,
-    const double2* pt_vel, const double2* pt_vel0, const double2* pt_x_pred,
-    double* zone_energy_tot, double* zone_work, const int side_first,
-    const int side_last) {
+void Hydro::calcWork(const double dt, const int*__restrict__ map_side2pt1,
+    const int*__restrict__ map_side2pt2, const int*__restrict__ map_side2zone,
+    const int*__restrict__ zone_pts_ptr,
+    const double2*__restrict__ side_force_pres,
+    const double2*__restrict__ side_force_visc,
+    const double2*__restrict__ pt_vel, const double2*__restrict__ pt_vel0,
+    const double2*__restrict__ pt_x_pred, double*__restrict__ zone_energy_tot,
+    double*__restrict__ zone_work, const int side_first, const int side_last) {
   // Compute the work done by finding, for each element/node pair,
   //   dwork= force * vavg
   // where force is the force of the element on the node
@@ -448,9 +453,10 @@ void Hydro::sumEnergy(const double*__restrict__ zetot,
 }
 
 /*static*/
-void Hydro::calcDtCourant(double& dtrec, char* msgdtrec, const int zfirst,
-    const int zlast, const double* zdl, const double* zone_dvel,
-    const double* zone_sound_speed, const double cfl) {
+void Hydro::calcDtCourant(double& dtrec, char*__restrict__ msgdtrec,
+    const int zfirst, const int zlast, const double*__restrict__ zdl,
+    const double*__restrict__ zone_dvel,
+    const double*__restrict__ zone_sound_speed, const double cfl) {
   const double fuzz = 1.e-99;
   double dtnew = 1.e99;
   int zmin = -1;
@@ -487,9 +493,10 @@ void Hydro::calcDtVolume(const double dtlast, double& dtrec, char* msgdtrec,
 
 /*static*/
 void Hydro::calcDtHydro(const double dtlast, const int zfirst, const int zlast,
-    const double* zone_dl, const double* zone_dvel,
-    const double* zone_sound_speed, const double cfl, const double* zone_vol,
-    const double* zone_vol0, const double cflv, TimeStep& recommend) {
+    const double*__restrict__ zone_dl, const double*__restrict__ zone_dvel,
+    const double*__restrict__ zone_sound_speed, const double cfl,
+    const double*__restrict__ zone_vol, const double*__restrict__ zone_vol0,
+    const double cflv, TimeStep& recommend) {
   double dtchunk = 1.e99;
   char msgdtchunk[80];
 

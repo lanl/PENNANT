@@ -17,12 +17,14 @@
 using namespace std;
 
 /*static*/
-void PolyGas::calcStateAtHalf(const double* zr0, const double* zvolp,
-    const double* zvol0, const double* ze, const double* zwrate,
-    const double* zm, const double dt, double* zp, double* zss,
-    const int zfirst, const int zlast, const double gamma, const double ssmin) {
+void PolyGas::calcStateAtHalf(const double*__restrict__ zr0,
+    const double*__restrict__ zvolp, const double*__restrict__ zvol0,
+    const double*__restrict__ ze, const double*__restrict__ zwrate,
+    const double*__restrict__ zm, const double dt, double*__restrict__ zp,
+    double*__restrict__ zss, const int zfirst, const int zlast,
+    const double gamma, const double ssmin) {
 
-  double* z0per = AbstractedMemory::alloc<double>(zlast - zfirst);
+  double*__restrict__ z0per = AbstractedMemory::alloc<double>(zlast - zfirst);
 
   const double dth = 0.5 * dt;
 
@@ -46,9 +48,10 @@ void PolyGas::calcStateAtHalf(const double* zr0, const double* zvolp,
 }
 
 /*static*/
-void PolyGas::calcEOS(const double* zr, const double* ze, double* zp,
-    double* z0per, double* zss, const int zfirst, const int zlast,
-    const double gamma, const double ssmin) {
+void PolyGas::calcEOS(const double*__restrict__ zr,
+    const double*__restrict__ ze, double*__restrict__ zp,
+    double*__restrict__ z0per, double*__restrict__ zss, const int zfirst,
+    const int zlast, const double gamma, const double ssmin) {
 
   const double gm1 = gamma - 1.;
   const double ss2 = max(ssmin * ssmin, 1.e-99);
@@ -69,8 +72,9 @@ void PolyGas::calcEOS(const double* zr, const double* ze, double* zp,
 }
 
 /*static*/
-void PolyGas::calcForce(const double* zp, const double2* ssurfp, double2* sf,
-    const int sfirst, const int slast, const int* map_side2zone) {
+void PolyGas::calcForce(const double*__restrict__ zp,
+    const double2*__restrict__ ssurfp, double2*__restrict__ sf,
+    const int sfirst, const int slast, const int*__restrict__ map_side2zone) {
 
 #pragma ivdep
   for (int s = sfirst; s < slast; ++s) {
