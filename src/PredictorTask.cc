@@ -104,7 +104,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
   add_field(TEN, FID_E_DBL_TEMP);
 }
 
-/*static*/ const char* const PredictorTask::TASK_NAME = "PredictorTask";
+/*static*/const char* const PredictorTask::TASK_NAME = "PredictorTask";
 
 /*static*/
 void PredictorTask::cpu_run(const Task* task,
@@ -245,13 +245,15 @@ void PredictorTask::cpu_run(const Task* task,
       side_area_pred, side_mass_frac, side_surfp, side_force_tts, sfirst, slast,
       map_side2zone, args.ssmin, args.alpha);
 
+    zfirst = map_side2zone[sfirst];
+    zlast = (slast < args.num_sides ? map_side2zone[slast] : args.num_zones);
+    const QCS::Temp temp(slast-sfirst, zlast-zfirst);
+
     QCS::calcForce(side_force_visc, sfirst, slast, args.num_sides,
       args.num_zones, pt_vel, edge_x_pred, zone_x_pred, edge_len, map_side2zone,
       map_side2pt1, map_side2pt2, zone_pts_ptr, map_side2edge, pt_x_pred,
-      zone_rho_pred, zone_sound_speed, args.qgamma, args.q1, args.q2,
-      map_side2zone[sfirst],
-      (slast < args.num_sides ? map_side2zone[slast] : args.num_zones),
-      zone_dvel);
+      zone_rho_pred, zone_sound_speed, args.qgamma, args.q1, args.q2, zfirst,
+      zlast, zone_dvel, temp);
 
     Hydro::sumCrnrForce(side_force_pres, side_force_visc, side_force_tts,
       map_side2zone, zone_pts_ptr, sfirst, slast, crnr_force_tot);

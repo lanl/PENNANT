@@ -27,17 +27,6 @@ using namespace std;
 // fluid-flow equations to correctly handle shock regions with large
 // discontinuities in the problem-state variables.
 
-// declare temporary variables
-double* QCS::c0area = nullptr;
-double* QCS::c0evol = nullptr;
-double* QCS::c0du = nullptr;
-double* QCS::c0div = nullptr;
-double* QCS::c0cos = nullptr;
-double2* QCS::c0qe = nullptr;
-double2* QCS::z0uc = nullptr;
-double* QCS::z0tmp = nullptr;
-int QCS::iter = 0;
-
 //double zero_time;
 //
 //inline double current_time() {
@@ -60,19 +49,9 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
     const int* map_side2pt1, const int* map_side2pt2, const int* zone_pts_ptr,
     const int* map_side2edge, const double2* pt_x_pred, const double* zrp,
     const double* zss, const double qgamma, const double q1, const double q2,
-    int zfirst, int zlast, double* zdu) {
+    int zfirst, int zlast, double* zdu, const Temp& temp) {
   int cfirst = sfirst;
   int clast = slast;
-
-  // Allocate only once
-  if (!c0area) {
-    c0area = AbstractedMemory::alloc<double>(clast - cfirst);
-    c0evol = AbstractedMemory::alloc<double>(clast - cfirst);
-    c0du = AbstractedMemory::alloc<double>(clast - cfirst);
-    c0div = AbstractedMemory::alloc<double>(clast - cfirst);
-    c0cos = AbstractedMemory::alloc<double>(clast - cfirst);
-    c0qe = AbstractedMemory::alloc<double2>(2 * (clast - cfirst));
-  }
 
   // [1] Find the right, left, top, bottom edges to use for the limiters
   // *** NOT IMPLEMENTED IN PENNANT ***
@@ -82,9 +61,8 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
   // [2.2] Compute the cos angle for c
   // [2.3] Find the evolution factor c0evol(c) and the Delta u(c) = du(c)
   // [2.4] Find the weights c0w(c)
-  setCornerDiv(c0area, c0div, c0evol, c0du, c0cos, sfirst, slast, nums, numz,
-    pu, ex, zx, elen, map_side2zone, map_side2pt1, map_side2pt2, zone_pts_ptr,
-    pt_x_pred, map_side2edge);
+  setCornerDiv(sfirst, slast, nums, numz, pu, ex, zx, elen, map_side2zone,
+    map_side2pt1, map_side2pt2, zone_pts_ptr, pt_x_pred, map_side2edge, temp);
 
   // [3] Find the limiters Psi(c)
   // *** NOT IMPLEMENTED IN PENNANT ***
@@ -95,25 +73,18 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
   //       e1=[n0,n1], e2=[n1,n2]
   //       c0qe(2,c) = cmu(c).( u(n2)-u(n1) ) / l_{n1->n2}
   //       c0qe(1,c) = cmu(c).( u(n1)-u(n0) ) / l_{n0->n1}
-  setQCnForce(c0div, c0du, c0evol, c0qe, sfirst, slast, pu, zrp, zss, elen,
-    qgamma, q1, q2, map_side2zone, zone_pts_ptr, map_side2pt1, map_side2pt2,
-    map_side2edge);
+  setQCnForce(sfirst, slast, pu, zrp, zss, elen, qgamma, q1, q2, map_side2zone,
+    zone_pts_ptr, map_side2pt1, map_side2pt2, map_side2edge, temp);
 
   // [5] Compute the Q forces
-  setForce(c0area, c0qe, c0cos, sf, sfirst, slast, elen, map_side2zone,
-    zone_pts_ptr, map_side2edge);
+  setForce(sf, sfirst, slast, elen, map_side2zone, zone_pts_ptr, map_side2edge,
+    temp);
 
   // [6] Set velocity difference to use to compute timestep
   setVelDiff(sfirst, slast, nums, numz, zfirst, zlast, pu, zss, zdu, elen,
     pt_x_pred, map_side2pt1, map_side2pt2, map_side2zone, map_side2edge,
-    zone_pts_ptr, q1, q2);
+    zone_pts_ptr, q1, q2, temp);
 
-//  AbstractedMemory::free(c0area);
-//  AbstractedMemory::free(c0evol);
-//  AbstractedMemory::free(c0du);
-//  AbstractedMemory::free(c0div);
-//  AbstractedMemory::free(c0cos);
-//  AbstractedMemory::free(c0qe);
 }
 
 // Routine number [2] in the full algorithm
@@ -121,12 +92,18 @@ void QCS::calcForce(double2* sf, const int sfirst, const int slast,
 //     [2.2] Compute the cos angle for c
 //     [2.3] Find the evolution factor c0evol(c)
 //           and the Delta u(c) = du(c)
-void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
-    double* c0du, double* c0cos, const int sfirst, const int slast,
-    const int nums, const int numz, const double2* pu, const double2* ex,
-    const double2* zx, const double* elen, const int* map_side2zone,
-    const int* map_side2pt1, const int* map_side2pt2, const int* zone_pts_ptr,
-    const double2* pt_x_pred, const int* map_side2edge) {
+void QCS::setCornerDiv(const int sfirst, const int slast, const int nums,
+    const int numz, const double2* pu, const double2* ex, const double2* zx,
+    const double* elen, const int* map_side2zone, const int* map_side2pt1,
+    const int* map_side2pt2, const int* zone_pts_ptr, const double2* pt_x_pred,
+    const int* map_side2edge, const Temp& temp) {
+
+  double*__restrict__ c0area = temp.c0area;
+  double*__restrict__ c0div = temp.c0div;
+  double*__restrict__ c0evol = temp.c0evol;
+  double*__restrict__ c0du = temp.c0du;
+  double*__restrict__ c0cos = temp.c0cos;
+  double2*__restrict__ z0uc = temp.z0uc;
 
   int cfirst = sfirst;
   int clast = slast;
@@ -135,9 +112,8 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
 
 //  long long start = Realm::Clock::current_time_in_nanoseconds(), stop;
 
-  if (!z0uc) z0uc = AbstractedMemory::alloc<double2>(zlast - zfirst);
-//  double2 up0, up1, up2, up3;
-//  double2 xp0, xp1, xp2, xp3;
+  double2 up0, up1, up2, up3;
+  double2 xp0, xp1, xp2, xp3;
 
 //  set_zero_time();
   // [1] Compute a zone-centered velocity
@@ -167,12 +143,7 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
 #pragma ivdep
   for (int c = cfirst; c < clast; ++c) {
     int s2 = c;
-
-//    set_zero_time();
     int s = LocalMesh::mapSideToSidePrev(s2, map_side2zone, zone_pts_ptr);
-//    cout << "Corner " << c << ", Side " << s << endl;
-//    accum3 += current_time();
-
     // Associated zone, corner, point
     int z = map_side2zone[s];
     int z0 = z - zfirst;
@@ -185,90 +156,60 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
     int e1 = map_side2edge[s];
     int e2 = map_side2edge[s2];
 
-//    cout << "Corner " << c << ", Corner " << c0 << ", Zone " << z << ", Point " << p << ", Point " << p1 << ", Point " << p2 << ", Edge " << e1 << ", Edge " << e2 << endl;
-
     // Velocities and positions
     // 0 = point p
-//    up0 = pu[p];
-//    xp0 = pt_x_pred_[p];
+    up0 = pu[p];
+    xp0 = pt_x_pred_[p];
     // 1 = edge e2
-//    up1 = 0.5 * (pu[p] + pu[p2]);
-//    xp1 = ex[e2];
+    up1 = 0.5 * (pu[p] + pu[p2]);
+    xp1 = ex[e2];
     // 2 = zone center z
-//    up2 = z0uc[z0];
-//    xp2 = zx[z];
+    up2 = z0uc[z0];
+    xp2 = zx[z];
     // 3 = edge e1
-//    up3 = 0.5 * (pu[p1] + pu[p]);
-//    xp3 = ex[e1];
-
-    double2 xp3m1 = ex[e1] - ex[e2];
-    double2 xp2m0 = zx[z] - pt_x_pred_[p];
-
-    double2 up3m1 = 0.5 * (pu[p1] - pu[p2]);
-    double2 up2m0 = z0uc[z0] - pu[p];
+    up3 = 0.5 * (pu[p1] + pu[p]);
+    xp3 = ex[e1];
 
     // compute 2d Cartesian volume of corner
-//    double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
-    double cvolume = 0.5 * cross(xp2m0, xp3m1);
+    double cvolume = 0.5 * cross(xp2 - xp0, xp3 - xp1);
     c0area[c0] = cvolume;
 
     // compute cosine angle
-    double2 v1 = ex[e1] - pt_x_pred_[p];    //xp3 - xp0;
-    double2 v2 = ex[e2] - pt_x_pred_[p];    //xp1 - xp0;
+    double2 v1 = xp3 - xp0;
+    double2 v2 = xp1 - xp0;
     double de1 = elen[e1];
     double de2 = elen[e2];
     double minelen = min(de1, de2);
-//    c0cos[c0] = ((minelen < 1.e-12) ? 0. : 4. * dot(v1, v2) / (de1 * de2));
-    c0cos[c0] = (minelen > 1.e-12 ? 4. * dot(v1, v2) / (de1 * de2) : 0.);
+    c0cos[c0] = ((minelen < 1.e-12) ? 0. : 4. * dot(v1, v2) / (de1 * de2));
 
     // compute divergence of corner
-//    c0div[c0] = (cross(up2 - up0, xp3 - xp1) - cross(up3 - up1, xp2 - xp0))
-    c0div[c0] = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) / (2.0 * cvolume);
-    iter++;
+    c0div[c0] = (cross(up2 - up0, xp3 - xp1) - cross(up3 - up1, xp2 - xp0))
+        / (2.0 * cvolume);
 
-    if (c0div[c0] < 0.0) {
-      // compute evolution factor
-//    double2 dxx1 = 0.5 * (xp1 + xp2 - xp0 - xp3);
-//    double2 dxx2 = 0.5 * (xp2 + xp3 - xp0 - xp1);
-//    double2 dxx1 = 0.5 * (xp2m0 - xp3m1);
-//    double2 dxx2 = 0.5 * (xp2m0 + xp3m1);
-      double2 dxx1 = xp2m0 - xp3m1;
-      double2 dxx2 = xp2m0 + xp3m1;
-      double dx1 = length(dxx1);
-      double dx2 = length(dxx2);
+    // compute evolution factor
+    double2 dxx1 = 0.5 * (xp1 + xp2 - xp0 - xp3);
+    double2 dxx2 = 0.5 * (xp2 + xp3 - xp0 - xp1);
+    double dx1 = length(dxx1);
+    double dx2 = length(dxx2);
 
-      // average corner-centered velocity
-//    double2 duav = 0.25 * (up0 + up1 + up2 + up3);
-//    double2 duav = 0.25 * (0.5 * (pu[p1] + pu[p] + (pu[p] + pu[p2])) + z0uc[z0] + pu[p]);
-      double2 duav = 0.5 * (pu[p1] + pu[p2]) + z0uc[z0] + 2.0 * pu[p];
+    // average corner-centered velocity
+    double2 duav = 0.25 * (up0 + up1 + up2 + up3);
 
-      double test1 = abs(dot(dxx1, duav) * dx2);
-      double test2 = abs(dot(dxx2, duav) * dx1);
-//      double num = (test1 > test2 ? dx1 : dx2);
-//      double den = (test1 > test2 ? dx2 : dx1);
-//      double r = num / den;
-//    double evol = sqrt(4.0 * cvolume * r);
-//    evol = min(evol, 2.0 * minelen);
-//      double evol = sqrt(cvolume * r);
-      double evol;
-      if (test1 > test2) {
-        evol = sqrt(cvolume * dx1 / dx2);
-      } else {
-        evol = sqrt(cvolume * dx2 / dx1);
-      }
-      evol = 2.0 * min(evol, minelen);
+    double test1 = abs(dot(dxx1, duav) * dx2);
+    double test2 = abs(dot(dxx2, duav) * dx1);
+    double num = (test1 > test2 ? dx1 : dx2);
+    double den = (test1 > test2 ? dx2 : dx1);
+    double r = num / den;
+    double evol = sqrt(4.0 * cvolume * r);
+    evol = min(evol, 2.0 * minelen);
 
-      // compute delta velocity
-      double dv1 = length2(up2m0 - up3m1);
-      double dv2 = length2(up2m0 + up3m1);
-      double du = sqrt(max(dv1, dv2));
+    // compute delta velocity
+    double dv1 = length2(up1 + up2 - up0 - up3);
+    double dv2 = length2(up2 + up3 - up0 - up1);
+    double du = sqrt(max(dv1, dv2));
 
-      c0evol[c0] = evol;
-      c0du[c0] = du;
-    } else {
-      c0evol[c0] = 0.;
-      c0du[c0] = 0.;
-    }
+    c0evol[c0] = (c0div[c0] < 0.0 ? evol : 0.);
+    c0du[c0] = (c0div[c0] < 0.0 ? du : 0.);
   }  // for s
 //  accum3 += current_time();
 //  std::cout << "s-determination time: "
@@ -276,16 +217,21 @@ void QCS::setCornerDiv(double* c0area, double* c0div, double* c0evol,
 //      << (int) round(100 * accum3) << std::endl;
 //  set_zero_time();
 
-//  AbstractedMemory::free(z0uc);
 }
 
 // Routine number [4] in the full algorithm CS2DQforce(...)
-void QCS::setQCnForce(const double* c0div, const double* c0du,
-    const double* c0evol, double2* c0qe, const int sfirst, const int slast,
-    const double2* pu, const double* zrp, const double* zss, const double* elen,
+void QCS::setQCnForce(const int sfirst, const int slast, const double2* pu,
+    const double* zrp, const double* zss, const double* elen,
     const double qgamma, const double q1, const double q2,
     const int* map_side2zone, const int* zone_pts_ptr, const int* map_side2pt1,
-    const int* map_side2pt2, const int* map_side2edge) {
+    const int* map_side2pt2, const int* map_side2edge, const Temp& temp) {
+
+  double*__restrict__ c0div = temp.c0div;
+  double*__restrict__ c0evol = temp.c0evol;
+  double*__restrict__ c0du = temp
+      .c0du;
+  double2*__restrict__ c0qe = temp.c0qe;
+
   int cfirst = sfirst;
   int clast = slast;
 
@@ -334,10 +280,14 @@ void QCS::setQCnForce(const double* c0div, const double* c0du,
 }
 
 // Routine number [5] in the full algorithm CS2DQforce(...)
-void QCS::setForce(const double* c0area, const double2* c0qe, double* c0cos,
-    double2* sfq, const int sfirst, const int slast, const double* elen,
-    const int* map_side2zone, const int* zone_pts_ptr,
-    const int* map_side2edge) {
+void QCS::setForce(double2* sfq, const int sfirst, const int slast,
+    const double* elen, const int* map_side2zone, const int* zone_pts_ptr,
+    const int* map_side2edge, const Temp& temp) {
+
+  double*__restrict__ c0area = temp.c0area;
+  double*__restrict__ c0cos = temp.c0cos;
+  double2*__restrict__ c0qe = temp.c0qe;
+
   int cfirst = sfirst;
   int clast = slast;
 
@@ -379,10 +329,11 @@ void QCS::setVelDiff(const int sfirst, const int slast, const int nums,
     double* zdu, const double* elen, const double2* pt_x_pred,
     const int* map_side2pt1, const int* map_side2pt2, const int* map_side2zone,
     const int* map_side2edge, const int* zone_pts_ptr, const double q1,
-    const double q2) {
-  if (!z0tmp) z0tmp = AbstractedMemory::alloc<double>(zlast - zfirst);
+    const double q2, const Temp& temp) {
 
-//  fill(&z0tmp[0], &z0tmp[zlast - zfirst], 0.);
+  double*__restrict__ z0tmp = temp.z0tmp;
+
+  fill(&z0tmp[0], &z0tmp[zlast - zfirst], 0.);
   for (int s = sfirst; s < slast; ++s) {
     int p1 = map_side2pt1[s];
     int p2 = map_side2pt2[s];
@@ -404,6 +355,5 @@ void QCS::setVelDiff(const int sfirst, const int slast, const int nums,
     zdu[z] = q1 * zss[z] + 2. * q2 * z0tmp[z0];
   }
 
-//  AbstractedMemory::free(z0tmp);
 }
 
