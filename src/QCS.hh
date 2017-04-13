@@ -29,8 +29,11 @@ public:
       c0div = AbstractedMemory::alloc<double>(csize);
       c0cos = AbstractedMemory::alloc<double>(csize);
       c0qe = AbstractedMemory::alloc<double2>(2 * csize);
-      z0uc = AbstractedMemory::alloc<double2>(zsize);
+
+      c0tmp = AbstractedMemory::alloc<double>(csize);
+//      c0tmp2 = AbstractedMemory::alloc<double2>(csize);
       z0tmp = AbstractedMemory::alloc<double>(zsize);
+      z0tmp2 = AbstractedMemory::alloc<double2>(zsize);
     }
     ~Temp() {
       AbstractedMemory::free(c0area);
@@ -39,10 +42,13 @@ public:
       AbstractedMemory::free(c0div);
       AbstractedMemory::free(c0cos);
       AbstractedMemory::free(c0qe);
-      AbstractedMemory::free(z0uc);
+
+      AbstractedMemory::free(c0tmp);
       AbstractedMemory::free(z0tmp);
+      AbstractedMemory::free(z0tmp2);
     }
 
+    // Long-lived temporaries with specific names
     double* c0area;
     double* c0evol;
     double* c0du;
@@ -50,8 +56,11 @@ public:
     double* c0cos;
     double2* c0qe;
 
-    double2* z0uc;
+    // Short-lived temporaries of each size and type
+    double* c0tmp;
+//    double2* c0tmp2;
     double* z0tmp;
+    double2* z0tmp2;
   };
 
   static void calcForce(double2* sf, const int sfirst, const int slast,

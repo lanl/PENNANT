@@ -103,7 +103,8 @@ void QCS::setCornerDiv(const int sfirst, const int slast, const int nums,
   double*__restrict__ c0evol = temp.c0evol;
   double*__restrict__ c0du = temp.c0du;
   double*__restrict__ c0cos = temp.c0cos;
-  double2*__restrict__ z0uc = temp.z0uc;
+
+  double2*__restrict__ z0uc = temp.z0tmp2;
 
   int cfirst = sfirst;
   int clast = slast;
@@ -228,14 +229,13 @@ void QCS::setQCnForce(const int sfirst, const int slast, const double2* pu,
 
   double*__restrict__ c0div = temp.c0div;
   double*__restrict__ c0evol = temp.c0evol;
-  double*__restrict__ c0du = temp
-      .c0du;
+  double*__restrict__ c0du = temp.c0du;
   double2*__restrict__ c0qe = temp.c0qe;
 
   int cfirst = sfirst;
   int clast = slast;
 
-  double* c0rmu = AbstractedMemory::alloc<double>(clast - cfirst);
+  double*__restrict__ c0rmu = temp.c0tmp;
 
   const double gammap1 = qgamma + 1.0;
 
@@ -276,7 +276,6 @@ void QCS::setQCnForce(const int sfirst, const int slast, const double2* pu,
 
   }  // for s
 
-  AbstractedMemory::free(c0rmu);
 }
 
 // Routine number [5] in the full algorithm CS2DQforce(...)
@@ -291,7 +290,7 @@ void QCS::setForce(double2* sfq, const int sfirst, const int slast,
   int cfirst = sfirst;
   int clast = slast;
 
-  double* c0w = AbstractedMemory::alloc<double>(clast - cfirst);
+  double*__restrict__ c0w = temp.c0tmp;
 
   // [5.1] Preparation of extra variables
 #pragma ivdep
@@ -320,7 +319,6 @@ void QCS::setForce(double2* sfq, const int sfirst, const int slast,
 
   }  // for s
 
-  AbstractedMemory::free(c0w);
 }
 
 // Routine number [6] in the full algorithm

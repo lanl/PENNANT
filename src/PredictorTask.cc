@@ -196,6 +196,11 @@ void PredictorTask::cpu_run(const Task* task,
   Future f1 = task->futures[0];
   TimeStep time_step = f1.get_result<TimeStep>();
 
+  const QCS::Temp temp(side_chunks_CRS[1] - side_chunks_CRS[0],
+    (side_chunks_CRS[1] < args.num_sides ?
+        map_side2zone[side_chunks_CRS[1]] : args.num_zones)
+    - map_side2zone[side_chunks_CRS[0]]);
+
   for (int side_chunk = 0; side_chunk < args.num_side_chunks; ++side_chunk) {
     int sfirst = side_chunks_CRS[side_chunk];
     int slast = side_chunks_CRS[side_chunk + 1];
@@ -247,8 +252,6 @@ void PredictorTask::cpu_run(const Task* task,
 
     zfirst = map_side2zone[sfirst];
     zlast = (slast < args.num_sides ? map_side2zone[slast] : args.num_zones);
-    const QCS::Temp temp(slast-sfirst, zlast-zfirst);
-
     QCS::calcForce(side_force_visc, sfirst, slast, args.num_sides,
       args.num_zones, pt_vel, edge_x_pred, zone_x_pred, edge_len, map_side2zone,
       map_side2pt1, map_side2pt2, zone_pts_ptr, map_side2edge, pt_x_pred,
