@@ -291,9 +291,10 @@ void Hydro::advPosHalf(const double dt, const int pfirst, const int plast,
 }
 
 /*static*/
-void Hydro::advPosFull(const double dt, const double2* pt_vel0,
-    const double2* pt_accel, const double2* pt_x0, double2* pt_vel,
-    double2* pt_x, const int pfirst, const int plast) {
+void Hydro::advPosFull(const double dt, const double2*__restrict__ pt_vel0,
+    const double2*__restrict__ pt_accel, const double2*__restrict__ pt_x0,
+    double2*__restrict__ pt_vel, double2*__restrict__ pt_x, const int pfirst,
+    const int plast) {
 
 #pragma ivdep
   for (int p = pfirst; p < plast; ++p) {
@@ -387,10 +388,10 @@ void Hydro::calcWork(const double dt, const int* map_side2pt1,
 }
 
 /*static*/
-void Hydro::calcWorkRate(const double dt, const double* zone_vol,
-    const double* zone_vol0, const double* zone_work,
-    const double* zone_pressure, double* zone_work_rate, const int zfirst,
-    const int zlast) {
+void Hydro::calcWorkRate(const double dt, const double*__restrict__ zone_vol,
+    const double*__restrict__ zone_vol0, const double*__restrict__ zone_work,
+    const double*__restrict__ zone_pressure, double*__restrict__ zone_work_rate,
+    const int zfirst, const int zlast) {
   double dtinv = 1. / dt;
 #pragma ivdep
   for (int z = zfirst; z < zlast; ++z) {
@@ -400,8 +401,10 @@ void Hydro::calcWorkRate(const double dt, const double* zone_vol,
 }
 
 /*static*/
-void Hydro::calcEnergy(const double* zone_energy_tot, const double* zone_mass,
-    double* zone_energy_density, const int zfirst, const int zlast) {
+void Hydro::calcEnergy(const double*__restrict__ zone_energy_tot,
+    const double*__restrict__ zone_mass,
+    double*__restrict__ zone_energy_density, const int zfirst,
+    const int zlast) {
   const double fuzz = 1.e-99;
 #pragma ivdep
   for (int z = zfirst; z < zlast; ++z) {
@@ -409,10 +412,12 @@ void Hydro::calcEnergy(const double* zone_energy_tot, const double* zone_mass,
   }
 }
 
-void Hydro::sumEnergy(const double* zetot, const double* zarea,
-    const double* zvol, const double* zm, const double* side_mass_frac,
-    const double2* px, const double2* pu, const int* map_side2pt1,
-    const int* map_side2zone, const int* zone_pts_ptr, double& ei, double& ek,
+void Hydro::sumEnergy(const double*__restrict__ zetot,
+    const double*__restrict__ zarea, const double*__restrict__ zvol,
+    const double*__restrict__ zm, const double*__restrict__ side_mass_frac,
+    const double2*__restrict__ px, const double2*__restrict__ pu,
+    const int*__restrict__ map_side2pt1, const int*__restrict__ map_side2zone,
+    const int*__restrict__ zone_pts_ptr, double& ei, double& ek,
     const int zfirst, const int zlast, const int sfirst, const int slast) {
 
   // compute internal energy
@@ -493,13 +498,8 @@ void Hydro::calcDtHydro(const double dtlast, const int zfirst, const int zlast,
   calcDtVolume(dtlast, dtchunk, msgdtchunk, zfirst, zlast, zone_vol, zone_vol0,
     cflv);
   if (dtchunk < recommend.dt) {
-    {
-      // redundant test needed to avoid race condition
-      if (dtchunk < recommend.dt) {
-        recommend.dt = dtchunk;
-        strncpy(recommend.message, msgdtchunk, 80);
-      }
-    }
+    recommend.dt = dtchunk;
+    strncpy(recommend.message, msgdtchunk, 80);
   }
 }
 
@@ -533,10 +533,8 @@ void Hydro::writeEnergyCheck() {
     sumEnergy(zone_energy_tot, zone_area, zone_vol, zone_mass, side_mass_frac,
       pt_x, pt_vel, map_side2pt1, map_side2zone, zone_pts_ptr, eichunk, ekchunk,
       zfirst, zlast, sfirst, slast);
-    {
-      ei += eichunk;
-      ek += ekchunk;
-    }
+    ei += eichunk;
+    ek += ekchunk;
   }
   points.unMapPRegion();
   zones.unMapPRegion();

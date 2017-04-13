@@ -22,9 +22,9 @@ using namespace std;
 // "hourglassing" by estimating a pressure for each side and adding a force
 // to each side based on the difference between the zone and side pressures
 
-void TTS::calcForce(const double* zarea, const double* zr, const double* zss,
-    const double* sarea, const double* smf, const double2* ssurfp, double2* sf,
-    const int sfirst, const int slast, const int* map_side2zone,
+void TTS::calcForce(const double*__restrict__ zarea, const double*__restrict__ zr, const double*__restrict__ zss,
+    const double*__restrict__ sarea, const double*__restrict__ smf, const double2*__restrict__ ssurfp, double2*__restrict__ sf,
+    const int sfirst, const int slast, const int*__restrict__ map_side2zone,
     const double ssmin, const double alpha) {
 
   //  Side density:

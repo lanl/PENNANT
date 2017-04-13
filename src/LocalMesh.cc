@@ -448,8 +448,8 @@ void LocalMesh::calcCtrs(const int sfirst, const int slast, const double2* px,
 void LocalMesh::calcVols(const int sfirst, const int slast, const double2* px,
     const double2* zx, const int* map_side2zone, const int num_sides,
     const int num_zones, const int* map_side2pt1, const int* map_side2pt2,
-    const int* zone_pts_ptr, double* sarea, double* svol, double* zarea,
-    double* zvol) {
+    const int* zone_pts_ptr, double*__restrict__ sarea, double*__restrict__ svol, double*__restrict__ zarea,
+    double*__restrict__ zvol) {
   int zfirst = map_side2zone[sfirst];
   int zlast = (slast < num_sides ? map_side2zone[slast] : num_zones);
   fill(&zvol[zfirst], &zvol[zlast], 0.);
@@ -470,6 +470,7 @@ void LocalMesh::calcVols(const int sfirst, const int slast, const double2* px,
     zarea[z] += sa;
     zvol[z] += sv;
 
+#ifdef SANITY_CHECK
     // check for negative side volumes
     if (sv <= 0.) {
       cerr << "p1 = " << p1 << ", p2 = " << p2 << ", z = " << z << endl;
@@ -479,14 +480,17 @@ void LocalMesh::calcVols(const int sfirst, const int slast, const double2* px,
       cerr << "sa[" << s << "] = " << sa << endl;
       count++;
     }
+#endif
 
   }  // for s
 
+#ifdef SANITY_CHECK
   if (count > 0) {
     cerr << "Error: negative side volume" << endl;
     cerr << "Exiting..." << endl;
     exit(1);
   }
+#endif
 }
 
 void LocalMesh::calcSideMassFracs(const int side_chunk,
