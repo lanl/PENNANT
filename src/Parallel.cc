@@ -52,7 +52,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
     exit(1);
   }
 
-  Rect<1>launch_bounds(Point<1>(0), Point<1>(num_subregions_ - 1));
+  Rect<1> launch_bounds(Point<1>(0), Point<1>(num_subregions_ - 1));
 
   double zero = 0.0;
   DynamicCollective add_reduction = runtime->create_dynamic_collective(ctx,
@@ -68,7 +68,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
     num_subregions_, MinReductionOp::redop_id, &max, sizeof(max));
 
   std::vector<SPMDArgs> args(num_subregions_);
-  std::vector<SPMDArgsSerializer> args_seriliazed(num_subregions_);
+  std::vector<SPMDArgsSerializer> args_serialized(num_subregions_);
 
   for (int color = 0; color < num_subregions_; color++) {
     args[color].pbarrier_as_master = global_mesh.phase_barriers[color];
@@ -91,15 +91,15 @@ void Parallel::run(InputParameters input_params, Context ctx,
         global_mesh.phase_barriers[(global_mesh.masters[color])[i]]);
     }
 
-    args_seriliazed[color].archive(&(args[color]));
+    args_serialized[color].archive(&(args[color]));
 
     DomainPoint point(color);
     LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
       global_mesh.zones.getLPart(), color);
 
     DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
-      lregions_halos, args_seriliazed[color].getBitStream(),
-      args_seriliazed[color].getBitStreamSize());
+      lregions_halos, args_serialized[color].getBitStream(),
+      args_serialized[color].getBitStreamSize());
     must_epoch_launcher.add_single_task(point, driver_launcher);
   }
 
