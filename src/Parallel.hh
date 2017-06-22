@@ -20,6 +20,8 @@
 #include "Vec2.hh"
 
 #include "legion.h"
+
+using namespace Legion;
 using namespace LegionRuntime::HighLevel;
 using namespace LegionRuntime::Accessor;
 
