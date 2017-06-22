@@ -121,7 +121,7 @@ inline double2 operator*(const double& r, const double2& v) {
 
 // divide vector by scalar
 inline double2 operator/(const double2& v, const double& r) {
-  double rinv = (double) 1. / r;
+  double rinv = (double)1. / r;
   return double2(v.x * rinv, v.y * rinv);
 }
 

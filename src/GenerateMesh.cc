@@ -76,12 +76,12 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
 
   // generate point coordinates
   pointpos.reserve(np);
-  double dx = len_x / (double) global_nzones_x;
-  double dy = len_y / (double) global_nzones_y;
+  double dx = len_x / (double)global_nzones_x;
+  double dy = len_y / (double)global_nzones_y;
   for (int j = 0; j < num_points_y; ++j) {
-    double y = dy * (double) (j + zone_y_offset);
+    double y = dy * (double)(j + zone_y_offset);
     for (int i = 0; i < num_points_x; ++i) {
-      double x = dx * (double) (i + zone_x_offset);
+      double x = dx * (double)(i + zone_x_offset);
       pointpos.push_back(make_double2(x, y));
     }
   }
@@ -113,16 +113,16 @@ void GenerateMesh::generatePie(vector<double2>& pointpos,
 
   // generate point coordinates
   pointpos.reserve(np);
-  double dth = len_x / (double) global_nzones_x;
-  double dr = len_y / (double) global_nzones_y;
+  double dth = len_x / (double)global_nzones_x;
+  double dr = len_y / (double)global_nzones_y;
   for (int j = 0; j < num_points_y; ++j) {
     if (j + zone_y_offset == 0) {
       pointpos.push_back(make_double2(0., 0.));
       continue;
     }
-    double r = dr * (double) (j + zone_y_offset);
+    double r = dr * (double)(j + zone_y_offset);
     for (int i = 0; i < num_points_x; ++i) {
-      double th = dth * (double) (global_nzones_x - (i + zone_x_offset));
+      double th = dth * (double)(global_nzones_x - (i + zone_x_offset));
       double x = r * cos(th);
       double y = r * sin(th);
       pointpos.push_back(make_double2(x, y));
@@ -158,18 +158,18 @@ void GenerateMesh::generateHex(vector<double2>& pointpos,
 
   // generate point coordinates
   pointpos.reserve(2 * num_points_x * num_points_y);  // upper bound
-  double dx = len_x / (double) (global_nzones_x - 1);
-  double dy = len_y / (double) (global_nzones_y - 1);
+  double dx = len_x / (double)(global_nzones_x - 1);
+  double dy = len_y / (double)(global_nzones_y - 1);
 
   vector<int> pbase(num_points_y);
   for (int j = 0; j < num_points_y; ++j) {
     pbase[j] = pointpos.size();
     int gj = j + zone_y_offset;
-    double y = dy * ((double) gj - 0.5);
+    double y = dy * ((double)gj - 0.5);
     y = max(0., min(len_y, y));
     for (int i = 0; i < num_points_x; ++i) {
       int gi = i + zone_x_offset;
-      double x = dx * ((double) gi - 0.5);
+      double x = dx * ((double)gi - 0.5);
       x = max(0., min(len_x, x));
       if (gi == 0 || gi == global_nzones_x || gj == 0 || gj == global_nzones_y)
         pointpos.push_back(make_double2(x, y));

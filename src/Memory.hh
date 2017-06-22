@@ -24,7 +24,7 @@ namespace AbstractedMemory {
 
 template<typename T>
 inline T* alloc(const int count) {
-  return (T*) std::malloc(count * sizeof(T));
+  return (T*)std::malloc(count * sizeof(T));
 }
 
 template<typename T>

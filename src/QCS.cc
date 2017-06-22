@@ -138,7 +138,7 @@ void QCS::setCornerDiv(const int sfirst, const int slast, const int nums,
   for (int z = zfirst; z < zlast; ++z) {
     int z0 = z - zfirst;
 //    cout << "Zone " << z << ", Zone " << z0 << endl;
-    z0uc[z0] /= (double) LocalMesh::zoneNPts(z, zone_pts_ptr);
+    z0uc[z0] /= (double)LocalMesh::zoneNPts(z, zone_pts_ptr);
   }
 //  accum2 += current_time();
 //  std::cout << "Second loop: " << (int) round(100 * accum2) << std::endl;

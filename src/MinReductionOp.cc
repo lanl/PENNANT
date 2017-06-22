@@ -23,7 +23,7 @@ void MinReductionOp::apply<true>(LHS& lhs, RHS rhs) {
 
 template<>
 void MinReductionOp::apply<false>(LHS& lhs, RHS rhs) {
-  int64_t* target = (int64_t*) &lhs.dt;
+  int64_t* target = (int64_t*)&lhs.dt;
   union {
     int64_t as_int;
     double as_T;
@@ -43,7 +43,7 @@ void MinReductionOp::fold<true>(RHS& rhs1, RHS rhs2) {
 
 template<>
 void MinReductionOp::fold<false>(RHS& rhs1, RHS rhs2) {
-  int64_t* target = (int64_t*) &rhs1.dt;
+  int64_t* target = (int64_t*)&rhs1.dt;
   union {
     int64_t as_int;
     double as_T;
