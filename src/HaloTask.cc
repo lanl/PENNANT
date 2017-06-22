@@ -49,8 +49,7 @@ HaloTask::HaloTask(LogicalRegion mesh_sides, LogicalRegion mesh_points,
 
 /*static*/
 void HaloTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(regions.size() == 5);
   assert(task->regions.size() == 5);
 

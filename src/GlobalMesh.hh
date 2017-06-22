@@ -15,7 +15,7 @@
 class GlobalMesh {
 public:
   GlobalMesh(const InputParameters& input_params, Context ctx,
-      HighLevelRuntime* runtime);
+      Runtime* runtime);
   virtual ~GlobalMesh();
 
   std::vector<PhaseBarrier> phase_barriers;
@@ -30,7 +30,7 @@ private:
 
   const InputParameters inputParams;
   Context ctx;
-  HighLevelRuntime* runtime;
+  Runtime* runtime;
 };
 
 #endif /* GLOBALMESH_HH_ */

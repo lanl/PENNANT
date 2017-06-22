@@ -108,8 +108,7 @@ PredictorTask::PredictorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
 
 /*static*/
 void PredictorTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(regions.size() == ELEVEN);
   assert(task->regions.size() == ELEVEN);
 

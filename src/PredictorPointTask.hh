@@ -25,8 +25,7 @@ public:
   static const bool CPU_BASE_LEAF = true;
 
   static void cpu_run(const Task* task,
-      const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime* rt);
+      const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* rt);
 };
 
 #endif /* SRC_PREDICTORPOINTTASK_HH_ */

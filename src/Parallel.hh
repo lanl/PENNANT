@@ -220,15 +220,14 @@ typedef RegionAccessor<AccessorType::Generic, ptr_t> PtrTAccessor;
 class Parallel {
 public:
 
-  static void run(InputParameters input_params, Context ctx,
-      HighLevelRuntime* runtime);
+  static void run(InputParameters input_params, Context ctx, Runtime* runtime);
 
   static Future globalSum(double local_value, DynamicCollective& dc_reduction,
       Runtime* runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
   static const TaskID sumTaskID = GLOBAL_SUM_TASK_ID;
   static double globalSumTask(const Task* task,
       const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime* runtime);
+      Runtime* runtime);
 
   static Future globalSumInt64(int64_t local_value,
       DynamicCollective& dc_reduction, Runtime* runtime, Context ctx,
@@ -236,7 +235,7 @@ public:
   static const TaskID sumInt64TaskID = GLOBAL_SUM_INT64_TASK_ID;
   static int64_t globalSumInt64Task(const Task* task,
       const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime* runtime);
+      Runtime* runtime);
 
   static Future globalMin(Future local_value, DynamicCollective& dc_reduction,
       Runtime* runtime, Context ctx, Predicate pred = Predicate::TRUE_PRED);
@@ -330,8 +329,7 @@ enum Variants {
 namespace TaskHelper {
 template<typename T>
 void base_cpu_wrapper(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   T::cpu_run(task, regions, ctx, runtime);
 }
 
@@ -339,7 +337,7 @@ void base_cpu_wrapper(const Task* task,
 template<typename T>
 void base_gpu_wrapper(const Task* task,
     const std::vector<PhysicalRegion> &regions,
-    Context ctx, HighLevelRuntime* runtime)
+    Context ctx, Runtime* runtime)
 {
   const int* p = (int*)task->local_args;
   T::gpu_run(*p, regions);
@@ -348,8 +346,8 @@ void base_gpu_wrapper(const Task* task,
 
 template<typename T>
 void register_cpu_variants(void) {
-  HighLevelRuntime::register_legion_task<base_cpu_wrapper<T>>(T::TASK_ID,
-    Processor::LOC_PROC, false /* single */, true /* index */, AUTO_GENERATE_ID,
+  Runtime::register_legion_task<base_cpu_wrapper<T>>(T::TASK_ID,
+    Processor::LOC_PROC, false /* single */, true /* index */, CPU_VARIANT,
     TaskConfigOptions(T::CPU_BASE_LEAF), T::TASK_NAME);
 }
 }

@@ -30,7 +30,7 @@ public:
 
   Hydro(const InputParameters& params, LocalMesh* m,
       DynamicCollective add_reduction, DynamicCollective min_reduction,
-      Context ctx, HighLevelRuntime* rt);
+      Context ctx, Runtime* rt);
 
   Future doCycle(Future future_step);
 
@@ -122,7 +122,7 @@ private:
   DynamicCollective add_reduction;
   DynamicCollective min_reduction;
   Context ctx;
-  HighLevelRuntime* runtime;
+  Runtime* runtime;
   LogicalStructured zones;
   LogicalStructured sides_and_corners;
   LogicalStructured edges;

@@ -15,12 +15,12 @@
 
 #include "Vec2.hh"
 
-LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime* runtime) :
+LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime) :
       LogicalUnstructured(ctx, runtime),
       nElements(-1) {
 }
 
-LogicalStructured::LogicalStructured(Context ctx, HighLevelRuntime* runtime,
+LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime,
     PhysicalRegion pregion) :
       LogicalUnstructured(ctx, runtime, pregion),
       nElements(-2) {

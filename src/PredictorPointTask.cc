@@ -57,8 +57,7 @@ PredictorPointTask::PredictorPointTask(LogicalRegion mesh_points,
 
 /*static*/
 void PredictorPointTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(regions.size() == SIX);
   assert(task->regions.size() == SIX);
 

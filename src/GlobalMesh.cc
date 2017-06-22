@@ -10,7 +10,7 @@
 #include "GenerateGlobalMesh.hh"
 
 GlobalMesh::GlobalMesh(const InputParameters& input_params, Context ctx,
-    HighLevelRuntime* runtime) :
+    Runtime* runtime) :
       zones(ctx, runtime),
       points(ctx, runtime),
       inputParams(input_params),

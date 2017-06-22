@@ -27,7 +27,7 @@
 #include "WriteTask.hh"
 
 void Parallel::run(InputParameters input_params, Context ctx,
-    HighLevelRuntime* runtime) {
+    Runtime* runtime) {
   GlobalMesh global_mesh(input_params, ctx, runtime);
   MustEpochLauncher must_epoch_launcher;
   const int num_subregions_ = input_params.directs.ntasks;
@@ -149,16 +149,14 @@ Future Parallel::globalSumInt64(int64_t local_value,
 }
 
 double Parallel::globalSumTask(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
-  double value = *(const double*) (task->args);
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
+  double value = *(const double*)(task->args);
   return value;
 }
 
 int64_t Parallel::globalSumInt64Task(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
-  int64_t value = *(const int64_t*) (task->args);
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
+  int64_t value = *(const int64_t*)(task->args);
   return value;
 }
 
@@ -172,34 +170,34 @@ Future Parallel::globalMin(Future local_value, DynamicCollective& dc_reduction,
 
 template<class Type>
 static size_t archiveScalar(Type scalar, void* bit_stream) {
-  memcpy(bit_stream, (void*) (&scalar), sizeof(Type));
+  memcpy(bit_stream, (void*)(&scalar), sizeof(Type));
   return sizeof(Type);
 }
 
 static size_t archiveString(std::string name, void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
-  size_t size_size = archiveScalar(name.length() + 1, (void*) serialized);
+  size_t size_size = archiveScalar(name.length() + 1, (void*)serialized);
   serialized += size_size;
 
   size_t string_size = name.length() * sizeof(char);
-  memcpy((void*) serialized, (void*) name.c_str(), string_size);
+  memcpy((void*)serialized, (void*)name.c_str(), string_size);
   serialized += string_size;
 
-  size_t terminator_size = archiveScalar('\0', (void*) serialized);
+  size_t terminator_size = archiveScalar('\0', (void*)serialized);
 
   return size_size + string_size + terminator_size;
 }
 
 template<class Type>
 static size_t archiveVector(std::vector<Type> vec, void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
-  size_t size_size = archiveScalar(vec.size(), (void*) serialized);
+  size_t size_size = archiveScalar(vec.size(), (void*)serialized);
   serialized += size_size;
 
   size_t vec_size = vec.size() * sizeof(Type);
-  memcpy((void*) serialized, (void*) vec.data(), vec_size);
+  memcpy((void*)serialized, (void*)vec.data(), vec_size);
 
   return size_size + vec_size;
 }
@@ -207,14 +205,14 @@ static size_t archiveVector(std::vector<Type> vec, void* bit_stream) {
 template<class Type>
 static size_t archiveTensor(std::vector<std::vector<Type>> tensor,
     void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
-  size_t size_size = archiveScalar(tensor.size(), (void*) serialized);
+  size_t size_size = archiveScalar(tensor.size(), (void*)serialized);
   serialized += size_size;
 
   size_t tensor_size = 0;
   for (int i = 0; i < tensor.size(); i++) {
-    size_t vec_size = archiveVector(tensor[i], (void*) serialized);
+    size_t vec_size = archiveVector(tensor[i], (void*)serialized);
     serialized += vec_size;
     tensor_size += vec_size;
   }
@@ -235,29 +233,29 @@ void SPMDArgsSerializer::archive(SPMDArgs* spmd_args) {
   bit_stream = malloc(bit_stream_size);
   free_bit_stream = true;
 
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
   size_t stream_size = 0;
   stream_size += archiveScalar(spmd_args->add_reduction,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(spmd_args->add_int64_reduction,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(spmd_args->min_reduction,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(spmd_args->direct_input_params,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(spmd_args->pbarrier_as_master,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveString(spmd_args->meshtype,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveString(spmd_args->probname,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveVector(spmd_args->bcx,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveVector(spmd_args->bcy,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveVector(spmd_args->masters_pbarriers,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
 
   assert(stream_size == bit_stream_size);
 }
@@ -284,79 +282,79 @@ void DoCycleTasksArgsSerializer::archive(DoCycleTasksArgs* docycle_args) {
   bit_stream = malloc(bit_stream_size);
   free_bit_stream = true;
 
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
   size_t stream_size = 0;
   stream_size += archiveScalar(docycle_args->min_reduction,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->cfl,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->cflv,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_points,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_sides,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_zones,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_edges,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->nzones_x,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->nzones_y,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_subregions,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->my_color,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->qgamma,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->q1,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->q2,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->ssmin,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->alpha,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->gamma,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_zone_chunks,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_side_chunks,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveScalar(docycle_args->num_point_chunks,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveString(docycle_args->meshtype,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveTensor(docycle_args->boundary_conditions_x,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveTensor(docycle_args->boundary_conditions_y,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveVector(docycle_args->bcx_point_chunk_CRS_offsets,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
   stream_size += archiveVector(docycle_args->bcy_point_chunk_CRS_offsets,
-    (void*) (serialized + stream_size));
+    (void*)(serialized + stream_size));
 
   assert(stream_size == bit_stream_size);
 }
 
 template<class Type>
 static size_t restoreScalar(Type* scalar, void* bit_stream) {
-  memcpy((void*) scalar, bit_stream, sizeof(Type));
+  memcpy((void*)scalar, bit_stream, sizeof(Type));
   return sizeof(Type);
 }
 
 static size_t restoreString(std::string* name, void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
   size_t n_chars;
-  size_t size_size = restoreScalar(&n_chars, (void*) serialized);
+  size_t size_size = restoreScalar(&n_chars, (void*)serialized);
   serialized += size_size;
 
   size_t string_size = n_chars * sizeof(char);
-  char* buffer = (char*) malloc(string_size);
-  memcpy((void*) buffer, (void*) serialized, string_size);
+  char* buffer = (char*)malloc(string_size);
+  memcpy((void*)buffer, (void*)serialized, string_size);
   *name = std::string(buffer);
 
   return size_size + string_size;
@@ -364,15 +362,15 @@ static size_t restoreString(std::string* name, void* bit_stream) {
 
 template<class Type>
 static size_t restoreVector(std::vector<Type>* vec, void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
   size_t n_entries;
-  size_t size_size = restoreScalar(&n_entries, (void*) serialized);
+  size_t size_size = restoreScalar(&n_entries, (void*)serialized);
   serialized += size_size;
 
   vec->resize(n_entries);
   size_t vec_size = n_entries * sizeof(Type);
-  memcpy((void*) vec->data(), (void*) serialized, vec_size);
+  memcpy((void*)vec->data(), (void*)serialized, vec_size);
 
   return size_size + vec_size;
 }
@@ -380,16 +378,16 @@ static size_t restoreVector(std::vector<Type>* vec, void* bit_stream) {
 template<class Type>
 static size_t restoreTensor(std::vector<std::vector<Type>>* tensor,
     void* bit_stream) {
-  unsigned char* serialized = (unsigned char*) (bit_stream);
+  unsigned char* serialized = (unsigned char*)(bit_stream);
 
   size_t n_entries;
-  size_t size_size = restoreScalar(&n_entries, (void*) serialized);
+  size_t size_size = restoreScalar(&n_entries, (void*)serialized);
   serialized += size_size;
 
   size_t tensor_size = 0;
   for (int i = 0; i < n_entries; i++) {
     std::vector<Type> vec;
-    size_t vec_size = restoreVector(&vec, (void*) serialized);
+    size_t vec_size = restoreVector(&vec, (void*)serialized);
     tensor->push_back(vec);
     serialized += vec_size;
     tensor_size += vec_size;
@@ -402,88 +400,88 @@ void SPMDArgsSerializer::restore(SPMDArgs* spmd_args) {
   assert(spmd_args != nullptr);
   assert(bit_stream != nullptr);
 
-  unsigned char* serialized_args = (unsigned char*) bit_stream;
+  unsigned char* serialized_args = (unsigned char*)bit_stream;
 
   bit_stream_size = 0;
   bit_stream_size += restoreScalar(&(spmd_args->add_reduction),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(spmd_args->add_int64_reduction),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(spmd_args->min_reduction),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(spmd_args->direct_input_params),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(spmd_args->pbarrier_as_master),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreString(&(spmd_args->meshtype),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreString(&(spmd_args->probname),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreVector(&(spmd_args->bcx),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreVector(&(spmd_args->bcy),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreVector(&(spmd_args->masters_pbarriers),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
 }
 
 void DoCycleTasksArgsSerializer::restore(DoCycleTasksArgs* docycle_args) {
   assert(docycle_args != nullptr);
   assert(bit_stream != nullptr);
 
-  unsigned char* serialized_args = (unsigned char*) bit_stream;
+  unsigned char* serialized_args = (unsigned char*)bit_stream;
 
   bit_stream_size = 0;
   bit_stream_size += restoreScalar(&(docycle_args->min_reduction),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->cfl),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->cflv),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_points),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_sides),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_zones),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_edges),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->nzones_x),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->nzones_y),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_subregions),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->my_color),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->qgamma),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->q1),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->q2),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->ssmin),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->alpha),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->gamma),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_zone_chunks),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_side_chunks),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreScalar(&(docycle_args->num_point_chunks),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreString(&(docycle_args->meshtype),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_x),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreTensor(&(docycle_args->boundary_conditions_y),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreVector(&(docycle_args->bcx_point_chunk_CRS_offsets),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
   bit_stream_size += restoreVector(&(docycle_args->bcy_point_chunk_CRS_offsets),
-    (void*) (serialized_args + bit_stream_size));
+    (void*)(serialized_args + bit_stream_size));
 }
 
 void* ArgsSerializer::getBitStream() {

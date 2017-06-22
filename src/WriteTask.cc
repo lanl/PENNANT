@@ -35,8 +35,7 @@ WriteTask::WriteTask(LogicalRegion lregion_global_zones, void* args,
 
 /*static*/
 void WriteTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* rt) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* rt) {
   assert(regions.size() == 1);
   assert(task->regions.size() == 1);
   assert(task->regions[0].privilege_fields.size() == 3);

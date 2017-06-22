@@ -31,7 +31,7 @@ LocalMesh::LocalMesh(const InputParameters& params, IndexSpace points,
     std::vector<LogicalUnstructured>& halos_pts,
     std::vector<PhysicalRegion>& pregionshalos, PhaseBarrier as_master,
     std::vector<PhaseBarrier> masters, DynamicCollective add_reduction,
-    Context ctx, HighLevelRuntime* rt) :
+    Context ctx, Runtime* rt) :
       subregion_xmin(params.directs.subregion_xmin),
       subregion_xmax(params.directs.subregion_xmax),
       subregion_ymin(params.directs.subregion_ymin),
@@ -443,7 +443,7 @@ void LocalMesh::calcCtrs(const int sfirst, const int slast,
   }
 
   for (int z = zfirst; z < zlast; ++z) {
-    zx[z] /= (double) zoneNPts(z, zone_pts_ptr);
+    zx[z] /= (double)zoneNPts(z, zone_pts_ptr);
   }
 }
 

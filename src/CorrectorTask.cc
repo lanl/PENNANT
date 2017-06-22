@@ -115,8 +115,7 @@ CorrectorTask::CorrectorTask(LogicalRegion mesh_zones, LogicalRegion mesh_sides,
 
 /*static*/
 TimeStep CorrectorTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(regions.size() == 19);
   assert(task->regions.size() == 19);
 

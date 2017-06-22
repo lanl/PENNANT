@@ -34,7 +34,7 @@ using namespace std;
 
 Hydro::Hydro(const InputParameters& params, LocalMesh* m,
     DynamicCollective add_reduction, DynamicCollective min_reduction,
-    Context ctx, HighLevelRuntime* rt) :
+    Context ctx, Runtime* rt) :
       mesh(m),
       cfl(params.directs.cfl),
       cflv(params.directs.cflv),

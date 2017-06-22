@@ -31,8 +31,7 @@ public:
   static const bool CPU_BASE_LEAF = false;
 
   static RunStat cpu_run(const Task* task,
-      const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime* rt);
+      const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* rt);
 };
 
 class Driver {
@@ -43,8 +42,7 @@ public:
       PhaseBarrier pbarrier_as_master,
       std::vector<PhaseBarrier> masters_pbarriers, const PhysicalRegion& zones,
       IndexSpace pts, std::vector<LogicalUnstructured>& halos_points,
-      std::vector<PhysicalRegion>& pregions_halos, Context ctx,
-      HighLevelRuntime* rt);
+      std::vector<PhysicalRegion>& pregions_halos, Context ctx, Runtime* rt);
 
   RunStat run();
   static TimeStep calcGlobalDt(CalcDtTaskArgs args);
@@ -67,7 +65,7 @@ private:
   DynamicCollective add_int64_reduction;
   DynamicCollective min_reduction;
   Context ctx;
-  HighLevelRuntime* runtime;
+  Runtime* runtime;
   const int my_color;
   LogicalUnstructured global_zones;
 };

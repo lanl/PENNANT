@@ -18,9 +18,8 @@
 
 class LogicalStructured: public LogicalUnstructured {
 public:
-  LogicalStructured(Context ctx, HighLevelRuntime* runtime);
-  LogicalStructured(Context ctx, HighLevelRuntime* runtime,
-      PhysicalRegion pregion);
+  LogicalStructured(Context ctx, Runtime* runtime);
+  LogicalStructured(Context ctx, Runtime* runtime, PhysicalRegion pregion);
   void allocate(int nElements);
   int size() const {
     return nElements;

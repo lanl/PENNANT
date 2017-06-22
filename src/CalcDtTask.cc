@@ -25,10 +25,9 @@ CalcDtTask::CalcDtTask(CalcDtTaskArgs* args) :
 
 /*static*/
 TimeStep CalcDtTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(task->arglen == sizeof(CalcDtTaskArgs));
-  CalcDtTaskArgs args = *(const CalcDtTaskArgs*) task->args;
+  CalcDtTaskArgs args = *(const CalcDtTaskArgs*)task->args;
 
   args.dt_hydro = task->futures[0];  // Cannot pass future through task->args
 

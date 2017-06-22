@@ -37,9 +37,8 @@ using namespace std;
 InputParameters parseInputFile(InputFile* inp);
 
 void top_level_task(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
-  const InputArgs& command_args = HighLevelRuntime::get_input_args();
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
+  const InputArgs& command_args = Runtime::get_input_args();
 
   if (command_args.argc < 3) {
     cerr << "Usage: pennant <ntasks> <filename>" << endl;
@@ -73,24 +72,24 @@ void top_level_task(const Task* task,
 
 int main(int argc, char **argv) {
 //  register_mappers();
-  HighLevelRuntime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
+  Runtime::set_top_level_task_id(TOP_LEVEL_TASK_ID);
 
-  HighLevelRuntime::register_legion_task<top_level_task>(TOP_LEVEL_TASK_ID,
+  Runtime::register_legion_task<top_level_task>(TOP_LEVEL_TASK_ID,
     Processor::LOC_PROC, true /*single*/, false /*index*/, AUTO_GENERATE_ID,
     TaskConfigOptions(), "top_level_task");
 
-  HighLevelRuntime::register_legion_task<TimeStep, CalcDtTask::cpu_run>(
-    CALCDT_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
+  Runtime::register_legion_task<TimeStep, CalcDtTask::cpu_run>(CALCDT_TASK_ID,
+    Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(CalcDtTask::CPU_BASE_LEAF),
     CalcDtTask::TASK_NAME);
 
-  HighLevelRuntime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(
+  Runtime::register_legion_task<TimeStep, CorrectorTask::cpu_run>(
     CORRECTOR_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(CorrectorTask::CPU_BASE_LEAF),
     CorrectorTask::TASK_NAME);
 
-  HighLevelRuntime::register_legion_task<RunStat, DriverTask::cpu_run>(
-    DRIVER_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
+  Runtime::register_legion_task<RunStat, DriverTask::cpu_run>(DRIVER_TASK_ID,
+    Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(DriverTask::CPU_BASE_LEAF),
     DriverTask::TASK_NAME);
 
@@ -102,11 +101,11 @@ int main(int argc, char **argv) {
 
   TaskHelper::register_cpu_variants<WriteTask>();
 
-  HighLevelRuntime::register_legion_task<double, Parallel::globalSumTask>(
+  Runtime::register_legion_task<double, Parallel::globalSumTask>(
     GLOBAL_SUM_TASK_ID, Processor::LOC_PROC, true /*single*/, true /*index*/,
     AUTO_GENERATE_ID, TaskConfigOptions(true), "globalSumTask");
 
-  HighLevelRuntime::register_legion_task<int64_t, Parallel::globalSumInt64Task>(
+  Runtime::register_legion_task<int64_t, Parallel::globalSumInt64Task>(
     GLOBAL_SUM_INT64_TASK_ID, Processor::LOC_PROC, true /*single*/,
     true /*index*/, AUTO_GENERATE_ID, TaskConfigOptions(true),
     "globalSumInt64Task");
@@ -118,7 +117,7 @@ int main(int argc, char **argv) {
 
   Runtime::register_reduction_op<MinReductionOp>(MinReductionOp::redop_id);
 
-  return HighLevelRuntime::start(argc, argv);
+  return Runtime::start(argc, argv);
 }
 
 InputParameters parseInputFile(InputFile* inp) {

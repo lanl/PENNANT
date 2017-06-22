@@ -49,8 +49,7 @@ DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
 
 /*static*/
 RunStat DriverTask::cpu_run(const Task* task,
-    const std::vector<PhysicalRegion> &regions, Context ctx,
-    HighLevelRuntime* runtime) {
+    const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* runtime) {
   assert(regions.size() > 1);
   assert(task->regions.size() > 1);
   assert(task->regions[0].privilege_fields.size() == 3);
@@ -93,8 +92,7 @@ Driver::Driver(const InputParameters& params, DynamicCollective add_reduct,
     PhaseBarrier pbarrier_as_master,
     std::vector<PhaseBarrier> masters_pbarriers, const PhysicalRegion& zones,
     IndexSpace pts, std::vector<LogicalUnstructured>& halos_points,
-    std::vector<PhysicalRegion>& pregions_halos, Context ctx,
-    HighLevelRuntime* rt) :
+    std::vector<PhysicalRegion>& pregions_halos, Context ctx, Runtime* rt) :
       probname(params.probname),
       tstop(params.directs.tstop),
       cstop(params.directs.cstop),

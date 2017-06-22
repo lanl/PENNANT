@@ -30,7 +30,7 @@ public:
       std::vector<PhysicalRegion>& pregions_halos,
       PhaseBarrier pbarrier_as_master,
       std::vector<PhaseBarrier> masters_pbarriers,
-      DynamicCollective add_reduction, Context ctx, HighLevelRuntime* rt);
+      DynamicCollective add_reduction, Context ctx, Runtime* rt);
   ~LocalMesh();
 
   // parameters
@@ -155,7 +155,7 @@ private:
 
   DynamicCollective add_reduction;
   Context ctx;
-  HighLevelRuntime* runtime;
+  Runtime* runtime;
 
   std::vector<LogicalUnstructured> halos_points;
   std::vector<PhysicalRegion> pregions_halos;

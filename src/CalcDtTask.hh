@@ -24,8 +24,7 @@ public:
   static const bool CPU_BASE_LEAF = true;
 
   static TimeStep cpu_run(const Task* task,
-      const std::vector<PhysicalRegion> &regions, Context ctx,
-      HighLevelRuntime* rt);
+      const std::vector<PhysicalRegion> &regions, Context ctx, Runtime* rt);
 };
 
 #endif /* SRC_CALCDTTASK_HH_ */

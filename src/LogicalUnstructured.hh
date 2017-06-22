@@ -18,13 +18,10 @@
 
 class LogicalUnstructured {
 public:
-  LogicalUnstructured(Context ctx, HighLevelRuntime* runtime);
-  LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
-      IndexSpace ispace);
-  LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
-      PhysicalRegion pregion);
-  LogicalUnstructured(Context ctx, HighLevelRuntime* runtime,
-      LogicalRegion lregion);
+  LogicalUnstructured(Context ctx, Runtime* runtime);
+  LogicalUnstructured(Context ctx, Runtime* runtime, IndexSpace ispace);
+  LogicalUnstructured(Context ctx, Runtime* runtime, PhysicalRegion pregion);
+  LogicalUnstructured(Context ctx, Runtime* runtime, LogicalRegion lregion);
   virtual ~LogicalUnstructured();
   template<typename TYPE>
   void addField(FieldID FID);
@@ -86,7 +83,7 @@ protected:
   LogicalPartition lpart;
   PhysicalRegion pregion;
   Context ctx;
-  HighLevelRuntime* runtime;
+  Runtime* runtime;
 };
 // class LogicalElement
 
