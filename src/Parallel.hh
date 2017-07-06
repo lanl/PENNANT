@@ -347,7 +347,7 @@ void base_gpu_wrapper(const Task* task,
 template<typename T>
 void register_cpu_variants(void) {
   Runtime::register_legion_task<base_cpu_wrapper<T>>(T::TASK_ID,
-    Processor::LOC_PROC, false /* single */, true /* index */, CPU_VARIANT,
+    Processor::LOC_PROC, false /* single */, true /* index */, AUTO_GENERATE_ID,
     TaskConfigOptions(T::CPU_BASE_LEAF), T::TASK_NAME);
 }
 }
