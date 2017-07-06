@@ -1,5 +1,5 @@
 /*
- * LogicalUnstruc.cc
+ * LogicalUnstructured.cc
  *
  *  Created on: Sep 8, 2016
  *      Author: jgraham

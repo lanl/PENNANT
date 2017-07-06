@@ -198,7 +198,7 @@ RunStat Driver::run() {
 
     cout << endl;
     cout << "************************************" << endl;
-    cout << "hydro cycle run time= " << setw(14) << runtime << endl;
+    cout << "hydro cycle run time= " << setw(14) << fixed << runtime << endl;
     cout << "************************************" << endl;
 
   }  // if mype_

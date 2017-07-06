@@ -85,6 +85,6 @@ protected:
   Context ctx;
   Runtime* runtime;
 };
-// class LogicalElement
+// class LogicalUnstructured
 
 #endif /* SRC_LOGICALUNSTRUCTURED_HH_ */

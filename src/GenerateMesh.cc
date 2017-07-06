@@ -239,24 +239,25 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
 
   // estimate sizes of slave/master arrays
   slaved_points.reserve(
-    (proc_index_y != 0) * num_points_x + (proc_index_x != 0) * num_points_y);
+    (proc_index_y > 0) * num_points_x + (proc_index_x > 0)
+        * num_points_y);
   master_points.reserve(
-    (proc_index_y != num_proc_y - 1) * num_points_x + (proc_index_x
-        != num_proc_x - 1)
-                                                      * num_points_y
+    (proc_index_y < num_proc_y - 1) * num_points_x + (
+        proc_index_x < num_proc_x - 1)
+                                                             * num_points_y
     + 1);
 
   // enumerate slave points
   // slave point with master at lower left
-  if (proc_index_x != 0 && proc_index_y != 0) {
-    int mstrpe = my_color - num_proc_x - 1;
+  if (proc_index_x > 0 && proc_index_y > 0) {
+    int master_proc = my_color - num_proc_x - 1;
     slaved_points.push_back(0);
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(1);
   }
   // slave points with master below
-  if (proc_index_y != 0) {
-    int mstrpe = my_color - num_proc_x;
+  if (proc_index_y > 0) {
+    int master_proc = my_color - num_proc_x;
     int oldsize = slaved_points.size();
     int p = 0;
     for (int i = 0; i < num_points_x; ++i) {
@@ -267,12 +268,12 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
       slaved_points.push_back(p);
       p++;
     }
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }
   // slave points with master to left
-  if (proc_index_x != 0) {
-    int mstrpe = my_color - 1;
+  if (proc_index_x > 0) {
+    int master_proc = my_color - 1;
     int oldsize = slaved_points.size();
     int p = 0;
     for (int j = 0; j < num_points_y; ++j) {
@@ -283,14 +284,14 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
       slaved_points.push_back(p);
       p += num_points_x;
     }
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }
 
   // enumerate master points
   // master points with slave to right
-  if (proc_index_x != num_proc_x - 1) {
-    int slvpe = my_color + 1;
+  if (proc_index_x < num_proc_x - 1) {
+    int slave_proc = my_color + 1;
     int oldsize = master_points.size();
     int p = num_points_x - 1;
     for (int j = 0; j < num_points_y; ++j) {
@@ -301,31 +302,31 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
       master_points.push_back(p);
       p += num_points_x;
     }
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
   }
   // master points with slave above
-  if (proc_index_y != num_proc_y - 1) {
-    int slvpe = my_color + num_proc_x;
+  if (proc_index_y < num_proc_y - 1) {
+    int slave_proc = my_color + num_proc_x;
     int oldsize = master_points.size();
     int p = (num_points_y - 1) * num_points_x;
     for (int i = 0; i < num_points_x; ++i) {
-      if (i == 0 && proc_index_x != 0) {
+      if (i == 0 && proc_index_x > 0) {
         p++;
         continue;
       }
       master_points.push_back(p);
       p++;
     }
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
   }
   // master point with slave at upper right
-  if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-    int slvpe = my_color + num_proc_x + 1;
+  if (proc_index_x < num_proc_x - 1 && proc_index_y < num_proc_y - 1) {
+    int slave_proc = my_color + num_proc_x + 1;
     int p = num_points_x * num_points_y - 1;
     master_points.push_back(p);
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(1);
   }
 }
@@ -353,14 +354,14 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
   // enumerate slave points
   // slave point with master at lower left
   if (proc_index_x != 0 && proc_index_y != 0) {
-    int mstrpe = my_color - num_proc_x - 1;
+    int master_proc = my_color - num_proc_x - 1;
     slaved_points.push_back(0);
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(1);
   }
   // slave points with master below
   if (proc_index_y != 0) {
-    int mstrpe = my_color - num_proc_x;
+    int master_proc = my_color - num_proc_x;
     int oldsize = slaved_points.size();
     int p = 0;
     for (int i = 0; i < num_points_x; ++i) {
@@ -371,12 +372,12 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
       slaved_points.push_back(p);
       p++;
     }
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }
   // slave points with master to left
   if (proc_index_x != 0) {
-    int mstrpe = my_color - 1;
+    int master_proc = my_color - 1;
     int oldsize = slaved_points.size();
     if (proc_index_y == 0) {
       slaved_points.push_back(0);
@@ -393,14 +394,14 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
       slaved_points.push_back(p);
       p += num_points_x;
     }
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }
 
   // enumerate master points
   // master points with slave to right
   if (proc_index_x != num_proc_x - 1) {
-    int slvpe = my_color + 1;
+    int slave_proc = my_color + 1;
     int oldsize = master_points.size();
     // special case:  origin as master for slave on PE 1
     if (proc_index_x == 0 && proc_index_y == 0) {
@@ -411,20 +412,20 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
       master_points.push_back(p);
       p += num_points_x;
     }
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
     // special case:  origin as master for slaves on PEs > 1
     if (proc_index_x == 0 && proc_index_y == 0) {
-      for (int slvpe = 2; slvpe < num_proc_x; ++slvpe) {
+      for (int slave_proc = 2; slave_proc < num_proc_x; ++slave_proc) {
         master_points.push_back(0);
-        slave_colors.push_back(slvpe);
+        slave_colors.push_back(slave_proc);
         master_points_counts.push_back(1);
       }
     }
   }
   // master points with slave above
   if (proc_index_y != num_proc_y - 1) {
-    int slvpe = my_color + num_proc_x;
+    int slave_proc = my_color + num_proc_x;
     int oldsize = master_points.size();
     int p = (num_points_y - 1) * num_points_x;
     if (proc_index_y == 0) p -= num_points_x - 1;
@@ -436,16 +437,16 @@ void GenerateMesh::generateHaloPointsPie(vector<int>& master_colors,
       master_points.push_back(p);
       p++;
     }
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
   }
   // master point with slave at upper right
   if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-    int slvpe = my_color + num_proc_x + 1;
+    int slave_proc = my_color + num_proc_x + 1;
     int p = num_points_x * num_points_y - 1;
     if (proc_index_y == 0) p -= num_points_x - 1;
     master_points.push_back(p);
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(1);
   }
 }
@@ -489,16 +490,16 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
   // enumerate slave points
   // slave points with master at lower left
   if (proc_index_x != 0 && proc_index_y != 0) {
-    int mstrpe = my_color - num_proc_x - 1;
+    int master_proc = my_color - num_proc_x - 1;
     slaved_points.push_back(0);
     slaved_points.push_back(1);
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(2);
   }
   // slave points with master below
   if (proc_index_y != 0) {
     int p = 0;
-    int mstrpe = my_color - num_proc_x;
+    int master_proc = my_color - num_proc_x;
     int oldsize = slaved_points.size();
     for (int i = 0; i < num_points_x; ++i) {
       if (i == 0 && proc_index_x != 0) {
@@ -512,12 +513,12 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
         slaved_points.push_back(p++);
       }
     }  // for i
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }  // if mypey != 0
   // slave points with master to left
   if (proc_index_x != 0) {
-    int mstrpe = my_color - 1;
+    int master_proc = my_color - 1;
     int oldsize = slaved_points.size();
     for (int j = 0; j < num_points_y; ++j) {
       if (j == 0 && proc_index_y != 0) continue;
@@ -529,14 +530,14 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
         slaved_points.push_back(p++);
       }
     }  // for j
-    master_colors.push_back(mstrpe);
+    master_colors.push_back(master_proc);
     slaved_points_counts.push_back(slaved_points.size() - oldsize);
   }  // if mypex != 0
 
   // enumerate master points
   // master points with slave to right
   if (proc_index_x != num_proc_x - 1) {
-    int slvpe = my_color + 1;
+    int slave_proc = my_color + 1;
     int oldsize = master_points.size();
     for (int j = 0; j < num_points_y; ++j) {
       if (j == 0 && proc_index_y != 0) continue;
@@ -548,13 +549,13 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
         master_points.push_back(p - 1);
       }
     }
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
   }  // if mypex != numpex - 1
   // master points with slave above
   if (proc_index_y != num_proc_y - 1) {
     int p = pbase[nzones_y];
-    int slvpe = my_color + num_proc_x;
+    int slave_proc = my_color + num_proc_x;
     int oldsize = master_points.size();
     for (int i = 0; i < num_points_x; ++i) {
       if (i == 0 && proc_index_x != 0) {
@@ -568,33 +569,32 @@ void GenerateMesh::generateHaloPointsHex(vector<int>& master_colors,
         master_points.push_back(p++);
       }
     }  // for i
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(master_points.size() - oldsize);
   }  // if mypey != numpey - 1
   // master points with slave at upper right
   if (proc_index_x != num_proc_x - 1 && proc_index_y != num_proc_y - 1) {
-    int slvpe = my_color + num_proc_x + 1;
+    int slave_proc = my_color + num_proc_x + 1;
     master_points.push_back(np - 2);
     master_points.push_back(np - 1);
-    slave_colors.push_back(slvpe);
+    slave_colors.push_back(slave_proc);
     master_points_counts.push_back(2);
   }
 }
 
 void GenerateMesh::calcPartitions() {
 
-  // pick numpex, numpey such that PE blocks are as close to square
-  // as possible
-  // we would like:  gnzx / numpex == gnzy / numpey,
-  // where numpex * numpey = numpe (total number of PEs available)
-  // this solves to:  numpex = sqrt(numpe * gnzx / gnzy)
-  // we compute this, assuming gnzx <= gnzy (swap if necessary)
+  // Pick num_proc_x, num_proc_y such that local subregions are close to square
+  // i.e. global_nzones_x / num_proc_x == global_nzones_y / num_proc_y,
+  // where num_proc_x * num_proc_y = num_subregions (total number of PEs available)
+  // this solves to:  num_proc_x = sqrt(num_subregions * global_nzones_x / global_nzones_y)
+  // we compute this, assuming global_nzones_x <= global_nzones_y (swap if necessary)
   double nx = static_cast<double>(global_nzones_x);
   double ny = static_cast<double>(global_nzones_y);
   bool swapflag = (nx > ny);
   if (swapflag) swap(nx, ny);
   double n = sqrt(num_subregions * nx / ny);
-  // need to constrain n to be an integer with numpe % n == 0
+  // need to constrain n to be an integer with num_subregions % n == 0
   // try rounding n both up and down
   int n1 = floor(n + 1.e-12);
   n1 = max(n1, 1);
@@ -607,7 +607,7 @@ void GenerateMesh::calcPartitions() {
   // i.e. gives the shortest long side
   double longside1 = max(nx / n1, ny / (num_subregions / n1));
   double longside2 = max(nx / n2, ny / (num_subregions / n2));
-  num_proc_x = 1;  //(longside1 <= longside2 ? n1 : n2);
+  num_proc_x = (longside1 <= longside2 ? n1 : n2);
   num_proc_y = num_subregions / num_proc_x;
   if (swapflag) swap(num_proc_x, num_proc_y);
 }
@@ -617,6 +617,8 @@ void GenerateMesh::calcLocalConstants(int color) {
   proc_index_x = my_color % num_proc_x;
   proc_index_y = my_color / num_proc_x;
 
+  // FIXME: This logic only works if the number of processors evenly divides
+  // the global number of zones.
   zone_x_offset = proc_index_x * global_nzones_x / num_proc_x;
   const int zxstop = (proc_index_x + 1) * global_nzones_x / num_proc_x;
   nzones_x = zxstop - zone_x_offset;
