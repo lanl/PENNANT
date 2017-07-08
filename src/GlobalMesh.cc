@@ -27,6 +27,7 @@ GlobalMesh::~GlobalMesh() {
 
 void GlobalMesh::init() {
   GenerateGlobalMesh generate_mesh(inputParams);
+  std::cout << "GlobalMesh::init" << std::endl;
 
   zones.addField<double>(FID_ZR);
   zones.addField<double>(FID_ZP);
@@ -38,6 +39,7 @@ void GlobalMesh::init() {
   Coloring zones_map;
   Coloring local_pts_map;
   generate_mesh.colorPartitions(&zones_map, &local_pts_map);
+  // compact
   zones.partition(zones_map, true);
   points.partition(local_pts_map, false);
 
@@ -61,3 +63,4 @@ void GlobalMesh::init() {
     halos_points[color].allocate();
   }
 }
+
