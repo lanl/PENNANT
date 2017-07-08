@@ -108,15 +108,17 @@ void Parallel::run(InputParameters input_params, Context ctx,
 
   //RunStat run_stat = fm.get_result<RunStat>(0);
 
-  SPMDArgs arg;
-  SPMDArgsSerializer serial;
-  arg.probname = input_params.probname;
-  arg.direct_input_params = input_params.directs;
-  serial.archive(&arg);
+  if (input_params.directs.write_xy_file || input_params.directs.write_gold_file) {
+    SPMDArgs arg;
+    SPMDArgsSerializer serial;
+    arg.probname = input_params.probname;
+    arg.direct_input_params = input_params.directs;
+    serial.archive(&arg);
 
-  WriteTask write_launcher(global_mesh.zones.getLRegion(),
-    serial.getBitStream(), serial.getBitStreamSize());
-  runtime->execute_task(ctx, write_launcher);
+    WriteTask write_launcher(global_mesh.zones.getLRegion(),
+      serial.getBitStream(), serial.getBitStreamSize());
+    runtime->execute_task(ctx, write_launcher);
+  }
 }
 
 Future Parallel::globalSum(double local_value, DynamicCollective& dc_reduction,
@@ -495,4 +497,3 @@ size_t ArgsSerializer::getBitStreamSize() {
 void ArgsSerializer::setBitStream(void* stream) {
   bit_stream = stream;
 }
-;
