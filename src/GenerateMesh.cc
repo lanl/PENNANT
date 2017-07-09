@@ -17,6 +17,10 @@
 
 using namespace std;
 
+#ifndef NPX
+#define NPX (longside1 <= longside2 ? n1 : n2)
+#endif
+
 GenerateMesh::GenerateMesh(const InputParameters& input_params) :
       meshtype(input_params.meshtype),
       global_nzones_x(input_params.directs.nzones_x),
@@ -607,7 +611,7 @@ void GenerateMesh::calcPartitions() {
   // i.e. gives the shortest long side
   double longside1 = max(nx / n1, ny / (num_subregions / n1));
   double longside2 = max(nx / n2, ny / (num_subregions / n2));
-  num_proc_x = (longside1 <= longside2 ? n1 : n2);
+  num_proc_x = NPX;
   num_proc_y = num_subregions / num_proc_x;
   if (swapflag) swap(num_proc_x, num_proc_y);
 }
