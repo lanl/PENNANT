@@ -298,7 +298,7 @@ namespace TaskHelper {
   {
     HighLevelRuntime::register_legion_task<base_cpu_wrapper<T> >(T::TASK_ID, Processor::LOC_PROC,
                                                                  false/*single*/, true/*index*/,
-                                                                 CPU_VARIANT,
+                                                                 AUTO_GENERATE_ID,
                                                                  TaskConfigOptions(T::CPU_BASE_LEAF),
                                                                  T::TASK_NAME);
   }
