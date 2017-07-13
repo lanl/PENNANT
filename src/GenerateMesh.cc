@@ -72,7 +72,7 @@ void GenerateMesh::generateHaloPoints(vector<int>& master_colors,
     assert(meshtype != allowable_mesh_type);
 }
 
-static vector<int> snailPermutation(int num_pts_x, int num_pts_y,
+vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
     int num_blocks_x, int num_blocks_y) {
   int width_x = num_pts_x / num_blocks_x;
   int width_y = num_pts_y / num_blocks_y;
@@ -146,8 +146,6 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
   }
 
   // generate zone adjacency lists
-  vector<int> snail(
-    snailPermutation(num_points_x, num_points_y, num_proc_x, num_proc_y));
   zonestart.reserve(num_zones);
   zonesize.reserve(num_zones);
   zonepoints.reserve(4 * num_zones);
@@ -689,6 +687,14 @@ void GenerateMesh::calcLocalConstants(int color) {
   num_zones = nzones_x * nzones_y;
   num_points_x = nzones_x + 1;
   num_points_y = nzones_y + 1;
+
+  // Initialize global and local snail permutations
+  global_snail = snailPermutation(global_nzones_x + 1, global_nzones_y + 1,
+    num_proc_x, num_proc_y);
+  snail = snailPermutation(num_points_x, num_points_y, 1, 1);
+  desnail = snail;
+  for (int i = 0; i < snail.size(); i++)
+    desnail[snail[i]] = i;
 }
 
 long long int GenerateMesh::pointLocalToGlobalID(int p) const {
@@ -721,12 +727,14 @@ long long int GenerateMesh::pointLocalToGlobalIDPie(int p) const {
   return globalID;
 }
 
-long long int GenerateMesh::pointLocalToGlobalIDRect(int p) const {
+long long int GenerateMesh::pointLocalToGlobalIDRect(int s) const {
+// !!! Need to de-snail the point here
+  int p = desnail[s];
   const int py = p / num_points_x;
   const int px = p - py * num_points_x;
-
-  long long int globalID = (global_nzones_x + 1) * (py + zone_y_offset) + px
-                           + zone_x_offset;
+// !!! Need to re-snail the point here
+  long long int globalID = global_snail[(global_nzones_x + 1)
+      * (py + zone_y_offset) + px + zone_x_offset];
   return globalID;
 }
 
