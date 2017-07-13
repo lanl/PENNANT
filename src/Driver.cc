@@ -39,6 +39,7 @@ DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
   for (int i = 0; i < halo_pts.size(); ++i) {
     add_region_requirement(
       RegionRequirement(halo_pts[i], READ_WRITE, SIMULTANEOUS, halo_pts[i]));
+    // Don't reserve physical regions for slaved halo points
     if (i != 0) region_requirements[1 + i].add_flags(NO_ACCESS_FLAG);
     add_field(1 + i, FID_GHOST_PF);
     add_field(1 + i, FID_GHOST_PMASWT);
