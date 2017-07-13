@@ -152,11 +152,13 @@ void GenerateGlobalMesh::colorPartitionsRect(Coloring* zone_map,
     const int zone_y_stop = yStart(proc_index_y + 1);
     for (int proc_index_x = 0; proc_index_x < num_proc_x; proc_index_x++) {
       const int color = proc_index_y * num_proc_x + proc_index_x;
+      std::cout << "Color " << color << " ====" << std::endl;
       const int zone_x_start = xStart(proc_index_x);
       const int zone_x_stop = xStart(proc_index_x + 1);
       for (int j = zone_y_start; j <= zone_y_stop; j++) {
         for (int i = zone_x_start; i <= zone_x_stop; i++) {
           int pt = j * (global_nzones_x + 1) + i;
+          std::cout << "{" << i << ", " << j << "} = " << pt << " --> " << global_snail.at(pt) << std::endl;
           (*local_pt_map)[color].points.insert(global_snail.at(pt)); // !!! This needs a snail permutation !!!
         }
       }

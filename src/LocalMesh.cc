@@ -16,6 +16,9 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <string>
 #include <algorithm>
 
 #include "AddReductionOp.hh"
@@ -105,11 +108,11 @@ void LocalMesh::init() {
   int* map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
   int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
 
-  // use the cell* arrays to populate the side maps
+  // populate the side maps
   initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc,
     map_side2zone, map_side2pt1, map_side2pt2);
 
-  // release memory from cell* arrays
+  // release memory
   zone_points_pointer_calc.resize(0);
   zone_points_values_calc.resize(0);
 
@@ -178,6 +181,7 @@ void LocalMesh::init() {
 }
 
 void LocalMesh::allocateFields() {
+  std::cout << "LocalMesh::allocateFields" << std::endl;
   zone_pts.addField<int>(FID_ZONE_PTS_PTR);
   zones.addField<double2>(FID_ZX);
   zones.addField<double>(FID_ZAREA);
@@ -228,7 +232,7 @@ void LocalMesh::initSideMappingArrays(const vector<int>& cellstart,
 void LocalMesh::initEdgeMappingArrays(const int*__restrict__ map_side2zone,
     const int*__restrict__ zone_pts_ptr, const int*__restrict__ map_side2pt1,
     const int*__restrict__ map_side2pt2, int*__restrict__ map_side2edge) {
-  vector<vector<int> > edgepp(num_pts), edgepe(num_pts);
+  vector<vector<int>> edgepp(num_pts), edgepe(num_pts);
 
   int e = 0;
   for (int s = 0; s < num_sides; ++s) {
@@ -640,6 +644,29 @@ void LocalMesh::initParallel(const ptr_t* pt_local2global) {
   master_points.resize(0);
 }
 
+static void double_dump(LogicalUnstructured& LU, PointFields FID, std::string basename, int my_color) {
+  std::ofstream ofs((basename + "-" + std::to_string(my_color) + ".dump").c_str());
+  LU.getPRegion(READ_ONLY);
+  if (LU.getRawPRegion().is_mapped()) {
+    DoubleAccessor pm_acc = LU.getRawPRegion().get_field_accessor(FID).typeify<double>();
+    IndexIterator p_iter = LU.getIterator();
+    while (p_iter.has_next()) {
+      ptr_t p_ptr = p_iter.next();
+      ofs << std::setw(5) << p_ptr.value << std::setw(18) << pm_acc.read(p_ptr) << std::endl;
+    }
+  } else { std::cout << basename + std::to_string(my_color) << " no exist?" << std::endl; }
+}
+
+static void index_dump(LogicalUnstructured& LU, int color, std::string basename, int my_color) {
+  std::ofstream ofs((basename + "-index" + std::to_string(color) + "-" + std::to_string(my_color) + ".dump").c_str());
+  IndexIterator p_iter = (color < 0 ? LU.getIterator() : LU.getSubspaceIterator(color));
+  while (p_iter.has_next()) {
+    ptr_t p_ptr = p_iter.next();
+    ofs << std::setw(5) << p_ptr.value << std::endl;
+  }
+}
+
+
 void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     DoCycleTasksArgsSerializer& serial) {
   HaloTask halo_launcher(sides.getLRegion(), points.getLRegion(),
@@ -684,9 +711,11 @@ void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     pbarrier_as_master.arrive(2);                               // 3 * cycle + 2
     pbarrier_as_master = runtime->advance_phase_barrier(ctx,
       pbarrier_as_master);        // 3 * cycle + 2
+//    index_dump(local_points_by_gid, 0, "LPG", my_color);
   }
 
   for (int master = 0; master < master_colors.size(); master++) {
+//    index_dump(local_points_by_gid, master + 1, "LPG", my_color);
     // phase 2 as slave: slaves reduce; no one can read data
     masters_pbarriers[master] = runtime->advance_phase_barrier(ctx,
       masters_pbarriers[master]);  // 3 * cycle + 1
@@ -784,5 +813,6 @@ void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     masters_pbarriers[master] = runtime->advance_phase_barrier(ctx,
       masters_pbarriers[master]);  // 3 * cycle + 3
   }
+//  double_dump(local_points_by_gid, FID_PMASWT, "LPG", my_color);
 }
 
