@@ -83,9 +83,9 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
   vector<int> grid(num_pts_x * num_pts_y);
 
   // Initialize the grid to the negative block number
-  for (int x = 0; x < num_pts_x; x++) {
-    for (int y = 0; y < num_pts_y; y++) {
-      grid[x * num_pts_y + y] = -(max((y - 1) / width_y, 0) * num_blocks_x
+  for (int y = 0; y < num_pts_y; y++) {
+    for (int x = 0; x < num_pts_x; x++) {
+      grid[y * num_pts_x + x] = -(max((y - 1) / width_y, 0) * num_blocks_x
           + max((x - 1) / width_x, 0) + 1);
     }
   }
@@ -97,7 +97,7 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
   int dir_list_y[4] = { 0, 1, 0, -1 };
 
   for (int iter = 0, block = 0; iter < num_pts_x * num_pts_y; iter++) {
-    grid[loc_x * num_pts_y + loc_y] = iter;
+    grid[loc_y * num_pts_x + loc_x] = iter;
     int dir_iter = 0;  // how many directions have we tried?
     // Check the next location
     // Is it inside the grid?
@@ -107,7 +107,7 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
         || loc_x + dir_list_x[dir] >= num_pts_x
         || loc_y + dir_list_y[dir] < 0
         || loc_y + dir_list_y[dir] >= num_pts_y
-        || grid[(loc_x + dir_list_x[dir]) * num_pts_y + loc_y + dir_list_y[dir]] != -block
+        || grid[(loc_y + dir_list_y[dir]) * num_pts_x + loc_x + dir_list_x[dir]] != -block
             - 1)
            && dir_iter < 4) {
       dir_iter++;
@@ -691,6 +691,9 @@ void GenerateMesh::calcLocalConstants(int color) {
   // Initialize global and local snail permutations
   global_snail = snailPermutation(global_nzones_x + 1, global_nzones_y + 1,
     num_proc_x, num_proc_y);
+  global_desnail.reserve(global_snail.size());
+  for (int i = 0; i < global_snail.size(); i++)
+    global_desnail[global_snail[i]] = i;
   snail = snailPermutation(num_points_x, num_points_y, 1, 1);
   desnail.reserve(snail.size());
   for (int i = 0; i < snail.size(); i++)
