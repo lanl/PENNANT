@@ -52,7 +52,7 @@ public:
     return runtime->get_logical_subregion_by_color(ctx, lpart, color);
   }
   void unMapPRegion();
-  PhysicalRegion getPRegion();
+  PhysicalRegion getPRegion(legion_privilege_mode_t priv = READ_WRITE);
   PhysicalRegion getRawPRegion() {
     return pregion;
   }

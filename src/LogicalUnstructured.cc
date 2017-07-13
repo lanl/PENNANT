@@ -172,10 +172,10 @@ void LogicalUnstructured::unMapPRegion() {
   if (pregion.is_mapped()) runtime->unmap_region(ctx, pregion);
 }
 
-PhysicalRegion LogicalUnstructured::getPRegion() {
+PhysicalRegion LogicalUnstructured::getPRegion(legion_privilege_mode_t priv) {
   assert(lregionID != nullptr);
   if (!pregion.is_mapped()) {
-    RegionRequirement req(lregion, WRITE_DISCARD, EXCLUSIVE, lregion);
+    RegionRequirement req(lregion, priv, EXCLUSIVE, lregion);
     for (int i = 0; i < fIDs.size(); i++)
       req.add_field(fIDs[i]);
     InlineLauncher launcher(req);
