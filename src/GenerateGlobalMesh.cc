@@ -157,7 +157,7 @@ void GenerateGlobalMesh::colorPartitionsRect(Coloring* zone_map,
       for (int j = zone_y_start; j <= zone_y_stop; j++) {
         for (int i = zone_x_start; i <= zone_x_stop; i++) {
           int pt = j * (global_nzones_x + 1) + i;
-          (*local_pt_map)[color].points.insert(snail.at(pt)); // !!! This needs a snail permutation !!!
+          (*local_pt_map)[color].points.insert(global_snail.at(pt)); // !!! This needs a snail permutation !!!
         }
       }
     }
