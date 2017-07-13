@@ -46,7 +46,7 @@ protected:
                                           // global, in x and y directions
   // snail permutations for the local and global point grids
   std::vector<int> snail, desnail;
-  std::vector<int> global_snail;
+  std::vector<int> global_snail, global_desnail;
   // local grid info
   int num_zones;
   int num_points_x;
