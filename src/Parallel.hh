@@ -89,6 +89,7 @@ enum EdgeFields {
 // Point: the points defining the edges of the zones
 // Each edge or side has 2 points; each corner has 1; each zone has 4 or 6
 // Ghost point: a point belonging to a local zone but not owned locally
+// Note that points are the only structures shared between nodes
 enum PointFields {
   FID_PF,            // point force
   FID_PMASWT,        // point weighted mass (sum over point's corners)
