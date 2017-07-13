@@ -72,6 +72,61 @@ void GenerateMesh::generateHaloPoints(vector<int>& master_colors,
     assert(meshtype != allowable_mesh_type);
 }
 
+static vector<int> snailPermutation(int num_pts_x, int num_pts_y,
+    int num_blocks_x, int num_blocks_y) {
+  int width_x = num_pts_x / num_blocks_x;
+  int width_y = num_pts_y / num_blocks_y;
+
+  assert(width_x * num_blocks_x + 1 == num_pts_x || num_blocks_x == 1);
+  assert(width_y * num_blocks_y + 1 == num_pts_y || num_blocks_y == 1);
+
+  vector<int> grid(num_pts_x * num_pts_y);
+
+  // Initialize the grid to the negative block number
+  for (int x = 0; x < num_pts_x; x++) {
+    for (int y = 0; y < num_pts_y; y++) {
+      grid[x * num_pts_y + y] = -(max((y - 1) / width_y, 0) * num_blocks_x
+          + max((x - 1) / width_x, 0) + 1);
+    }
+  }
+
+  // Spiral around inside each block, replacing each value with a counter
+  int loc_x = 0, loc_y = 0;  // location on grid
+  int dir = 0;  // index into direction vectors
+  int dir_list_x[4] = { 1, 0, -1, 0 };
+  int dir_list_y[4] = { 0, 1, 0, -1 };
+
+  for (int iter = 0, block = 0; iter < num_pts_x * num_pts_y; iter++) {
+    grid[loc_x * num_pts_y + loc_y] = iter;
+    int dir_iter = 0;  // how many directions have we tried?
+    // Check the next location
+    // Is it inside the grid?
+    // Is it inside the current block?
+    // Have we tried all the directions?
+    while ((loc_x + dir_list_x[dir] < 0
+        || loc_x + dir_list_x[dir] >= num_pts_x
+        || loc_y + dir_list_y[dir] < 0
+        || loc_y + dir_list_y[dir] >= num_pts_y
+        || grid[(loc_x + dir_list_x[dir]) * num_pts_y + loc_y + dir_list_y[dir]] != -block
+            - 1)
+           && dir_iter < 4) {
+      dir_iter++;
+      dir = (dir + 1) % 4;
+    }
+    if (dir_iter < 3) {  // normal continuation: spiral within block
+      loc_x += dir_list_x[dir];
+      loc_y += dir_list_y[dir];
+    } else {  // jump to next block
+      block++;
+      dir = 0;
+      loc_x = (block % num_blocks_x) * width_x + ((block % num_blocks_x) > 0);
+      loc_y = (block / num_blocks_x) * width_y + ((block / num_blocks_x) > 0);
+    }
+  }
+
+  return grid;
+}
+
 void GenerateMesh::generateRect(vector<double2>& pointpos,
     vector<int>& zonestart, vector<int>& zonesize,
     vector<int>& zonepoints) const {
@@ -91,6 +146,8 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
   }
 
   // generate zone adjacency lists
+  vector<int> snail(
+    snailPermutation(num_points_x, num_points_y, num_proc_x, num_proc_y));
   zonestart.reserve(num_zones);
   zonesize.reserve(num_zones);
   zonepoints.reserve(4 * num_zones);
@@ -99,10 +156,10 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
       zonestart.push_back(zonepoints.size());
       zonesize.push_back(4);
       int p0 = j * num_points_x + i;
-      zonepoints.push_back(p0);
-      zonepoints.push_back(p0 + 1);
-      zonepoints.push_back(p0 + num_points_x + 1);
-      zonepoints.push_back(p0 + num_points_x);
+      zonepoints.push_back(snail[p0]);
+      zonepoints.push_back(snail[p0 + 1]);
+      zonepoints.push_back(snail[p0 + num_points_x + 1]);
+      zonepoints.push_back(snail[p0 + num_points_x]);
     }
   }
 }
@@ -243,12 +300,11 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
 
   // estimate sizes of slave/master arrays
   slaved_points.reserve(
-    (proc_index_y > 0) * num_points_x + (proc_index_x > 0)
-        * num_points_y);
+    (proc_index_y > 0) * num_points_x + (proc_index_x > 0) * num_points_y);
   master_points.reserve(
-    (proc_index_y < num_proc_y - 1) * num_points_x + (
-        proc_index_x < num_proc_x - 1)
-                                                             * num_points_y
+    (proc_index_y < num_proc_y - 1) * num_points_x + (proc_index_x
+        < num_proc_x - 1)
+                                                     * num_points_y
     + 1);
 
   // enumerate slave points
