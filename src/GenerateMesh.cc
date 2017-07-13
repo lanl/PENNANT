@@ -124,6 +124,10 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
     }
   }
 
+#if NOSNAIL == 1
+  for (int iter = 0; iter < num_pts_x * num_pts_y; iter++) grid[iter] = iter;
+#endif
+
   return grid;
 }
 
