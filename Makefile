@@ -18,6 +18,7 @@ GASNET_ROOT ?= ${HOME}/public/install/GASNet-1.28.0-fPIC
 GASNET ?= $(GASNET_ROOT)
 CONDUIT ?= mpi
 USE_GASNET ?= 1
+NPX ?= 1
 
 ifndef LG_RT_DIR
 $(error LG_RT_DIR variable is not defined, aborting build)
@@ -40,11 +41,11 @@ GEN_GPU_SRC	?= 				# .cu files
 
 # You can modify these variables, some will be appended to by the runtime makefile
 INC_FLAGS	?=
-CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-variable -D__STDC_FORMAT_MACROS -DDISABLE_BARRIER_MIGRATION #-g #-pg
+CC_FLAGS	?= -std=c++11 -Wno-sign-compare -Wno-unknown-pragmas -Wno-unused-variable -D__STDC_FORMAT_MACROS -DDISABLE_BARRIER_MIGRATION -D NPX=$(NPX) #-pg
 NVCC_FLAGS	?=
 GASNET_FLAGS	?=
-LD_FLAGS	?= -L/usr/lib64 -lpmi #-g #-pg
-LEGION_LD_FLAGS	?= -L/usr/lib64 -lpmi #-g #-pg
+LD_FLAGS	?= -L/usr/lib64 -lpmi -g #-pg
+LEGION_LD_FLAGS	?= -L/usr/lib64 -lpmi -g #-pg
 
 ###########################################################################
 #
