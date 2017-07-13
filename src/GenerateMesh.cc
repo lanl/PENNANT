@@ -309,7 +309,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
   // slave point with master at lower left
   if (proc_index_x > 0 && proc_index_y > 0) {
     int master_proc = my_color - num_proc_x - 1;
-    slaved_points.push_back(0);
+    slaved_points.push_back(snail[0]);
     master_colors.push_back(master_proc);
     slaved_points_counts.push_back(1);
   }
@@ -323,7 +323,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p++;
         continue;
       }
-      slaved_points.push_back(p);
+      slaved_points.push_back(snail[p]);
       p++;
     }
     master_colors.push_back(master_proc);
@@ -339,7 +339,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p += num_points_x;
         continue;
       }
-      slaved_points.push_back(p);
+      slaved_points.push_back(snail[p]);
       p += num_points_x;
     }
     master_colors.push_back(master_proc);
@@ -357,7 +357,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p += num_points_x;
         continue;
       }
-      master_points.push_back(p);
+      master_points.push_back(snail[p]);
       p += num_points_x;
     }
     slave_colors.push_back(slave_proc);
@@ -373,7 +373,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p++;
         continue;
       }
-      master_points.push_back(p);
+      master_points.push_back(snail[p]);
       p++;
     }
     slave_colors.push_back(slave_proc);
@@ -383,7 +383,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
   if (proc_index_x < num_proc_x - 1 && proc_index_y < num_proc_y - 1) {
     int slave_proc = my_color + num_proc_x + 1;
     int p = num_points_x * num_points_y - 1;
-    master_points.push_back(p);
+    master_points.push_back(snail[p]);
     slave_colors.push_back(slave_proc);
     master_points_counts.push_back(1);
   }
@@ -692,7 +692,7 @@ void GenerateMesh::calcLocalConstants(int color) {
   global_snail = snailPermutation(global_nzones_x + 1, global_nzones_y + 1,
     num_proc_x, num_proc_y);
   snail = snailPermutation(num_points_x, num_points_y, 1, 1);
-  desnail = snail;
+  desnail.reserve(snail.size());
   for (int i = 0; i < snail.size(); i++)
     desnail[snail[i]] = i;
 }
