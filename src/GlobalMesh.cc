@@ -27,7 +27,6 @@ GlobalMesh::~GlobalMesh() {
 
 void GlobalMesh::init() {
   GenerateGlobalMesh generate_mesh(inputParams);
-  std::cout << "GlobalMesh::init" << std::endl;
 
   zones.addField<double>(FID_ZR);
   zones.addField<double>(FID_ZP);

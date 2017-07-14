@@ -48,6 +48,7 @@ void GenerateMesh::generate(vector<double2>& pointpos,
   else
     assert(meshtype != allowable_mesh_type);
 
+  // Add a terminal pointer to make later logic uniform for all zones
   zonepoints_ptr_CRS.push_back(zonepoints_ptr_CRS.back() + zonesize.back());
 }
 
@@ -124,7 +125,7 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
     }
   }
 
-#if NOSNAIL == 1
+#if 0
   for (int iter = 0; iter < num_pts_x * num_pts_y; iter++) grid[iter] = iter;
 #endif
 
@@ -138,16 +139,21 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
   const int np = num_points_x * num_points_y;
 
   // generate point coordinates
-  pointpos.reserve(np);
+  pointpos.resize(np);
   double dx = len_x / (double)global_nzones_x;
   double dy = len_y / (double)global_nzones_y;
   for (int j = 0; j < num_points_y; ++j) {
     double y = dy * (double)(j + zone_y_offset);
     for (int i = 0; i < num_points_x; ++i) {
       double x = dx * (double)(i + zone_x_offset);
-      pointpos.push_back(make_double2(x, y));
+      pointpos[snail[j * num_points_x + i]] = make_double2(x, y);
     }
   }
+#ifdef MESH_DEBUG
+  for (int i = 0; i < pointpos.size(); i++)
+    std::cout << "pt " << i << " is at (" << pointpos[i].x << ","
+              << pointpos[i].y << ")" << std::endl;
+#endif
 
   // generate zone adjacency lists
   zonestart.reserve(num_zones);
@@ -741,7 +747,8 @@ long long int GenerateMesh::pointLocalToGlobalIDRect(int s) const {
   const int px = p - py * num_points_x;
 // !!! Need to re-snail the point here
   long long int globalID = global_snail[(global_nzones_x + 1)
-      * (py + zone_y_offset) + px + zone_x_offset];
+      * (py + zone_y_offset)
+                                        + px + zone_x_offset];
   return globalID;
 }
 

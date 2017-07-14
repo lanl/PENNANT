@@ -92,7 +92,7 @@ Driver::Driver(const InputParameters& params, DynamicCollective add_reduct,
     DynamicCollective add_int64_reduct, DynamicCollective min_reduct,
     PhaseBarrier pbarrier_as_master,
     std::vector<PhaseBarrier> masters_pbarriers, const PhysicalRegion& zones,
-    IndexSpace pts, std::vector<LogicalUnstructured>& halos_points,
+    IndexSpace points, std::vector<LogicalUnstructured>& halos_points,
     std::vector<PhysicalRegion>& pregions_halos, Context ctx, Runtime* rt) :
       probname(params.probname),
       tstop(params.directs.tstop),
@@ -111,7 +111,7 @@ Driver::Driver(const InputParameters& params, DynamicCollective add_reduct,
       global_zones(ctx, runtime, zones)
 
 {
-  mesh = new LocalMesh(params, pts, halos_points, pregions_halos,
+  mesh = new LocalMesh(params, points, halos_points, pregions_halos,
     pbarrier_as_master, masters_pbarriers, add_int64_reduction, ctx, runtime);
   hydro = new Hydro(params, mesh, add_reduction, min_reduction, ctx, runtime);
 }

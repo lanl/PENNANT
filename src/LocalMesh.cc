@@ -81,73 +81,78 @@ void LocalMesh::init() {
   generate_mesh->generate(point_position_initial, zone_points_pointer_calc,
     zone_points_values_calc);
 
-  num_pts = point_position_initial.size();
-  num_sides = zone_points_values_calc.size();
-  num_corners = num_sides;
-  num_zones = zone_points_pointer_calc.size() - 1;
+  // GenerateMesh knows all this stuff, but we're not friends, so reverse
+  // engineer the sizes from these data structures.
+  num_pts = point_position_initial.size();  // every point has a position
+  num_zones = zone_points_pointer_calc.size() - 1;  // every zone plus the terminal pointer
+  num_corners = zone_points_values_calc.size();  // every zone's point is a corner
+  num_sides = num_corners;  // a polygon has equal numbers of sides and corners
 
   allocateFields();
-
   zone_pts.allocate(num_zones + 1);
+  zones.allocate(num_zones);
+  points.allocate(num_pts);
+  sides.allocate(num_sides);
+
+  //=======================================================================
+  // Complete the topological properties of the grid's maps
   int* zone_pts_ptr = zone_pts.getRawPtr<int>(FID_ZONE_PTS_PTR);
   copy(zone_points_pointer_calc.begin(), zone_points_pointer_calc.end(),
     zone_pts_ptr);
 
-  zones.allocate(num_zones);
-  double2* zone_x = zones.getRawPtr<double2>(FID_ZX);
-  double* zone_area = zones.getRawPtr<double>(FID_ZAREA);
-  double* zone_vol = zones.getRawPtr<double>(FID_ZVOL);
-
-  sides.allocate(num_sides);
-  double* side_area = sides.getRawPtr<double>(FID_SAREA);
-  double* side_vol = sides.getRawPtr<double>(FID_SVOL);
-  double* side_mass_frac = sides.getRawPtr<double>(FID_SMF);
+  int* map_side2zone = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
   int* map_side2pt1 = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT1);
   int* map_side2pt2 = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_PT2);
-  int* map_side2zone = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_ZONE);
-  int* map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
-  int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
-
-  // populate the side maps
   initSideMappingArrays(zone_points_pointer_calc, zone_points_values_calc,
     map_side2zone, map_side2pt1, map_side2pt2);
 
-  // release memory
-  zone_points_pointer_calc.resize(0);
-  zone_points_values_calc.resize(0);
-
+  int* map_side2edge = sides.getRawPtr<int>(FID_SMAP_SIDE_TO_EDGE);
   initEdgeMappingArrays(map_side2zone, zone_pts_ptr, map_side2pt1, map_side2pt2,
-    map_side2edge);
+    map_side2edge);  // sets num_edges
+  edges.allocate(num_edges);
 
   int* point_chunks_CRS = nullptr;
   int* side_chunks_CRS = nullptr;
   int* zone_chunks_CRS = nullptr;
-
   populateChunks(map_side2zone, &point_chunks_CRS, &side_chunks_CRS,
     &zone_chunks_CRS);
 
-  points.allocate(num_pts);
-  double2* pt_x = points.getRawPtr<double2>(FID_PX);
   int* map_pt2crn_first = points.getRawPtr<int>(FID_MAP_PT2CRN_FIRST);
+  int* map_crn2crn_next = sides.getRawPtr<int>(FID_MAP_CRN2CRN_NEXT);
+  populateInverseMap(map_side2pt1, map_pt2crn_first, map_crn2crn_next);
+
   ptr_t* point_local_to_globalID = points.getRawPtr<ptr_t>(FID_PT_LOCAL2GLOBAL);
-
-  populateInverseMap(map_side2pt1, map_pt2crn_first, map_crn2crn_next);  // for corner-to-point gathers
-
-  edges.allocate(num_edges);
-  double2* edge_x = edges.getRawPtr<double2>(FID_EX);
-
-  IndexIterator itr = pt_x_init_by_gid.getIterator();
-  int i = 0;
-  while (itr.has_next()) {
-    ptr_t pt_ptr = itr.next();
-    point_local_to_globalID[i] = pt_ptr;
-    i++;
+  for (int i = 0; i < num_pts; i++) {
+    point_local_to_globalID[i] = ptr_t(generate_mesh->pointLocalToGlobalID(i));
   }
-  assert(i == num_pts);
+//  IndexIterator itr = pt_x_init_by_gid.getIterator();
+//  int i = 0;
+//  while (itr.has_next()) {
+//    ptr_t pt_ptr = itr.next();
+//    point_local_to_globalID[i] = pt_ptr;
+//    std::cout << "Local(" << my_color << ") " << i << " = Global " << pt_ptr.value << std::endl;
+//    i++;
+//  }
+//  assert(i == num_pts);
 
   initParallel(point_local_to_globalID);
 
   writeMeshStats();
+
+  //=======================================================================
+  // Complete the coordinate properties of the grid
+
+  double2* zone_x = zones.getRawPtr<double2>(FID_ZX);
+  double* zone_area = zones.getRawPtr<double>(FID_ZAREA);
+  double* zone_vol = zones.getRawPtr<double>(FID_ZVOL);
+
+  double2* pt_x = points.getRawPtr<double2>(FID_PX);
+
+  double* side_area = sides.getRawPtr<double>(FID_SAREA);
+  double* side_vol = sides.getRawPtr<double>(FID_SVOL);
+  double* side_mass_frac = sides.getRawPtr<double>(FID_SMF);
+
+  double2* edge_x = edges.getRawPtr<double2>(FID_EX);
 
 #pragma omp parallel for schedule(static)
   for (int pch = 0; pch < num_pt_chunks; ++pch) {
@@ -181,8 +186,8 @@ void LocalMesh::init() {
 }
 
 void LocalMesh::allocateFields() {
-  std::cout << "LocalMesh::allocateFields" << std::endl;
   zone_pts.addField<int>(FID_ZONE_PTS_PTR);
+
   zones.addField<double2>(FID_ZX);
   zones.addField<double>(FID_ZAREA);
   zones.addField<double>(FID_ZVOL);
@@ -191,14 +196,17 @@ void LocalMesh::allocateFields() {
   zones.addField<double2>(FID_Z_DBL2_TEMP);
   zones.addField<double>(FID_Z_DBL_TEMP1);
   zones.addField<double>(FID_Z_DBL_TEMP2);
+
   edges.addField<double2>(FID_EX);
   edges.addField<double2>(FID_E_DBL2_TEMP);
   edges.addField<double>(FID_E_DBL_TEMP);
+
   points.addField<double2>(FID_PX0);
   points.addField<double2>(FID_PX);
   points.addField<double2>(FID_PXP);
   points.addField<int>(FID_MAP_PT2CRN_FIRST);
   points.addField<ptr_t>(FID_PT_LOCAL2GLOBAL);
+
   sides.addField<int>(FID_MAP_CRN2CRN_NEXT);
   sides.addField<double>(FID_SAREA);
   sides.addField<double>(FID_SVOL);
@@ -207,24 +215,33 @@ void LocalMesh::allocateFields() {
   sides.addField<int>(FID_SMAP_SIDE_TO_PT2);
   sides.addField<int>(FID_SMAP_SIDE_TO_ZONE);
   sides.addField<int>(FID_SMAP_SIDE_TO_EDGE);
+
   zone_chunks.addField<int>(FID_ZONE_CHUNKS_CRS);
+
   side_chunks.addField<int>(FID_SIDE_CHUNKS_CRS);
+
   point_chunks.addField<int>(FID_POINT_CHUNKS_CRS);
 }
 
-void LocalMesh::initSideMappingArrays(const vector<int>& cellstart,
-    const vector<int>& cellnodes, int* map_side2zone, int* map_side2pt1,
+void LocalMesh::initSideMappingArrays(const vector<int>& zone_pts_ptr,
+    const vector<int>& zonepoints, int* map_side2zone, int* map_side2pt1,
     int* map_side2pt2) {
   for (int z = 0; z < num_zones; ++z) {
-    int sbase = cellstart[z];
-    int size = cellstart[z + 1] - sbase;
+#ifdef MESH_DEBUG
+    std::cout << "Zone " << z << " ---" << std::endl;
+#endif
+    int sbase = zone_pts_ptr[z];
+    int size = zone_pts_ptr[z + 1] - sbase;
     for (int n = 0; n < size; ++n) {
       int s = sbase + n;
       const int slast = sbase + size;
       const int snext = (s + 1 == slast ? sbase : s + 1);
       map_side2zone[s] = z;
-      map_side2pt1[s] = cellnodes[s];
-      map_side2pt2[s] = cellnodes[snext];
+      map_side2pt1[s] = zonepoints[s];
+      map_side2pt2[s] = zonepoints[snext];
+#ifdef MESH_DEBUG
+      std::cout << "  Side " << s << " from pt " << zonepoints[s] << " to pt " << zonepoints[snext] << std::endl;
+#endif
     }  // for n
   }  // for z
 }
@@ -313,9 +330,10 @@ void LocalMesh::populateChunks(const int*__restrict__ map_side2zone,
 
 void LocalMesh::populateInverseMap(const int*__restrict__ map_side2pt1,
     int*__restrict__ map_pt2crn_first, int*__restrict__ map_crn2crn_next) {
-  vector<pair<int, int> > pcpair(num_sides);
-  for (int c = 0; c < num_corners; ++c)
+  vector<pair<int, int>> pcpair(num_sides);
+  for (int c = 0; c < num_corners; ++c) {
     pcpair[c] = make_pair(map_side2pt1[c], c);
+  }
   sort(pcpair.begin(), pcpair.end());
   for (int i = 0; i < num_corners; ++i) {
     int p = pcpair[i].first;
@@ -325,10 +343,11 @@ void LocalMesh::populateInverseMap(const int*__restrict__ map_side2pt1,
     int cp = pcpair[i + 1].second;
 
     if (i == 0 || p != pm) map_pt2crn_first[p] = c;
-    if (i + 1 == num_corners || p != pp)
+    if (i + 1 == num_corners || p != pp) {
       map_crn2crn_next[c] = -1;
-    else
+    } else {
       map_crn2crn_next[c] = cp;
+    }
   }
 }
 
@@ -644,28 +663,38 @@ void LocalMesh::initParallel(const ptr_t* pt_local2global) {
   master_points.resize(0);
 }
 
-static void double_dump(LogicalUnstructured& LU, PointFields FID, std::string basename, int my_color) {
-  std::ofstream ofs((basename + "-" + std::to_string(my_color) + ".dump").c_str());
+static void double_dump(LogicalUnstructured& LU, PointFields FID,
+    std::string basename, int my_color) {
+  std::ofstream ofs(
+    (basename + "-" + std::to_string(my_color) + ".dump").c_str());
   LU.getPRegion(READ_ONLY);
   if (LU.getRawPRegion().is_mapped()) {
-    DoubleAccessor pm_acc = LU.getRawPRegion().get_field_accessor(FID).typeify<double>();
+    DoubleAccessor pm_acc = LU.getRawPRegion().get_field_accessor(FID)
+        .typeify<double>();
     IndexIterator p_iter = LU.getIterator();
     while (p_iter.has_next()) {
       ptr_t p_ptr = p_iter.next();
-      ofs << std::setw(5) << p_ptr.value << std::setw(18) << pm_acc.read(p_ptr) << std::endl;
+      ofs << std::setw(5) << p_ptr.value << std::setw(18) << pm_acc.read(p_ptr)
+          << std::endl;
     }
-  } else { std::cout << basename + std::to_string(my_color) << " no exist?" << std::endl; }
+  } else {
+    std::cout << basename + std::to_string(my_color) << " no exist?"
+              << std::endl;
+  }
 }
 
-static void index_dump(LogicalUnstructured& LU, int color, std::string basename, int my_color) {
-  std::ofstream ofs((basename + "-index" + std::to_string(color) + "-" + std::to_string(my_color) + ".dump").c_str());
-  IndexIterator p_iter = (color < 0 ? LU.getIterator() : LU.getSubspaceIterator(color));
+static void index_dump(LogicalUnstructured& LU, int color, std::string basename,
+    int my_color) {
+  std::ofstream ofs(
+    (basename + "-index" + std::to_string(color) + "-"
+     + std::to_string(my_color) + ".dump").c_str());
+  IndexIterator p_iter = (
+      color < 0 ? LU.getIterator() : LU.getSubspaceIterator(color));
   while (p_iter.has_next()) {
     ptr_t p_ptr = p_iter.next();
     ofs << std::setw(5) << p_ptr.value << std::endl;
   }
 }
-
 
 void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     DoCycleTasksArgsSerializer& serial) {

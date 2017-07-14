@@ -106,10 +106,11 @@ enum PointFields {
 };
 
 enum ZonePtsCRSFields {
-  FID_ZONE_PTS_PTR,      //
-  FID_ZONE_CHUNKS_CRS,   //
-  FID_SIDE_CHUNKS_CRS,   //
-  FID_POINT_CHUNKS_CRS,  //
+  FID_ZONE_PTS_PTR,      // vector of offsets into point space that maps from zone index
+                         // to the start of an array of 4 or 6 point indices
+  FID_ZONE_CHUNKS_CRS,   // vector of offsets into zone space separated by chunk size
+  FID_SIDE_CHUNKS_CRS,   // vector of offsets into side space separated by chunk size
+  FID_POINT_CHUNKS_CRS,  // vector of offsets into point space separated by chunk size
   FID_BCX_CHUNKS_CRS,    //
   FID_BCY_CHUNKS_CRS,    //
 };
