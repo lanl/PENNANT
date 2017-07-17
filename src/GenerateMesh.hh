@@ -46,9 +46,9 @@ protected:
                                           // directions
   int zone_x_offset, zone_y_offset;       // offsets of local zone array into
                                           // global, in x and y directions
-  // snail permutations for the local and global point grids
-  std::vector<int> snail, desnail;
-  std::vector<int> global_snail, global_desnail;
+  // index permutations for the local and global point grids
+  std::vector<int> perm, deperm;
+  std::vector<int> global_perm, global_deperm;
   // local grid info
   int num_zones;
   int num_points_x;
@@ -105,6 +105,8 @@ protected:
 
   std::vector<int> snailPermutation(int num_pts_x, int num_pts_y,
       int num_blocks_x, int num_blocks_y);
+  std::vector<int> muPermutation(int num_pts_x, int num_pts_y, int num_blocks_x,
+      int num_blocks_y);
 
 };
 // class GenerateMesh

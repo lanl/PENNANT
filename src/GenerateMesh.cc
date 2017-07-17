@@ -132,6 +132,66 @@ vector<int> GenerateMesh::snailPermutation(int num_pts_x, int num_pts_y,
   return grid;
 }
 
+vector<int> GenerateMesh::muPermutation(int num_pts_x, int num_pts_y,
+    int num_blocks_x, int num_blocks_y) {
+  // The mu (eye-radical) permutation fills the edges of the polygon in the
+  // same direction (e.g. left and right from top to bottom), then fills in the
+  // middle with same-direction stripes
+  int width_x = (num_pts_x - 1) / num_blocks_x;
+  int width_y = (num_pts_y - 1) / num_blocks_y;
+
+  assert(width_x * num_blocks_x + 1 == num_pts_x || num_blocks_x == 1);
+  assert(width_y * num_blocks_y + 1 == num_pts_y || num_blocks_y == 1);
+
+  vector<int> perm;
+  perm.reserve(num_pts_x * num_pts_y);
+  auto linearize = [=](int x, int y) -> int {
+    return y * num_pts_x + x;
+  };
+
+  perm.push_back(0);
+  for (int block_y = 0; block_y < num_blocks_y; block_y++) {
+    for (int block_x = 0; block_x < num_blocks_x; block_x++) {
+      // Add the left edge
+      if (block_x == 0) {
+        for (int dy = 1; dy < width_y + 1; dy++) {
+          perm.push_back(linearize(0, width_y * block_y + dy));
+        }
+      }
+      // Across the top
+      if (block_y == 0) {
+        for (int dx = 0; dx < width_x; dx++) {
+          perm.push_back(
+            linearize(block_x * width_x + 1 + dx, width_y * block_y));
+        }
+      }
+      // Add the right edge
+      for (int dy = 0; dy < width_y; dy++) {
+        perm.push_back(
+          linearize(width_x * (block_x + 1), width_y * block_y + 1 + dy));
+      }
+      // Add the bottom edge
+      for (int dx = 0; dx < width_x - 1; dx++) {
+        perm.push_back(
+          linearize(width_x * block_x + 1 + dx, width_y * (block_y + 1)));
+      }
+      // Fill the middle
+      for (int dy = 1; dy < width_y; dy++) {
+        for (int dx = 1; dx < width_x; dx++) {
+          perm.push_back(
+            linearize(width_x * block_x + dx, width_y * block_y + dy));
+        }
+      }
+    }
+  }
+
+#if 0
+  for (int iter = 0; iter < num_pts_x * num_pts_y; iter++) perm[iter] = iter;
+#endif
+
+  return perm;
+}
+
 void GenerateMesh::generateRect(vector<double2>& pointpos,
     vector<int>& zonestart, vector<int>& zonesize,
     vector<int>& zonepoints) const {
@@ -146,13 +206,13 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
     double y = dy * (double)(j + zone_y_offset);
     for (int i = 0; i < num_points_x; ++i) {
       double x = dx * (double)(i + zone_x_offset);
-      pointpos[snail[j * num_points_x + i]] = make_double2(x, y);
+      pointpos[perm[j * num_points_x + i]] = make_double2(x, y);
     }
   }
 #ifdef MESH_DEBUG
   for (int i = 0; i < pointpos.size(); i++)
-    std::cout << "pt " << i << " is at (" << pointpos[i].x << ","
-              << pointpos[i].y << ")" << std::endl;
+  std::cout << "pt " << i << " is at (" << pointpos[i].x << ","
+  << pointpos[i].y << ")" << std::endl;
 #endif
 
   // generate zone adjacency lists
@@ -164,10 +224,10 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
       zonestart.push_back(zonepoints.size());
       zonesize.push_back(4);
       int p0 = j * num_points_x + i;
-      zonepoints.push_back(snail[p0]);
-      zonepoints.push_back(snail[p0 + 1]);
-      zonepoints.push_back(snail[p0 + num_points_x + 1]);
-      zonepoints.push_back(snail[p0 + num_points_x]);
+      zonepoints.push_back(perm[p0]);
+      zonepoints.push_back(perm[p0 + 1]);
+      zonepoints.push_back(perm[p0 + num_points_x + 1]);
+      zonepoints.push_back(perm[p0 + num_points_x]);
     }
   }
 }
@@ -319,7 +379,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
   // slave point with master at lower left
   if (proc_index_x > 0 && proc_index_y > 0) {
     int master_proc = my_color - num_proc_x - 1;
-    slaved_points.push_back(snail[0]);
+    slaved_points.push_back(perm[0]);
     master_colors.push_back(master_proc);
     slaved_points_counts.push_back(1);
   }
@@ -333,7 +393,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p++;
         continue;
       }
-      slaved_points.push_back(snail[p]);
+      slaved_points.push_back(perm[p]);
       p++;
     }
     master_colors.push_back(master_proc);
@@ -349,7 +409,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p += num_points_x;
         continue;
       }
-      slaved_points.push_back(snail[p]);
+      slaved_points.push_back(perm[p]);
       p += num_points_x;
     }
     master_colors.push_back(master_proc);
@@ -367,7 +427,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p += num_points_x;
         continue;
       }
-      master_points.push_back(snail[p]);
+      master_points.push_back(perm[p]);
       p += num_points_x;
     }
     slave_colors.push_back(slave_proc);
@@ -383,7 +443,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
         p++;
         continue;
       }
-      master_points.push_back(snail[p]);
+      master_points.push_back(perm[p]);
       p++;
     }
     slave_colors.push_back(slave_proc);
@@ -393,7 +453,7 @@ void GenerateMesh::generateHaloPointsRect(vector<int>& master_colors,
   if (proc_index_x < num_proc_x - 1 && proc_index_y < num_proc_y - 1) {
     int slave_proc = my_color + num_proc_x + 1;
     int p = num_points_x * num_points_y - 1;
-    master_points.push_back(snail[p]);
+    master_points.push_back(perm[p]);
     slave_colors.push_back(slave_proc);
     master_points_counts.push_back(1);
   }
@@ -698,16 +758,16 @@ void GenerateMesh::calcLocalConstants(int color) {
   num_points_x = nzones_x + 1;
   num_points_y = nzones_y + 1;
 
-  // Initialize global and local snail permutations
-  global_snail = snailPermutation(global_nzones_x + 1, global_nzones_y + 1,
+  // Initialize global and local permutations
+  global_perm = muPermutation(global_nzones_x + 1, global_nzones_y + 1,
     num_proc_x, num_proc_y);
-  global_desnail.reserve(global_snail.size());
-  for (int i = 0; i < global_snail.size(); i++)
-    global_desnail[global_snail[i]] = i;
-  snail = snailPermutation(num_points_x, num_points_y, 1, 1);
-  desnail.reserve(snail.size());
-  for (int i = 0; i < snail.size(); i++)
-    desnail[snail[i]] = i;
+  global_deperm.reserve(global_perm.size());
+  for (int i = 0; i < global_perm.size(); i++)
+    global_deperm[global_perm[i]] = i;
+  perm = muPermutation(num_points_x, num_points_y, 1, 1);
+  deperm.reserve(perm.size());
+  for (int i = 0; i < perm.size(); i++)
+    deperm[perm[i]] = i;
 }
 
 long long int GenerateMesh::pointLocalToGlobalID(int p) const {
@@ -741,14 +801,14 @@ long long int GenerateMesh::pointLocalToGlobalIDPie(int p) const {
 }
 
 long long int GenerateMesh::pointLocalToGlobalIDRect(int s) const {
-// !!! Need to de-snail the point here
-  int p = desnail[s];
+// !!! Need to de-perm the point here
+  int p = deperm[s];
   const int py = p / num_points_x;
   const int px = p - py * num_points_x;
-// !!! Need to re-snail the point here
-  long long int globalID = global_snail[(global_nzones_x + 1)
+// !!! Need to re-perm the point here
+  long long int globalID = global_perm[(global_nzones_x + 1)
       * (py + zone_y_offset)
-                                        + px + zone_x_offset];
+                                       + px + zone_x_offset];
   return globalID;
 }
 

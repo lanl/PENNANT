@@ -161,9 +161,9 @@ void GenerateGlobalMesh::colorPartitionsRect(Coloring* zone_map,
         for (int i = zone_x_start; i <= zone_x_stop; i++) {
           int pt = j * (global_nzones_x + 1) + i;
 #ifdef MESH_DEBUG
-          std::cout << "{" << i << ", " << j << "} = " << pt << " --> " << global_snail.at(pt) << std::endl;
+          std::cout << "{" << i << ", " << j << "} = " << pt << " --> " << global_perm.at(pt) << std::endl;
 #endif
-          (*local_pt_map)[color].points.insert(global_snail.at(pt));
+          (*local_pt_map)[color].points.insert(global_perm.at(pt));
         }
       }
     }
