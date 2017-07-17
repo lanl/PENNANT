@@ -143,47 +143,48 @@ vector<int> GenerateMesh::muPermutation(int num_pts_x, int num_pts_y,
   assert(width_x * num_blocks_x + 1 == num_pts_x || num_blocks_x == 1);
   assert(width_y * num_blocks_y + 1 == num_pts_y || num_blocks_y == 1);
 
-  vector<int> perm;
-  perm.reserve(num_pts_x * num_pts_y);
+  vector<int> perm(num_pts_x * num_pts_y);
   auto linearize = [=](int x, int y) -> int {
     return y * num_pts_x + x;
   };
 
-  perm.push_back(0);
+  int cnt = 0;
+  perm[0] = cnt++;
   for (int block_y = 0; block_y < num_blocks_y; block_y++) {
     for (int block_x = 0; block_x < num_blocks_x; block_x++) {
       // Add the left edge
       if (block_x == 0) {
         for (int dy = 1; dy < width_y + 1; dy++) {
-          perm.push_back(linearize(0, width_y * block_y + dy));
+          perm[linearize(0, width_y * block_y + dy)] = cnt++;
         }
       }
       // Across the top
       if (block_y == 0) {
         for (int dx = 0; dx < width_x; dx++) {
-          perm.push_back(
-            linearize(block_x * width_x + 1 + dx, width_y * block_y));
+          perm[linearize(block_x * width_x + 1 + dx, width_y * block_y)] =
+              cnt++;
         }
       }
       // Add the right edge
       for (int dy = 0; dy < width_y; dy++) {
-        perm.push_back(
-          linearize(width_x * (block_x + 1), width_y * block_y + 1 + dy));
+        perm[linearize(width_x * (block_x + 1), width_y * block_y + 1 + dy)] =
+            cnt++;
       }
       // Add the bottom edge
       for (int dx = 0; dx < width_x - 1; dx++) {
-        perm.push_back(
-          linearize(width_x * block_x + 1 + dx, width_y * (block_y + 1)));
+        perm[linearize(width_x * block_x + 1 + dx, width_y * (block_y + 1))] =
+            cnt++;
       }
       // Fill the middle
       for (int dy = 1; dy < width_y; dy++) {
         for (int dx = 1; dx < width_x; dx++) {
-          perm.push_back(
-            linearize(width_x * block_x + dx, width_y * block_y + dy));
+          perm[linearize(width_x * block_x + dx, width_y * block_y + dy)] =
+              cnt++;
         }
       }
     }
   }
+  assert(cnt == num_pts_x * num_pts_y);
 
 #if 0
   for (int iter = 0; iter < num_pts_x * num_pts_y; iter++) perm[iter] = iter;
@@ -211,8 +212,8 @@ void GenerateMesh::generateRect(vector<double2>& pointpos,
   }
 #ifdef MESH_DEBUG
   for (int i = 0; i < pointpos.size(); i++)
-  std::cout << "pt " << i << " is at (" << pointpos[i].x << ","
-  << pointpos[i].y << ")" << std::endl;
+    std::cout << "pt " << i << " is at (" << pointpos[i].x << ","
+              << pointpos[i].y << ")" << std::endl;
 #endif
 
   // generate zone adjacency lists
