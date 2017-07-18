@@ -135,38 +135,19 @@ void LogicalUnstructured::allocate() {
   *lregionID = lregion.get_tree_id();
 }
 
-void LogicalUnstructured::addField(FieldID FID) {
-  assert(lregionID == nullptr);
-  fIDs.push_back(FID);
-}
+template<typename T>
+void LogicalUnstructured::addField(FieldID FID, const char* name) {
+    assert(lregionID == nullptr);
+    FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
+    allocator.allocate_field(sizeof(T), FID);
+    runtime->attach_name(fspace, FID, name);
+    fIDs.push_back(FID);
+  }
 
-template<>
-void LogicalUnstructured::addField<ptr_t>(FieldID FID) {
-  addField(FID);
-  FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
-  allocator.allocate_field(sizeof(ptr_t), FID);
-}
-
-template<>
-void LogicalUnstructured::addField<double2>(FieldID FID) {
-  addField(FID);
-  FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
-  allocator.allocate_field(sizeof(double2), FID);
-}
-
-template<>
-void LogicalUnstructured::addField<double>(FieldID FID) {
-  addField(FID);
-  FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
-  allocator.allocate_field(sizeof(double), FID);
-}
-
-template<>
-void LogicalUnstructured::addField<int>(FieldID FID) {
-  addField(FID);
-  FieldAllocator allocator = runtime->create_field_allocator(ctx, fspace);
-  allocator.allocate_field(sizeof(int), FID);
-}
+template void LogicalUnstructured::addField<ptr_t>(FieldID, const char*);
+template void LogicalUnstructured::addField<int>(FieldID, const char*);
+template void LogicalUnstructured::addField<double>(FieldID, const char*);
+template void LogicalUnstructured::addField<double2>(FieldID, const char*);
 
 void LogicalUnstructured::unMapPRegion() {
   if (pregion.is_mapped()) runtime->unmap_region(ctx, pregion);

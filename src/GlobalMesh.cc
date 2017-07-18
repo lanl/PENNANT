@@ -28,9 +28,9 @@ GlobalMesh::~GlobalMesh() {
 void GlobalMesh::init() {
   GenerateGlobalMesh generate_mesh(inputParams);
 
-  zones.addField<double>(FID_ZR);
-  zones.addField<double>(FID_ZP);
-  zones.addField<double>(FID_ZE);
+  zones.addField<double>(FID_ZR, "ZR");
+  zones.addField<double>(FID_ZP, "ZP");
+  zones.addField<double>(FID_ZE, "ZE");
   zones.allocate(generate_mesh.numberOfZones());
 
   points.allocate(generate_mesh.numberOfPoints());
@@ -57,8 +57,8 @@ void GlobalMesh::init() {
     subspace.partition(ghost_pts_map, true);
     halos_points.push_back(
       LogicalUnstructured(ctx, runtime, subspace.getSubspace(color)));
-    halos_points[color].addField<double>(FID_GHOST_PMASWT);
-    halos_points[color].addField<double2>(FID_GHOST_PF);
+    halos_points[color].addField<double>(FID_GHOST_PMASWT, "GHOST_PMASWT");
+    halos_points[color].addField<double2>(FID_GHOST_PF, "GHOST_PF");
     halos_points[color].allocate();
   }
 }

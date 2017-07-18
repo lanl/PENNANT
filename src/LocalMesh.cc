@@ -63,8 +63,8 @@ LocalMesh::LocalMesh(const InputParameters& params, IndexSpace points,
 
   generate_mesh = new GenerateMesh(params);
 
-  local_points_by_gid.addField<double>(FID_PMASWT);
-  local_points_by_gid.addField<double2>(FID_PF);
+  local_points_by_gid.addField<double>(FID_PMASWT, "PMASWT");
+  local_points_by_gid.addField<double2>(FID_PF, "PF");
   local_points_by_gid.allocate();
 
   init();
@@ -186,41 +186,41 @@ void LocalMesh::init() {
 }
 
 void LocalMesh::allocateFields() {
-  zone_pts.addField<int>(FID_ZONE_PTS_PTR);
+  zone_pts.addField<int>(FID_ZONE_PTS_PTR, "ZONE_PTS_PTR");
 
-  zones.addField<double2>(FID_ZX);
-  zones.addField<double>(FID_ZAREA);
-  zones.addField<double>(FID_ZVOL);
-  zones.addField<double>(FID_ZVOL0);
-  zones.addField<double>(FID_ZDL);
-  zones.addField<double2>(FID_Z_DBL2_TEMP);
-  zones.addField<double>(FID_Z_DBL_TEMP1);
-  zones.addField<double>(FID_Z_DBL_TEMP2);
+  zones.addField<double2>(FID_ZX, "ZX");
+  zones.addField<double>(FID_ZAREA, "ZAREA");
+  zones.addField<double>(FID_ZVOL, "ZVOL");
+  zones.addField<double>(FID_ZVOL0, "ZVOL0");
+  zones.addField<double>(FID_ZDL, "ZDL");
+  zones.addField<double2>(FID_Z_DBL2_TEMP, "Z_DBL2_TEMP");
+  zones.addField<double>(FID_Z_DBL_TEMP1, "Z_DBL_TEMP1");
+  zones.addField<double>(FID_Z_DBL_TEMP2, "Z_DBL_TEMP2");
 
-  edges.addField<double2>(FID_EX);
-  edges.addField<double2>(FID_E_DBL2_TEMP);
-  edges.addField<double>(FID_E_DBL_TEMP);
+  edges.addField<double2>(FID_EX, "EX");
+  edges.addField<double2>(FID_E_DBL2_TEMP, "E_DBL2_TEMP");
+  edges.addField<double>(FID_E_DBL_TEMP, "E_DBL_TEMP");
 
-  points.addField<double2>(FID_PX0);
-  points.addField<double2>(FID_PX);
-  points.addField<double2>(FID_PXP);
-  points.addField<int>(FID_MAP_PT2CRN_FIRST);
-  points.addField<ptr_t>(FID_PT_LOCAL2GLOBAL);
+  points.addField<double2>(FID_PX0, "PX0");
+  points.addField<double2>(FID_PX, "PX");
+  points.addField<double2>(FID_PXP, "PXP");
+  points.addField<int>(FID_MAP_PT2CRN_FIRST, "MAP_PT2CRN_FIRST");
+  points.addField<ptr_t>(FID_PT_LOCAL2GLOBAL, "PT_LOCAL2GLOBAL");
 
-  sides.addField<int>(FID_MAP_CRN2CRN_NEXT);
-  sides.addField<double>(FID_SAREA);
-  sides.addField<double>(FID_SVOL);
-  sides.addField<double>(FID_SMF);
-  sides.addField<int>(FID_SMAP_SIDE_TO_PT1);
-  sides.addField<int>(FID_SMAP_SIDE_TO_PT2);
-  sides.addField<int>(FID_SMAP_SIDE_TO_ZONE);
-  sides.addField<int>(FID_SMAP_SIDE_TO_EDGE);
+  sides.addField<int>(FID_MAP_CRN2CRN_NEXT, "MAP_CRN2CRN_NEXT");
+  sides.addField<double>(FID_SAREA, "SAREA");
+  sides.addField<double>(FID_SVOL, "SVOL");
+  sides.addField<double>(FID_SMF, "SMF");
+  sides.addField<int>(FID_SMAP_SIDE_TO_PT1, "SMAP_SIDE_TO_PT1");
+  sides.addField<int>(FID_SMAP_SIDE_TO_PT2, "SMAP_SIDE_TO_PT2");
+  sides.addField<int>(FID_SMAP_SIDE_TO_ZONE, "SMAP_SIDE_TO_ZONE");
+  sides.addField<int>(FID_SMAP_SIDE_TO_EDGE, "SMAP_SIDE_TO_EDGE");
 
-  zone_chunks.addField<int>(FID_ZONE_CHUNKS_CRS);
+  zone_chunks.addField<int>(FID_ZONE_CHUNKS_CRS, "ZONE_CHUNKS_CRS");
 
-  side_chunks.addField<int>(FID_SIDE_CHUNKS_CRS);
+  side_chunks.addField<int>(FID_SIDE_CHUNKS_CRS, "SIDE_CHUNKS_CRS");
 
-  point_chunks.addField<int>(FID_POINT_CHUNKS_CRS);
+  point_chunks.addField<int>(FID_POINT_CHUNKS_CRS, "POINT_CHUNKS_CRS");
 }
 
 void LocalMesh::initSideMappingArrays(const vector<int>& zone_pts_ptr,

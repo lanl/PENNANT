@@ -206,24 +206,24 @@ void Hydro::init() {
 }
 
 void Hydro::allocateFields() {
-  points.addField<double2>(FID_PU);
-  points.addField<double2>(FID_PU0);
-  sides_and_corners.addField<double>(FID_CMASWT);
-  sides_and_corners.addField<double2>(FID_SFP);
-  sides_and_corners.addField<double2>(FID_SFQ);
-  sides_and_corners.addField<double2>(FID_SFT);
-  sides_and_corners.addField<double2>(FID_CFTOT);
-  sides_and_corners.addField<double>(FID_S_DBL_TEMP);
-  zones.addField<double>(FID_ZR);
-  zones.addField<double>(FID_ZE);
-  zones.addField<double>(FID_ZP);
-  zones.addField<double>(FID_ZM);
-  zones.addField<double>(FID_ZETOT);
-  zones.addField<double>(FID_ZWR);
-  zones.addField<double>(FID_ZSS);
-  zones.addField<double>(FID_ZDU);
-  bcx_chunks.addField<int>(FID_BCX_CHUNKS_CRS);
-  bcy_chunks.addField<int>(FID_BCY_CHUNKS_CRS);
+  points.addField<double2>(FID_PU, "PU");
+  points.addField<double2>(FID_PU0, "PU0");
+  sides_and_corners.addField<double>(FID_CMASWT, "CMASWT");
+  sides_and_corners.addField<double2>(FID_SFP, "SFP");
+  sides_and_corners.addField<double2>(FID_SFQ, "SFQ");
+  sides_and_corners.addField<double2>(FID_SFT, "SFT");
+  sides_and_corners.addField<double2>(FID_CFTOT, "CFTOT");
+  sides_and_corners.addField<double>(FID_S_DBL_TEMP, "S_DBL_TEMP");
+  zones.addField<double>(FID_ZR, "ZR");
+  zones.addField<double>(FID_ZE, "ZE");
+  zones.addField<double>(FID_ZP, "ZP");
+  zones.addField<double>(FID_ZM, "ZM");
+  zones.addField<double>(FID_ZETOT, "ZETOT");
+  zones.addField<double>(FID_ZWR, "ZWR");
+  zones.addField<double>(FID_ZSS, "ZSS");
+  zones.addField<double>(FID_ZDU, "ZDU");
+  bcx_chunks.addField<int>(FID_BCX_CHUNKS_CRS, "BCX_CHUNKS_CRS");
+  bcy_chunks.addField<int>(FID_BCY_CHUNKS_CRS, "BCY_CHUNKS_CRS");
 }
 
 void Hydro::initRadialVel(const double vel, const int pfirst, const int plast,

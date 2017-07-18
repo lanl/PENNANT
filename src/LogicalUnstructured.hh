@@ -23,8 +23,8 @@ public:
   LogicalUnstructured(Context ctx, Runtime* runtime, PhysicalRegion pregion);
   LogicalUnstructured(Context ctx, Runtime* runtime, LogicalRegion lregion);
   virtual ~LogicalUnstructured();
-  template<typename TYPE>
-  void addField(FieldID FID);
+  template<typename T>
+  void addField(FieldID FID, const char* name);
   virtual void allocate(int nElements);
   void allocate();
   void partition(Coloring map, bool disjoint);
@@ -65,7 +65,6 @@ public:
     return IndexIterator(runtime, ctx, subspace);
   }
 protected:
-  void addField(unsigned int FID);
   bool destroy_ispace;
   IndexSpaceID* ispaceID;
   IndexSpace ispace;
