@@ -15,14 +15,15 @@
 
 #include "Vec2.hh"
 
-LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime) :
-      LogicalUnstructured(ctx, runtime),
+LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime,
+    string label) :
+      LogicalUnstructured(ctx, runtime, label),
       nElements(-1) {
 }
 
 LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime,
-    PhysicalRegion pregion) :
-      LogicalUnstructured(ctx, runtime, pregion),
+    PhysicalRegion pregion, string label) :
+      LogicalUnstructured(ctx, runtime, pregion, label),
       nElements(-2) {
   Domain Dom = runtime->get_index_space_domain(ctx, ispace);
   Rect<1> rect = Dom.get_rect<1>();
@@ -40,8 +41,8 @@ void LogicalStructured::allocate(int nStrucs) {
   ispace = runtime->create_index_space(ctx, Domain::from_rect<1>(rect));
   destroy_ispace = true;
   char buf[43];
-  sprintf(buf, "LogicalStruc::iSpace %d", nStrucs);
-  runtime->attach_name(ispace, buf);
+  sprintf(buf, " iSpace %d", nStrucs);
+  runtime->attach_name(ispace, (name + buf).c_str());
   ispaceID = new IndexSpaceID;
   *ispaceID = ispace.get_id();
   LogicalUnstructured::allocate();

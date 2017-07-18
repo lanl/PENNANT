@@ -13,7 +13,7 @@
 #ifndef GENMESH_HH_
 #define GENMESH_HH_
 
-#define MESH_DEBUG
+//#define MESH_DEBUG
 
 #include <string>
 #include <vector>

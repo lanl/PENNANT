@@ -39,15 +39,15 @@ LocalMesh::LocalMesh(const InputParameters& params, IndexSpace points,
       subregion_xmax(params.directs.subregion_xmax),
       subregion_ymin(params.directs.subregion_ymin),
       subregion_ymax(params.directs.subregion_ymax),
-      local_points_by_gid(ctx, rt, points),
-      zone_pts(ctx, rt),
-      zones(ctx, rt),
-      sides(ctx, rt),
-      points(ctx, rt),
-      edges(ctx, rt),
-      zone_chunks(ctx, rt),
-      side_chunks(ctx, rt),
-      point_chunks(ctx, rt),
+      local_points_by_gid(ctx, rt, points, "local points by gid LogUnstruct"),
+      zone_pts(ctx, rt, "zone points LogStruct"),
+      zones(ctx, rt, "zones LogStruct"),
+      sides(ctx, rt, "sides LogStruct"),
+      points(ctx, rt, "points LogStruct"),
+      edges(ctx, rt, "edges LogStruct"),
+      zone_chunks(ctx, rt, "zone chunks LogStruct"),
+      side_chunks(ctx, rt, "side chunks LogStruct"),
+      point_chunks(ctx, rt, "point chunks LogStruct"),
       chunk_size(params.directs.chunk_size),
       pt_x_init_by_gid(ctx, rt, points),
       generate_mesh(NULL),
@@ -240,7 +240,8 @@ void LocalMesh::initSideMappingArrays(const vector<int>& zone_pts_ptr,
       map_side2pt1[s] = zonepoints[s];
       map_side2pt2[s] = zonepoints[snext];
 #ifdef MESH_DEBUG
-      std::cout << "  Side " << s << " from pt " << zonepoints[s] << " to pt " << zonepoints[snext] << std::endl;
+      std::cout << "  Side " << s << " from pt " << zonepoints[s] << " to pt "
+                << zonepoints[snext] << std::endl;
 #endif
     }  // for n
   }  // for z
@@ -646,16 +647,20 @@ void LocalMesh::initParallel(const ptr_t* pt_local2global) {
     halos_points[1 + master].partition(my_slaved_pts_map, true);
     slaved_halo_points.push_back(
       LogicalUnstructured(ctx, runtime,
-        halos_points[1 + master].getLRegion(1 + master)));
+        halos_points[1 + master].getLRegion(1 + master),
+        "slaved halo points Master " + std::to_string(master)
+        + " Log Unstruct"));
   }
 
   local_points_by_gid.partition(all_slaved_pts_map, true);
   local_halos_points.push_back(
-    LogicalUnstructured(ctx, runtime, local_points_by_gid.getLRegion(0)));
+    LogicalUnstructured(ctx, runtime, local_points_by_gid.getLRegion(0),
+      "slaved halo points Log Unstruct"));
   for (unsigned master = 0; master < slaved_points_counts.size(); master++)
     local_halos_points.push_back(
       LogicalUnstructured(ctx, runtime,
-        local_points_by_gid.getLRegion(1 + master)));
+        local_points_by_gid.getLRegion(1 + master),
+        "local halo points Slave " + std::to_string(master) + " Log Unstruct"));
 
   slaved_points_counts.resize(0);
   master_points_counts.resize(0);
@@ -663,7 +668,7 @@ void LocalMesh::initParallel(const ptr_t* pt_local2global) {
   master_points.resize(0);
 }
 
-static void double_dump(LogicalUnstructured& LU, PointFields FID,
+static void double_dump(LogicalUnstructured& LU, AllFields FID,
     std::string basename, int my_color) {
   std::ofstream ofs(
     (basename + "-" + std::to_string(my_color) + ".dump").c_str());
@@ -735,11 +740,11 @@ void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
       pbarrier_as_master.arrive(slave_colors.size());  // 3 * cycle + 1 (slaves never arrive here)
     }
     pbarrier_as_master = runtime->advance_phase_barrier(ctx,
-      pbarrier_as_master);        // 3 * cycle + 1
+      pbarrier_as_master);  // 3 * cycle + 1
     // phase 2 as master: slaves reduce; no one can read data
     pbarrier_as_master.arrive(2);                               // 3 * cycle + 2
     pbarrier_as_master = runtime->advance_phase_barrier(ctx,
-      pbarrier_as_master);        // 3 * cycle + 2
+      pbarrier_as_master);  // 3 * cycle + 2
 //    index_dump(local_points_by_gid, 0, "LPG", my_color);
   }
 
@@ -809,7 +814,7 @@ void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
 
     pbarrier_as_master.arrive(2);                               // 3 * cycle + 3
     pbarrier_as_master = runtime->advance_phase_barrier(ctx,
-      pbarrier_as_master);        // 3 * cycle + 3
+      pbarrier_as_master);  // 3 * cycle + 3
   }
 
   for (int master = 0; master < master_colors.size(); master++) {

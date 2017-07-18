@@ -26,9 +26,9 @@ WriteTask::WriteTask(LogicalRegion lregion_global_zones, void* args,
   add_region_requirement(
     RegionRequirement(lregion_global_zones, READ_ONLY, EXCLUSIVE,
       lregion_global_zones));
-  add_field(0/*idx*/, FID_ZR);
-  add_field(0/*idx*/, FID_ZE);
-  add_field(0/*idx*/, FID_ZP);
+  add_field(0, FID_ZR);
+  add_field(0, FID_ZE);
+  add_field(0, FID_ZP);
 }
 
 /*static*/const char* const WriteTask::TASK_NAME = "WriteTask";

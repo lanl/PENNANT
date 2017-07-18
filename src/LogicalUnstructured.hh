@@ -14,14 +14,22 @@
 #ifndef SRC_LOGICALUNSTRUCTURED_HH_
 #define SRC_LOGICALUNSTRUCTURED_HH_
 
+#include <string>
+
 #include "Parallel.hh"
+
+using std::string;
 
 class LogicalUnstructured {
 public:
-  LogicalUnstructured(Context ctx, Runtime* runtime);
-  LogicalUnstructured(Context ctx, Runtime* runtime, IndexSpace ispace);
-  LogicalUnstructured(Context ctx, Runtime* runtime, PhysicalRegion pregion);
-  LogicalUnstructured(Context ctx, Runtime* runtime, LogicalRegion lregion);
+  LogicalUnstructured(Context ctx, Runtime* runtime, string label =
+      "LogUnstruct");
+  LogicalUnstructured(Context ctx, Runtime* runtime, IndexSpace ispace,
+      string label = "LogUnstruct");
+  LogicalUnstructured(Context ctx, Runtime* runtime, PhysicalRegion pregion,
+      string label = "LogUnstruct");
+  LogicalUnstructured(Context ctx, Runtime* runtime, LogicalRegion lregion,
+      string label = "LogUnstruct");
   virtual ~LogicalUnstructured();
   template<typename T>
   void addField(FieldID FID, const char* name);
@@ -83,6 +91,7 @@ protected:
   PhysicalRegion pregion;
   Context ctx;
   Runtime* runtime;
+  string name;
 };
 // class LogicalUnstructured
 

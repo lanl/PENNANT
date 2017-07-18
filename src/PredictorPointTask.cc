@@ -67,24 +67,29 @@ void PredictorPointTask::cpu_run(const Task* task,
   args_serializer.restore(&args);
 
   assert(task->regions[ONE].privilege_fields.size() == 1);
-  LogicalStructured hydro_points(ctx, runtime, regions[ONE]);
+  LogicalStructured hydro_points(ctx, runtime, regions[ONE],
+    "PPT hydro points LogStruct");
   const double2* pt_vel = hydro_points.getRawPtr<double2>(FID_PU);
 
   assert(task->regions[FOUR].privilege_fields.size() == 1);
-  LogicalStructured mesh_points(ctx, runtime, regions[FOUR]);
+  LogicalStructured mesh_points(ctx, runtime, regions[FOUR],
+    "PPT mesh points LogStruct");
   const double2* pt_x = mesh_points.getRawPtr<double2>(FID_PX);
 
   assert(task->regions[FIVE].privilege_fields.size() == 1);
-  LogicalStructured point_chunks(ctx, runtime, regions[FIVE]);
+  LogicalStructured point_chunks(ctx, runtime, regions[FIVE],
+    "PPT point chunks LogStruct");
   const int* point_chunks_CRS = point_chunks.getRawPtr<int>(
     FID_POINT_CHUNKS_CRS);
 
   assert(task->regions[TWO].privilege_fields.size() == 1);
-  LogicalStructured hydro_write_points(ctx, runtime, regions[TWO]);
+  LogicalStructured hydro_write_points(ctx, runtime, regions[TWO],
+    "PPT hydro write points LogStruct");
   double2* pt_vel0 = hydro_write_points.getRawPtr<double2>(FID_PU0);
 
   assert(task->regions[THREE].privilege_fields.size() == 2);
-  LogicalStructured mesh_write_points(ctx, runtime, regions[THREE]);
+  LogicalStructured mesh_write_points(ctx, runtime, regions[THREE],
+    "PPT mesh write points LogStruct");
   double2* pt_x_pred = mesh_write_points.getRawPtr<double2>(FID_PXP);
   double2* pt_x0 = mesh_write_points.getRawPtr<double2>(FID_PX0);
 

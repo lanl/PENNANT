@@ -7,12 +7,14 @@
 
 #include "GlobalMesh.hh"
 
+#include <string>
+
 #include "GenerateGlobalMesh.hh"
 
 GlobalMesh::GlobalMesh(const InputParameters& input_params, Context ctx,
     Runtime* runtime) :
-      zones(ctx, runtime),
-      points(ctx, runtime),
+      zones(ctx, runtime, "global zones LogUnstruct"),
+      points(ctx, runtime, "global points LogUnstruct"),
       inputParams(input_params),
       ctx(ctx),
       runtime(runtime) {
@@ -53,10 +55,12 @@ void GlobalMesh::init() {
     phase_barriers.push_back(
       runtime->create_phase_barrier(ctx, 2 * (1 + slave_colors.size())));
 
-    LogicalUnstructured subspace(ctx, runtime, points.getSubspace(color));
+    LogicalUnstructured subspace(ctx, runtime, points.getSubspace(color),
+      "global points color " + std::to_string(color) + " LogUnstruct");
     subspace.partition(ghost_pts_map, true);
     halos_points.push_back(
-      LogicalUnstructured(ctx, runtime, subspace.getSubspace(color)));
+      LogicalUnstructured(ctx, runtime, subspace.getSubspace(color),
+        "global halo points color " + std::to_string(color) + " LogUnstruct"));
     halos_points[color].addField<double>(FID_GHOST_PMASWT, "GHOST_PMASWT");
     halos_points[color].addField<double2>(FID_GHOST_PF, "GHOST_PF");
     halos_points[color].allocate();

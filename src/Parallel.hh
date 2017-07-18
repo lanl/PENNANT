@@ -32,7 +32,8 @@ using namespace LegionRuntime::Accessor;
 // _Z = zone, _S = side, _C = corner, _P = point
 
 // Zone: a quadrangular or hexagonal 2D subvolume of the 2D grid
-enum ZoneFields {
+enum AllFields {
+//enum ZoneFields {
   FID_ZR,           // zone rho (mass density per volume)
   FID_ZE,           // zone energy density (per mass)
   FID_ZP,           // zone pressure
@@ -50,13 +51,13 @@ enum ZoneFields {
   FID_Z_DBL2_TEMP,  // double2
   FID_Z_DBL_TEMP1,  // double
   FID_Z_DBL_TEMP2,  // double
-};
+//};
 
 // Side: a triangular 2D subvolume of a zone
 // Corner: a quadrangular 2D subvolume of a zone
 // Each zone has 4 sides and 4 corners
 // Each corner overlaps 2 sides and vice versa
-enum SidesAndCornersFields {
+//enum SidesAndCornersFields {
   FID_SAREA,   // side area (actually a length, since Pennant is 2D)
   FID_SVOL,    // side volume (fraction of zone volume assigned to this side)
   FID_SMF,     // side mass fraction (side area / zone area)
@@ -75,22 +76,22 @@ enum SidesAndCornersFields {
   FID_MAP_CRN2CRN_NEXT,  // the next corner moving around the corner's point
   // Temporaries
   FID_S_DBL_TEMP,  // double
-};
+//};
 
 // Edge: a 1D segment along the edge of a zone
 // Each side has 1 edge; each corner has half of 2 edges
-enum EdgeFields {
+//enum EdgeFields {
   FID_EX,  // the midpoint between the edge's 2 points
   // Temporaries
   FID_E_DBL2_TEMP,  // double2
   FID_E_DBL_TEMP,   // double
-};
+//};
 
 // Point: the points defining the edges of the zones
 // Each edge or side has 2 points; each corner has 1; each zone has 4 or 6
 // Ghost point: a point belonging to a local zone but not owned locally
 // Note that points are the only structures shared between nodes
-enum PointFields {
+//enum PointFields {
   FID_PF,            // point force
   FID_PMASWT,        // point weighted mass (sum over point's corners)
   FID_GHOST_PF,      // ghost-point force
@@ -103,9 +104,9 @@ enum PointFields {
   // Maps
   FID_MAP_PT2CRN_FIRST,  // first corner (iterate using corner-to-corner map)
   FID_PT_LOCAL2GLOBAL,   // point global index
-};
+//};
 
-enum ZonePtsCRSFields {
+//enum ZonePtsCRSFields {
   FID_ZONE_PTS_PTR,      // vector of offsets into point space that maps from zone index
                          // to the start of an array of 4 or 6 point indices
   FID_ZONE_CHUNKS_CRS,   // vector of offsets into zone space separated by chunk size

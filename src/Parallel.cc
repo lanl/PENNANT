@@ -96,6 +96,8 @@ void Parallel::run(InputParameters input_params, Context ctx,
     DomainPoint point(color);
     LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
       global_mesh.zones.getLPart(), color);
+    runtime->attach_name(my_zones,
+      (std::string("zones color ") + std::to_string(color) + " LR").c_str());
 
     DriverTask driver_launcher(color, my_zones, global_mesh.zones.getLRegion(),
       lregions_halos, args_serialized[color].getBitStream(),

@@ -33,9 +33,9 @@ DriverTask::DriverTask(int my_color, LogicalRegion my_zones,
       TaskLauncher(DriverTask::TASK_ID, TaskArgument(args, size)) {
   add_region_requirement(
     RegionRequirement(my_zones, WRITE_DISCARD, EXCLUSIVE, all_zones));
-  add_field(0/*idx*/, FID_ZR);
-  add_field(0/*idx*/, FID_ZE);
-  add_field(0/*idx*/, FID_ZP);
+  add_field(0, FID_ZR);
+  add_field(0, FID_ZE);
+  add_field(0, FID_ZP);
   for (int i = 0; i < halo_pts.size(); ++i) {
     add_region_requirement(
       RegionRequirement(halo_pts[i], READ_WRITE, SIMULTANEOUS, halo_pts[i]));
@@ -61,7 +61,8 @@ RunStat DriverTask::cpu_run(const Task* task,
   for (int i = 1; i < task->regions.size(); i++) {
     runtime->unmap_region(ctx, regions[i]);
     halos_points.push_back(
-      LogicalUnstructured(ctx, runtime, task->regions[i].region));
+      LogicalUnstructured(ctx, runtime, task->regions[i].region,
+        "halo points color " + std::to_string(i) + " LogUnstruct"));
     pregions_halos.push_back(regions[i]);
   }
 
@@ -108,7 +109,7 @@ Driver::Driver(const InputParameters& params, DynamicCollective add_reduct,
       ctx(ctx),
       runtime(rt),
       my_color(params.directs.task_id),
-      global_zones(ctx, runtime, zones)
+      global_zones(ctx, runtime, zones, "driver global zones LogUnstruct")
 
 {
   mesh = new LocalMesh(params, points, halos_points, pregions_halos,
