@@ -13,10 +13,8 @@
 #ifndef HYDRO_HH_
 #define HYDRO_HH_
 
-#include <string>
 #include <vector>
 
-#include "GenerateMesh.hh"
 #include "InputParameters.hh"
 #include "LogicalStructured.hh"
 #include "Parallel.hh"

@@ -12,11 +12,10 @@
 
 #include "InputFile.hh"
 
-#include <string>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <sstream>  // IWYU pragma: keep
 
 using namespace std;
 

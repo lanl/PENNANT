@@ -12,9 +12,6 @@
 
 #include "HydroBC.hh"
 
-#include "LocalMesh.hh"
-#include "Memory.hh"
-
 using namespace std;
 
 /*static*/

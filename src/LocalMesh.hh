@@ -13,13 +13,11 @@
 #ifndef LOCALMESH_HH_
 #define LOCALMESH_HH_
 
-#include <string>
 #include <vector>
 
 #include "GenerateMesh.hh"
 #include "InputParameters.hh"
 #include "LogicalStructured.hh"
-#include "LogicalUnstructured.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
 

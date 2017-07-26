@@ -12,12 +12,10 @@
 
 #include "QCS.hh"
 
-#include <cassert>
+#include <algorithm>
 #include <cmath>
-#include "Hydro.hh"
+
 #include "LocalMesh.hh"
-#include "Memory.hh"
-#include "Vec2.hh"
 
 using namespace std;
 

@@ -13,10 +13,13 @@
 
 #include "WriteTask.hh"
 
-#include <string>
+#include <accessor.h>
+#include <cassert>
+#include <iostream>
+#include <set>
 
+#include "InputParameters.hh"
 #include "WriteXY.hh"
-#include "ExportGold.hh"
 
 using namespace std;
 

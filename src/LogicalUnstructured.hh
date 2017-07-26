@@ -14,7 +14,9 @@
 #ifndef SRC_LOGICALUNSTRUCTURED_HH_
 #define SRC_LOGICALUNSTRUCTURED_HH_
 
+#include <cassert>
 #include <string>
+#include <vector>
 
 #include "Parallel.hh"
 

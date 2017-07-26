@@ -13,6 +13,9 @@
 
 #include "LogicalUnstructured.hh"
 
+#include <cstdio>
+#include <iostream>
+
 #include "Vec2.hh"
 
 LogicalUnstructured::LogicalUnstructured(Context ctx, Runtime* runtime,

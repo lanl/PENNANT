@@ -30,6 +30,8 @@
 #ifndef ADDINT64REDUCTIONOP_HH
 #define ADDINT64REDUCTIONOP_HH
 
+#include <sys/types.h>
+
 #include "Parallel.hh"
 
 /**

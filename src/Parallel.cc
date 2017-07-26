@@ -12,18 +12,19 @@
 
 #include "Parallel.hh"
 
-#include <vector>
-#include <algorithm>
-#include <numeric>
-#include <iostream>
-#include <string>
+#include <arrays.h>
+#include <machine.h>
+#include <cassert>
+#include <cstring>
+#include <map>
+#include <set>
 
-#include "AddReductionOp.hh"
 #include "AddInt64ReductionOp.hh"
+#include "AddReductionOp.hh"
 #include "Driver.hh"
 #include "GlobalMesh.hh"
+#include "LogicalUnstructured.hh"
 #include "MinReductionOp.hh"
-#include "Vec2.hh"
 #include "WriteTask.hh"
 
 void Parallel::run(InputParameters input_params, Context ctx,

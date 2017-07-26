@@ -13,9 +13,9 @@
 #ifndef INPUTFILE_HH_
 #define INPUTFILE_HH_
 
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 
 class InputFile {
 public:

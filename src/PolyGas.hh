@@ -13,7 +13,6 @@
 #ifndef POLYGAS_HH_
 #define POLYGAS_HH_
 
-#include "InputParameters.hh"
 #include "Vec2.hh"
 
 // forward declarations

@@ -13,6 +13,10 @@
 
 #include "MinReductionOp.hh"
 
+#include <sys/types.h>
+#include <algorithm>
+#include <cstdio>
+
 const TimeStep MinReductionOp::identity = TimeStep();
 
 template<>

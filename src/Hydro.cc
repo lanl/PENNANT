@@ -12,21 +12,19 @@
 
 #include "Hydro.hh"
 
-#include <string>
-#include <vector>
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
-#include <algorithm>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <limits>
+#include <string>
 
 #include "CorrectorTask.hh"
-#include "HydroBC.hh"
 #include "LocalMesh.hh"
-#include "Memory.hh"
+#include "LogicalUnstructured.hh"
 #include "PredictorPointTask.hh"
 #include "PredictorTask.hh"
 

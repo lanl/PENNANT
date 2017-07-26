@@ -14,6 +14,9 @@
 #ifndef SRC_HALOTASK_HH_
 #define SRC_HALOTASK_HH_
 
+#include <stddef.h>
+#include <vector>
+
 #include "Parallel.hh"
 
 class HaloTask: public TaskLauncher {

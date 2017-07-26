@@ -12,6 +12,9 @@
 
 #include "PolyGas.hh"
 
+#include <algorithm>
+#include <cmath>
+
 #include "Memory.hh"
 
 using namespace std;

@@ -13,8 +13,9 @@
 
 #include "HaloTask.hh"
 
-#include "GenerateMesh.hh"
-#include "InputParameters.hh"
+#include <cassert>
+#include <set>
+
 #include "LocalMesh.hh"
 #include "LogicalStructured.hh"
 #include "Vec2.hh"

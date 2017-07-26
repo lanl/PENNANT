@@ -26,9 +26,9 @@ void Add2ReductionOp::apply<true>(LHS& lhs, RHS rhs) {
 
 template<>
 void Add2ReductionOp::apply<false>(LHS& lhs, RHS rhs) {
-  __int128* target = (__int128*)&lhs;
+  long long* target = (long long*)&lhs;
   union {
-    __int128 as_int;
+    long long as_int;
     simpledouble2 as_T;
   } oldval, newval;
   do {
@@ -45,9 +45,9 @@ void Add2ReductionOp::fold<true>(RHS& rhs1, RHS rhs2) {
 
 template<>
 void Add2ReductionOp::fold<false>(RHS& rhs1, RHS rhs2) {
-  __int128* target = (__int128*)&rhs1;
+  long long* target = (long long*)&rhs1;
   union {
-    __int128 as_int;
+    long long as_int;
     simpledouble2 as_T;
   } oldval, newval;
   do {

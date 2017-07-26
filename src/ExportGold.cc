@@ -12,10 +12,10 @@
 
 #include "ExportGold.hh"
 
-#include <iostream>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
-#include <cstdlib>
+#include <iostream>
 #include <numeric>
 
 #include "LocalMesh.hh"

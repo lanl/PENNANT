@@ -14,6 +14,9 @@
 #ifndef SRC_WRITETASK_HH_
 #define SRC_WRITETASK_HH_
 
+#include <stddef.h>
+#include <vector>
+
 #include "Parallel.hh"
 
 class WriteXY;
@@ -31,4 +34,3 @@ public:
 };
 
 #endif /* SRC_WRITETASK_HH_ */
-

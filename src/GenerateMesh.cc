@@ -12,8 +12,11 @@
 
 #include "GenerateMesh.hh"
 
+#include <bits/move.h>
+#include <algorithm>
 #include <cassert>
-#include <iostream>
+#include <cmath>
+#include <iterator>
 
 using namespace std;
 

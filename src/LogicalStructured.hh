@@ -14,7 +14,10 @@
 #ifndef SRC_LOGICALSTRUCTURED_HH_
 #define SRC_LOGICALSTRUCTURED_HH_
 
+#include <string>
+
 #include "LogicalUnstructured.hh"
+#include "Parallel.hh"
 
 class LogicalStructured: public LogicalUnstructured {
 public:

@@ -13,6 +13,9 @@
 
 #include "CalcDtTask.hh"
 
+#include <cassert>
+#include <vector>
+
 #include "Driver.hh"
 
 CalcDtTask::CalcDtTask(CalcDtTaskArgs* args) :

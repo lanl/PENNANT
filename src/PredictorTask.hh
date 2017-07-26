@@ -14,6 +14,9 @@
 #ifndef SRC_PREDICTORTASK_HH_
 #define SRC_PREDICTORTASK_HH_
 
+#include <stddef.h>
+#include <vector>
+
 #include "Parallel.hh"
 
 class PredictorTask: public TaskLauncher {

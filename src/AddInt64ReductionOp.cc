@@ -13,6 +13,8 @@
 
 #include "AddInt64ReductionOp.hh"
 
+#include <sys/types.h>
+
 const int64_t AddInt64ReductionOp::identity = 0;
 
 template<>

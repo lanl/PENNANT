@@ -14,7 +14,10 @@
 #ifndef SRC_GENERATEGLOBALMESH_HH_
 #define SRC_GENERATEGLOBALMESH_HH_
 
+#include <vector>
+
 #include "GenerateMesh.hh"
+#include "InputParameters.hh"
 #include "Parallel.hh"
 
 class GenerateGlobalMesh: public GenerateMesh {

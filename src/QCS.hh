@@ -13,8 +13,8 @@
 #ifndef QCS_HH_
 #define QCS_HH_
 
-#include "Vec2.hh"
 #include "Memory.hh"
+#include "Vec2.hh"
 
 class QCS {
 public:

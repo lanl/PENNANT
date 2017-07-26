@@ -14,6 +14,8 @@
 #ifndef SRC_CALCDTTASK_HH_
 #define SRC_CALCDTTASK_HH_
 
+#include <vector>
+
 #include "Parallel.hh"
 
 class CalcDtTask: public TaskLauncher {

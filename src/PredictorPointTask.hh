@@ -14,6 +14,9 @@
 #ifndef SRC_PREDICTORPOINTTASK_HH_
 #define SRC_PREDICTORPOINTTASK_HH_
 
+#include <stddef.h>
+#include <vector>
+
 #include "Parallel.hh"
 
 class PredictorPointTask: public TaskLauncher {

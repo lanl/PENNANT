@@ -15,7 +15,6 @@
 
 #include <vector>
 
-#include "GenerateMesh.hh"
 #include "Parallel.hh"
 #include "Vec2.hh"
 

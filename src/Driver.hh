@@ -13,14 +13,15 @@
 #ifndef DRIVER_HH_
 #define DRIVER_HH_
 
+#include <stddef.h>
+#include <string>
+#include <vector>
+
+#include "Hydro.hh"
+#include "InputParameters.hh"
+#include "LocalMesh.hh"
 #include "LogicalUnstructured.hh"
 #include "Parallel.hh"
-
-#include <string>
-
-// forward declarations
-class LocalMesh;
-class Hydro;
 
 class DriverTask: public TaskLauncher {
 public:

@@ -7,9 +7,12 @@
 
 #include "GlobalMesh.hh"
 
+#include <set>
 #include <string>
+#include <vector>
 
 #include "GenerateGlobalMesh.hh"
+#include "Vec2.hh"
 
 GlobalMesh::GlobalMesh(const InputParameters& input_params, Context ctx,
     Runtime* runtime) :

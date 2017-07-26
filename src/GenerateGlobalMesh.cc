@@ -13,10 +13,9 @@
 
 #include "GenerateGlobalMesh.hh"
 
-#include <cstdlib>
-#include <cmath>
-#include <iostream>
-#include <algorithm>
+#include <set>
+#include <string>
+#include <utility>
 
 GenerateGlobalMesh::GenerateGlobalMesh(const InputParameters& input_params) :
       GenerateMesh(input_params) {

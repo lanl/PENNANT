@@ -31,6 +31,7 @@
 #define ADD2REDUCTIONOP_HH
 
 #include "Parallel.hh"
+#include "Vec2.hh"
 
 /**
  *

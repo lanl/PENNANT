@@ -13,6 +13,11 @@
 
 #include "LogicalStructured.hh"
 
+#include <arrays.h>
+#include <cassert>
+#include <cstdio>
+#include <vector>
+
 #include "Vec2.hh"
 
 LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime,

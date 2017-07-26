@@ -8,6 +8,8 @@
 #ifndef GLOBALMESH_HH_
 #define GLOBALMESH_HH_
 
+#include <vector>
+
 #include "InputParameters.hh"
 #include "LogicalUnstructured.hh"
 #include "Parallel.hh"

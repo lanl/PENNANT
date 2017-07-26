@@ -12,21 +12,21 @@
 
 #include "LocalMesh.hh"
 
-#include <stdint.h>
-#include <cassert>
-#include <cmath>
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <string>
+#include <sys/types.h>
 #include <algorithm>
+#include <cmath>
+#include <fstream>  // IWYU pragma: keep
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <set>
+#include <string>
+#include <utility>
 
-#include "AddReductionOp.hh"
 #include "Add2ReductionOp.hh"
-#include "GenerateMesh.hh"
+#include "AddReductionOp.hh"
 #include "HaloTask.hh"
-#include "Memory.hh"
-#include "Vec2.hh"
+#include "LogicalUnstructured.hh"
 
 using namespace std;
 

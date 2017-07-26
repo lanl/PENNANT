@@ -13,13 +13,22 @@
 #ifndef PARALLEL_HH_
 #define PARALLEL_HH_
 
+#include <accessor.h>       // IWYU pragma: export
+#include <indexspace.h>     // IWYU pragma: export
+#include <legion.h>         // IWYU pragma: export
+#include <legion_config.h>  // IWYU pragma: export
+#include <legion_types.h>   // IWYU pragma: export
+#include <processor.h>      // IWYU pragma: export
+#include <stddef.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <cstdio>
 #include <limits>
-#include <stdint.h>
+#include <string>
+#include <vector>
 
 #include "InputParameters.hh"
 #include "Vec2.hh"
-
-#include "legion.h"
 
 using namespace Legion;
 using namespace LegionRuntime::HighLevel;

@@ -13,12 +13,10 @@
 #ifndef WRITEXY_HH_
 #define WRITEXY_HH_
 
+#include <legion.h>
 #include <string>
 
 #include "Parallel.hh"
-
-// forward declarations
-class LocalMesh;
 
 class WriteXY {
 public:

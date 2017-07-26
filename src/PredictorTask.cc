@@ -14,17 +14,16 @@
 #include "PredictorTask.hh"
 
 #include <algorithm>
-#include <cmath>
+#include <cassert>
+#include <set>
 
-#include "GenerateMesh.hh"
 #include "Hydro.hh"
-#include "InputParameters.hh"
 #include "LocalMesh.hh"
 #include "LogicalStructured.hh"
+#include "Memory.hh"
 #include "PolyGas.hh"
 #include "QCS.hh"
 #include "TTS.hh"
-#include "Memory.hh"
 #include "Vec2.hh"
 
 enum idx {

@@ -14,6 +14,9 @@
 #ifndef SRC_CORRECTORTASK_HH_
 #define SRC_CORRECTORTASK_HH_
 
+#include <stddef.h>
+#include <vector>
+
 #include "Parallel.hh"
 
 class CorrectorTask: public TaskLauncher {

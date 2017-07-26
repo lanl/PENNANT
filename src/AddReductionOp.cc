@@ -13,6 +13,8 @@
 
 #include "AddReductionOp.hh"
 
+#include <sys/types.h>
+
 const double AddReductionOp::identity = 0.0;
 
 template<>
