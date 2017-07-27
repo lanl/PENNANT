@@ -1,6 +1,6 @@
 #!/bin/bash
 
-rm -rf ${HOME}/local/regression/pennant
+#rm -rf ${HOME}/local/regression/pennant
 
 sbatch ./leblanc
 sbatch ./noh

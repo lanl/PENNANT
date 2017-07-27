@@ -140,6 +140,7 @@ void LogicalUnstructured::allocate() {
   runtime->attach_name(lregion, (name + " LR").c_str());
   lregionID = new RegionTreeID;
   *lregionID = lregion.get_tree_id();
+#if MESH_DEBUG
   const char* buffer;
   runtime->retrieve_name(lregion, buffer);
   std::cout << name << " just created a new LR: " << buffer << std::endl;
@@ -152,6 +153,7 @@ void LogicalUnstructured::allocate() {
     runtime->retrieve_name(fspace, f, buffer);
     std::cout << "    " << buffer << std::endl;
   }
+#endif
 }
 
 template<typename T>
