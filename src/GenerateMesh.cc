@@ -146,6 +146,8 @@ vector<int> GenerateMesh::muPermutation(int num_pts_x, int num_pts_y,
   int width_x = (num_pts_x - 1) / num_blocks_x;
   int width_y = (num_pts_y - 1) / num_blocks_y;
 
+  std::cout << num_blocks_x << "x" << num_blocks_y << " blocks of " << width_x
+  << "x" << width_y << std::endl;
   assert(width_x * num_blocks_x + 1 == num_pts_x || num_blocks_x == 1);
   assert(width_y * num_blocks_y + 1 == num_pts_y || num_blocks_y == 1);
 
