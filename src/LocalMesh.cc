@@ -668,6 +668,7 @@ void LocalMesh::initParallel(const ptr_t* pt_local2global) {
   master_points.resize(0);
 }
 
+#if MESH_DEBUG
 static void double_dump(LogicalUnstructured& LU, AllFields FID,
     std::string basename, int my_color) {
   std::ofstream ofs(
@@ -700,6 +701,7 @@ static void index_dump(LogicalUnstructured& LU, int color, std::string basename,
     ofs << std::setw(5) << p_ptr.value << std::endl;
   }
 }
+#endif
 
 void LocalMesh::sumCornersToPoints(LogicalStructured& sides_and_corners,
     DoCycleTasksArgsSerializer& serial) {
