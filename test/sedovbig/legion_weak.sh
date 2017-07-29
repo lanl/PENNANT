@@ -2,7 +2,7 @@
 
 cd ~/Projects/pennant-legion/test/sedovbig
 for ver in -bdma{,-long,-wide}; do
-	systag=psg-$SLURM_JOB_PARTITION
+	systag=darwin-$SLURM_JOB_PARTITION
 	c=30
 	for x in 16 12 8 6 4 2 1 ; do
 		m=$x 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd ~/Projects/pennant-mpi/test/sedovbig
-systag=psg-$SLURM_JOB_PARTITION
+systag=darwin-$SLURM_JOB_PARTITION
 c=30
 for m in 16 12 8 6 4 2 1 ; do 
 	binding="-H $(scontrol show hostnames $SLURM_JOB_NODELIST | head -$(expr \( $m + 1 \) / 2) | tr '\n' ',') --map-by ppr:1:socket --bind-to socket"
