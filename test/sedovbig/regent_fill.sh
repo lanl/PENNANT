@@ -10,7 +10,7 @@ for ver in -bdma ; do
 			for n in 16 12 10 8 6 4 2 1 ; do 
 				tag=${m}x$n${ver}-sedov${x}x${c}
 				echo ${systag}-${tag}
-				if (( ! $(grep -c "hydro cycle" ${systag}-${tag}.log) > 0 )); then
+				if [ -n $(grep ${systag}-${tag}.log ${systag}-${tag}.log) ]; then
 					mpirun -n $m $binding ../../../regent.py ../../pennant${ver}.rg sedovbig${x}x${c}.pnt \
 					  -npieces $(expr $m \* $n) -numpcx 1 -numpcy $(expr $m \* $n) \
 					  -seq_init 0 -par_init 1 -interior 0 \

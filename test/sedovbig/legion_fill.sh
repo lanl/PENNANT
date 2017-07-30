@@ -10,7 +10,7 @@ for ver in -bdma ; do
 			for n in 16 12 10 8 6 4 2 1 ; do 
 				tag=${m}x$n${ver}-sedov${x}x${c}
 				echo ${systag}-${tag}
-				if (( ! $(grep -c "hydro cycle" ${systag}-${tag}.log) > 0 )); then
+				if [ -n $(grep "hydro cycle" ${systag}-${tag}.log) ]; then
 					mpirun -n $m $binding ../../pennant${ver} $(expr $m \* $n) ./sedovbig${x}x${c}.pnt \
 					-ll:cpu $n -ll:util 1 -ll:dma 1 -ll:csize 0 -ll:rsize 30000 -ll:stacksize 20 \
 					-lg:prof 4 -lg:prof_logfile trace-${tag}- 2>&1 > ${systag}-${tag}.log
