@@ -9,6 +9,7 @@ for ver in -bdma{,-long,-wide}; do
 		binding="-H $(scontrol show hostnames $SLURM_JOB_NODELIST | head -$(expr \( $m + 1 \) / 2) | tr '\n' ',') --map-by ppr:1:socket --bind-to socket"
 		n=$x; 
 		tag=${m}x$n-reg${ver}-sedov${x}x${c}
+		echo ${systag}-${tag}
 		mpirun -n $m $binding ../../../regent.py ../../pennant${ver}.rg sedovbig${x}x${c}.pnt \
 		  -npieces $(expr $m \* $n) -numpcx 1 -numpcy $(expr $m \* $n) \
 		  -seq_init 0 -par_init 1 -interior 0 \

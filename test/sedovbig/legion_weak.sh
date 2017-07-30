@@ -9,6 +9,7 @@ for ver in -bdma{,-long,-wide}; do
 		binding="-H $(scontrol show hostnames $SLURM_JOB_NODELIST | head -$(expr \( $m + 1 \) / 2) | tr '\n' ',') --map-by ppr:1:socket --bind-to socket"
 		n=$x; 
 		tag=${m}x$n${ver}-sedov${x}x${c}
+		echo ${systag}-${tag}
 		mpirun -n $m $binding ../../pennant${ver} $(expr $m \* $n) ./sedovbig${x}x${c}.pnt \
 		-ll:cpu $n -ll:util 1 -ll:dma 1 -ll:csize 30000 -ll:stacksize 20 \
 		-lg:prof $m -lg:prof_logfile trace-${tag}- 2>&1 > ${systag}-${tag}.log

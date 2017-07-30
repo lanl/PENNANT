@@ -9,6 +9,7 @@ for ver in _fast ; do
 		for n in 1 2 4 6 8 10 12 16 ; do 
 			for x in 1 2 4 6 8 12 ; do 
 				tag=${m}x$n-reg${ver}-sedov${x}x${c}
+				echo ${systag}-${tag}
 				mpirun -n $m $binding ../../../regent.py ../../pennant${ver}.rg sedovbig${x}x${c}.pnt \
 				  -npieces $(expr $m \* $n) -numpcx 1 -numpcy $(expr $m \* $n) \
 				  -seq_init 0 -par_init 1 -interior 0 \
