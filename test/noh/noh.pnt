@@ -1,13 +1,12 @@
+cstop   10
 tstop   0.6
-meshtype  hex
-meshparams 251
+meshtype pie
+meshparams 30 100
 uinitradial -1.0
 bcx     0.0
 bcy     0.0
-alfa    0.1
-cfl     0.2
+ssmin   0.1
 q1      0.1
 q2      1.0
-dtinit  5.e-6
-dtreport 100
+dtinit  0.001
 chunksize 512

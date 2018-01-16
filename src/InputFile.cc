@@ -24,7 +24,6 @@ using namespace std;
 InputFile::InputFile(const char* filename) {
 
     ifstream ifs(filename);
-
     if (!ifs.good())
     {
         cerr << "File " << filename << " not found" << endl;

@@ -20,7 +20,8 @@
 
 // forward declarations
 class InputFile;
-class ImportGMV;
+class GenMesh;
+class WriteXY;
 class ExportGold;
 
 
@@ -28,12 +29,11 @@ class Mesh {
 public:
 
     // children
-    ImportGMV* igmv;
+    GenMesh* gmesh;
+    WriteXY* wxy;
     ExportGold* egold;
 
     // parameters
-    std::string meshfile;          // name of mesh input file
-    double meshscale;              // factor for scaling input mesh
     int chunksize;                 // max size for processing chunks
     std::vector<double> subregion; // bounding box for a subregion
                                    // if nonempty, should have 4 entries:
@@ -58,10 +58,6 @@ public:
     int* mapss3;       // map: side -> previous side
     int* mapss4;       // map: side -> next side
 
-    // point-to-corner inverse map is stored as a linked list...
-    int* mappcfirst;   // map:  point -> first corner
-    int* mapccnext;    // map:  corner -> next corner
-
     int* znump;        // number of points in zone
 
     double2* px;       // point coordinates
@@ -74,10 +70,14 @@ public:
 
     double* sarea;     // side area
     double* svol;      // side volume
+    double* carea;     // corner area
+    double* cvol;      // corner volume
     double* zarea;     // zone area
     double* zvol;      // zone volume
     double* sareap;    // side area, middle of cycle
     double* svolp;     // side volume, middle of cycle
+    double* careap;    // corner area, middle of cycle
+    double* cvolp;     // corner volume, middle of cycle
     double* zareap;    // zone area, middle of cycle
     double* zvolp;     // zone volume, middle of cycle
     double* zvol0;     // zone volume, start of cycle
@@ -95,9 +95,6 @@ public:
     int numpch;                    // number of point chunks
     std::vector<int> pchpfirst;    // start/stop index for point chunks
     std::vector<int> pchplast;
-    int numzch;                    // number of zone chunks
-    std::vector<int> zchzfirst;    // start/stop index for zone chunks
-    std::vector<int> zchzlast;
 
     Mesh(const InputFile* inp);
     ~Mesh();
@@ -106,17 +103,14 @@ public:
 
     // populate mapping arrays
     void initSides(
-            std::vector<int>& cellstart,
-            std::vector<int>& cellsize,
-            std::vector<int>& cellnodes);
+            const std::vector<int>& cellstart,
+            const std::vector<int>& cellsize,
+            const std::vector<int>& cellnodes);
     void initEdges();
     void initCorners();
 
     // populate chunk information
     void initChunks();
-
-    // populate inverse map
-    void initInvMap();
 
     // write mesh statistics
     void writeStats();
@@ -129,17 +123,6 @@ public:
             const double* zr,
             const double* ze,
             const double* zp);
-
-    // find plane with constant x, y value
-    std::vector<int> getXPlane(const double c);
-    std::vector<int> getYPlane(const double c);
-
-    // compute chunks for a given plane
-    void getPlaneChunks(
-            const int numb,
-            const int* mapbp,
-            std::vector<int>& pchbfirst,
-            std::vector<int>& pchblast);
 
     // compute edge, zone centers
     void calcCtrs(
@@ -155,6 +138,8 @@ public:
             const double2* zx,
             double* sarea,
             double* svol,
+            double* carea,
+            double* cvol,
             double* zarea,
             double* zvol,
             const int sfirst,
@@ -167,40 +152,6 @@ public:
             double* smf,
             const int sfirst,
             const int slast);
-
-    // compute surface vectors for median mesh
-    void calcSurfVecs(
-            const double2* zx,
-            const double2* ex,
-            double2* ssurf,
-            const int sfirst,
-            const int slast);
-
-    // compute edge lengths
-    void calcEdgeLen(
-            const double2* px,
-            double* elen,
-            const int sfirst,
-            const int slast);
-
-    // compute characteristic lengths
-    void calcCharLen(
-            const double* sarea,
-            double* zdl,
-            const int sfirst,
-            const int slast);
-
-    // gather corner variables to points (double or double2)
-    void gatherToPoints(
-            const double* cvar,
-            double* pvar,
-            const int pfirst,
-            const int plast);
-    void gatherToPoints(
-            const double2* cvar,
-            double2* pvar,
-            const int pfirst,
-            const int plast);
 
 }; // class Mesh
 

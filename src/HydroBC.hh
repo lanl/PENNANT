@@ -40,12 +40,6 @@ public:
 
     ~HydroBC();
 
-    void applyFixedBC(
-            double2* pu,
-            double2* pf,
-            const int bfirst,
-            const int blast);
-
 }; // class HydroBC
 
 

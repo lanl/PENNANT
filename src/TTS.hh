@@ -32,17 +32,6 @@ public:
     TTS(const InputFile* inp, Hydro* h);
     ~TTS();
 
-void calcForce(
-        const double* zarea,
-        const double* zr,
-        const double* zss,
-        const double* sarea,
-        const double* smf,
-        const double2* ssurfp,
-        double2* sf,
-        const int sfirst,
-        const int slast);
-
 }; // class TTS
 
 

@@ -30,40 +30,21 @@ public:
     double q1, q2;                 // linear and quadratic coefficients
                                    // for Q model
 
+    double* c0evol;
+    double* c0du;
+    double* c0div;
+    double* c0cos;
+    double2* c0qe;
+    double2* z0uc;
+    double* c0rmu;
+    double* c0w;
+
+
     QCS(const InputFile* inp, Hydro* h);
     ~QCS();
 
-    void calcForce(
-            double2* sf,
-            const int sfirst,
-            const int slast);
-
-    void setCornerDiv(
-            double* c0area,
-            double* c0div,
-            double* c0evol,
-            double* c0du,
-            double* c0cos,
-            const int sfirst,
-            const int slast);
-
-    void setQCnForce(
-            const double* c0div,
-            const double* c0du,
-            const double* c0evol,
-            double2* c0qe,
-            const int sfirst,
-            const int slast);
-
-    void setForce(
-            const double* c0area,
-            const double2* c0qe,
-            double* c0cos,
-            double2* sfqq,
-            const int sfirst,
-            const int slast);
-
 };  // class QCS
+
 
 
 #endif /* QCS_HH_ */

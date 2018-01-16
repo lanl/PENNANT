@@ -8,7 +8,14 @@ SRCS := $(wildcard $(SRCDIR)/*.cc)
 OBJS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.o)
 DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 
+HDRS += $(SRCDIR)/HydroGPU.hh
+SRCS += $(SRCDIR)/HydroGPU.cu
+OBJS += $(BUILDDIR)/HydroGPU.o
+DEPS += $(BUILDDIR)/HydroGPU.d
+
 BINARY := $(BUILDDIR)/$(PRODUCT)
+
+CPPFLAGS := -I.
 
 # begin compiler-dependent flags
 #
@@ -32,15 +39,23 @@ CXXFLAGS_OPENMP := -openmp
 
 # end compiler-dependent flags
 
+CUDAC := nvcc
+CUDACFLAGS := -arch=sm_21 --ptxas-options=-v
+CUDACFLAGS_DEBUG := -G -lineinfo
+CUDACFLAGS_OPT := -O3
+
 LD := $(CXX)
+LDFLAGS := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS)
+CUDACFLAGS += $(CUDACFLAGS_OPT) $(CPPFLAGS)
 #CXXFLAGS := $(CXXFLAGS_DEBUG) $(CPPFLAGS)
+#CUDACFLAGS += $(CUDACFLAGS_DEBUG) $(CPPFLAGS)
 
 # add openmp flags (comment out for serial build)
-CXXFLAGS += $(CXXFLAGS_OPENMP)
-LDFLAGS += $(CXXFLAGS_OPENMP)
+#CXXFLAGS += $(CXXFLAGS_OPENMP)
+#LDFLAGS += $(CXXFLAGS_OPENMP)
 
 all : $(BINARY)
 
@@ -56,10 +71,22 @@ $(BUILDDIR)/%.o : $(SRCDIR)/%.cc
 	$(maketargetdir)
 	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
 
+$(BUILDDIR)/%.o : $(SRCDIR)/%.cu
+	@echo compiling $<
+	$(maketargetdir)
+	@# unsetting of CPATH is needed to make nvcc and icpc
+	@# play nicely together
+	(CPATH=;$(CUDAC) $(CUDACFLAGS) $(CUDACINCLUDES) -c -o $@ $<)
+
 $(BUILDDIR)/%.d : $(SRCDIR)/%.cc
 	@echo making depends for $<
 	$(maketargetdir)
-	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -MM $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
+	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
+
+$(BUILDDIR)/%.d : $(SRCDIR)/%.cu
+	@echo making depends for $<
+	$(maketargetdir)
+	@$(CUDAC) $(CUDACFLAGS) $(CUDACINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
 
 define maketargetdir
 	-@mkdir -p $(dir $@) > /dev/null 2>&1

@@ -1,6 +1,7 @@
 cstop   10
 tstop   6.0
-meshfile  rect10x90.gmv
+meshtype rect
+meshparams 10 90  1.0 9.0
 subregion 0.0 1.0  3.0 9.0
 rinit   1.0
 einit   0.1
