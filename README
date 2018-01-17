@@ -12,11 +12,12 @@ PENNANT distribution.
 Version Log:
 
 0.6, February 2014:
-     First MPI version.  MPI capability is working and mostly
-     optimized; MPI+OpenMP is working but needs optimization.
      Replaced GMV mesh reader with internal mesh generators.
      Added QCS velocity difference routine to reflect a recent
      bugfix in FLAG.  Increased size of big test problems.
+     [ Master branch contained this change but CUDA branch does not:
+     First MPI version.  MPI capability is working and mostly
+     optimized; MPI+OpenMP is working but needs optimization. ]
 
 0.5, May 2013:
      Further optimizations.
