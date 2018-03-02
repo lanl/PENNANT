@@ -30,8 +30,8 @@ LogicalStructured::LogicalStructured(Context ctx, Runtime* runtime,
     PhysicalRegion pregion, string label) :
       LogicalUnstructured(ctx, runtime, pregion, label),
       nElements(-2) {
-  Domain Dom = runtime->get_index_space_domain(ctx, ispace);
-  Rect<1> rect = Dom.get_rect<1>();
+  Legion::Domain Dom = runtime->get_index_space_domain(ctx, ispace);
+  LegionRuntime::Arrays::Rect<1> rect = Dom.get_rect<1>();
   nElements = static_cast<int>(rect.volume());
 }
 
@@ -42,8 +42,8 @@ void LogicalStructured::allocate(int nStrucs) {
 
   nElements = nStrucs;
 
-  Rect<1> rect(Point<1>(0), Point<1>(nStrucs - 1));
-  ispace = runtime->create_index_space(ctx, Domain::from_rect<1>(rect));
+  LegionRuntime::Arrays::Rect<1> rect(LegionRuntime::Arrays::Point<1>(0), LegionRuntime::Arrays::Point<1>(nStrucs - 1));
+  ispace = runtime->create_index_space(ctx, Legion::Domain::from_rect<1>(rect));
   destroy_ispace = true;
   char buf[43];
   sprintf(buf, " iSpace %d", nStrucs);
@@ -57,7 +57,7 @@ void LogicalStructured::allocate(int nStrucs) {
  * courtesy of some other legion code.
  */
 template<unsigned DIM, typename T>
-static inline bool offsetsAreDense(const Rect<DIM> &bounds,
+static inline bool offsetsAreDense(const LegionRuntime::Arrays::Rect<DIM> &bounds,
     const LegionRuntime::Accessor::ByteOffset* offset) {
   off_t exp_offset = sizeof(T);
   for (unsigned i = 0; i < DIM; i++) {
@@ -80,8 +80,8 @@ ptr_t* LogicalStructured::getRawPtr<ptr_t>(FieldID FID) {
   ptr_t* mData = nullptr;
 
   PtrTAccessor tAcc = pregion.get_field_accessor(FID).typeify<ptr_t>();
-  Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect<1> subrect;
+  Legion::Domain tDom = runtime->get_index_space_domain(ctx, ispace);
+  LegionRuntime::Arrays::Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
@@ -104,8 +104,8 @@ double2* LogicalStructured::getRawPtr<double2>(FieldID FID) {
   double2* mData = nullptr;
 
   Double2Accessor tAcc = pregion.get_field_accessor(FID).typeify<double2>();
-  Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect<1> subrect;
+  Legion::Domain tDom = runtime->get_index_space_domain(ctx, ispace);
+  LegionRuntime::Arrays::Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
@@ -128,8 +128,8 @@ double* LogicalStructured::getRawPtr<double>(FieldID FID) {
   double* mData = nullptr;
 
   DoubleAccessor tAcc = pregion.get_field_accessor(FID).typeify<double>();
-  Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect<1> subrect;
+  Legion::Domain tDom = runtime->get_index_space_domain(ctx, ispace);
+  LegionRuntime::Arrays::Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 
@@ -152,8 +152,8 @@ int* LogicalStructured::getRawPtr<int>(FieldID FID) {
   int* mData = nullptr;
 
   IntAccessor tAcc = pregion.get_field_accessor(FID).typeify<int>();
-  Domain tDom = runtime->get_index_space_domain(ctx, ispace);
-  Rect<1> subrect;
+  Legion::Domain tDom = runtime->get_index_space_domain(ctx, ispace);
+  LegionRuntime::Arrays::Rect<1> subrect;
   ByteOffset inOffsets[1];
   auto subGridBounds = tDom.get_rect<1>();
 

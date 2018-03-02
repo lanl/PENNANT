@@ -53,7 +53,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
     exit(1);
   }
 
-  Rect<1> launch_bounds(Point<1>(0), Point<1>(num_subregions_ - 1));
+  LegionRuntime::Arrays::Rect<1> launch_bounds(LegionRuntime::Arrays::Point<1>(0), LegionRuntime::Arrays::Point<1>(num_subregions_ - 1));
 
   double zero = 0.0;
   DynamicCollective add_reduction = runtime->create_dynamic_collective(ctx,
@@ -94,7 +94,7 @@ void Parallel::run(InputParameters input_params, Context ctx,
 
     args_serialized[color].archive(&(args[color]));
 
-    DomainPoint point(color);
+    Legion::DomainPoint point(color);
     LogicalRegion my_zones = runtime->get_logical_subregion_by_color(ctx,
       global_mesh.zones.getLPart(), color);
     runtime->attach_name(my_zones,

@@ -98,7 +98,7 @@ void LogicalUnstructured::partition(Coloring map, bool disjoint) {
   ipart = runtime->create_index_partition(ctx, ispace, map, disjoint);
   runtime->attach_name(ipart, (name + " part").c_str());
   ipartID = new IndexPartitionID;
-  *ipartID = ipart.id;
+  *ipartID = ipart.get_id();
   lpart = runtime->get_logical_partition(ctx, lregion, ipart);
   lpartID = new RegionTreeID;
   *lpartID = lpart.get_tree_id();
@@ -123,9 +123,6 @@ void LogicalUnstructured::allocate(int nUnstrucs) {
   char buf[43];
   sprintf(buf, " iSpace %d", nUnstrucs);
   runtime->attach_name(ispace, (name + buf).c_str());
-  IndexAllocator allocator = runtime->create_index_allocator(ctx, ispace);
-  ptr_t begin = allocator.alloc(nUnstrucs);
-  assert(!begin.is_null());
   ispaceID = new IndexSpaceID;
   *ispaceID = ispace.get_id();
   if (fIDs.size() > 0) allocate();
