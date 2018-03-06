@@ -85,7 +85,6 @@ protected:
   bool destroy_fspace;
   FieldSpaceID* fspaceID;
   FieldSpace fspace;
-  bool destroy_lregion;
   RegionTreeID* lregionID;
   LogicalRegion lregion;
   RegionTreeID* lpartID;

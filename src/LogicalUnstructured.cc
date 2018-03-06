@@ -33,7 +33,6 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, Runtime* runtime,
       ipartID(nullptr),
       destroy_fspace(false),
       fspace(pregion.get_logical_region().get_field_space()),
-      destroy_lregion(false),
       lregion(pregion.get_logical_region()),
       lpartID(nullptr),
       pregion(pregion),
@@ -55,7 +54,6 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, Runtime* runtime,
       ipartID(nullptr),
       destroy_fspace(false),
       fspace(lregion.get_field_space()),
-      destroy_lregion(false),
       lregion(lregion),
       lpartID(nullptr),
       ctx(ctx),
@@ -75,7 +73,6 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, Runtime* runtime,
       ispaceID(nullptr),
       ipartID(nullptr),
       destroy_fspace(true),
-      destroy_lregion(false),
       lregionID(nullptr),
       lpartID(nullptr),
       ctx(ctx),
@@ -88,7 +85,6 @@ LogicalUnstructured::LogicalUnstructured(Context ctx, Runtime* runtime,
 }
 
 LogicalUnstructured::~LogicalUnstructured() {
-  if (destroy_lregion) runtime->destroy_logical_region(ctx, lregion);
   if (destroy_fspace) runtime->destroy_field_space(ctx, fspace);
   if (destroy_ispace) runtime->destroy_index_space(ctx, ispace);
 }
@@ -133,7 +129,6 @@ void LogicalUnstructured::allocate() {
     (fIDs.size() > 0) && (!pregion.is_mapped()) && (ispaceID != nullptr)
     && (lregionID == nullptr));
   lregion = runtime->create_logical_region(ctx, ispace, fspace);
-  destroy_lregion = true;
   runtime->attach_name(lregion, (name + " LR").c_str());
   lregionID = new RegionTreeID;
   *lregionID = lregion.get_tree_id();
