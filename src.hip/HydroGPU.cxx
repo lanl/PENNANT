@@ -86,11 +86,6 @@ static __constant__ double2* cqe;
 static __constant__ double* ccos;
 static __constant__ double* cw;
 
-static __shared__ int dss3[CHUNK_SIZE];
-static __shared__ int dss4[CHUNK_SIZE];
-static __shared__ double ctemp[CHUNK_SIZE];
-static __shared__ double2 ctemp2[CHUNK_SIZE];
-
 static int numschH, numpchH, numzchH;
 static int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 static int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
@@ -137,7 +132,9 @@ static __device__ void calcZoneCtrs(
         const int z,
         const int p1,
         const double2* __restrict__ px,
-        double2* __restrict__ zx) {
+        double2* __restrict__ zx,
+	int dss4[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE]) {
 
     ctemp2[s0] = px[p1];
     __syncthreads();
@@ -206,7 +203,9 @@ static __device__ void meshCalcCharLen(
         const int* __restrict__ znump,
         const double2* __restrict__ px,
         const double2* __restrict__ zx,
-        double* __restrict__ zdl) {
+        double* __restrict__ zdl,
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE] ) {
 
     double area = 0.5 * cross(px[p2] - px[p1], zx[z] - px[p1]);
     double base = length(px[p2] - px[p1]);
@@ -271,7 +270,9 @@ static __device__ void qcsSetCornerDiv(
         const int s3,
         const int z,
         const int p1,
-        const int p2) {
+        const int p2,
+	int dss4[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE]) {
 
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pu[p1];
@@ -406,7 +407,9 @@ static __device__ void qcsSetVelDiff(
         const int s0,
         const int p1,
         const int p2,
-        const int z) {
+        const int z,
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE] ) {
 
     double2 dx = pxp[p2] - pxp[p1];
     double2 du = pu[p2] - pu[p1];
@@ -434,13 +437,17 @@ static __device__ void qcsCalcForce(
         const int s4,
         const int z,
         const int p1,
-        const int p2) {
+        const int p2,
+	int dss3[CHUNK_SIZE],
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE]) {
     // [1] Find the right, left, top, bottom  edges to use for the
     //     limiters
     // *** NOT IMPLEMENTED IN PENNANT ***
 
     // [2] Compute corner divergence and related quantities
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2);
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -456,7 +463,7 @@ static __device__ void qcsCalcForce(
     cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
 
     // [6] Set velocity difference to use to compute timestep
-    qcsSetVelDiff(s, s0, p1, p2, z);
+    qcsSetVelDiff(s, s0, p1, p2, z, dss4, ctemp);
 
 }
 
@@ -633,7 +640,9 @@ static __device__ void hydroCalcWork(
         const double2* __restrict__ px,
         const double dt,
         double* __restrict__ zw,
-        double* __restrict__ zetot) {
+        double* __restrict__ zetot,
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE]) {
 
     // Compute the work done by finding, for each element/node pair
     //   dwork= force * vavg
@@ -743,7 +752,9 @@ static __device__ void hydroFindMinDt(
         const double dtz,
         const int idtz,
         double& dtnext,
-        int& idtnext) {
+        int& idtnext,
+	double ctemp[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE]) {
 
     int* ctempi = (int*) ctemp2;
 
@@ -782,13 +793,15 @@ static __device__ void hydroCalcDt(
         const double* __restrict__ zvol0,
         const double dtlast,
         double& dtnext,
-        int& idtnext) {
+        int& idtnext,
+	double ctemp[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE]) {
 
     double dtz;
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
     hydroCalcDtVolume(z, zvol, zvol0, dt, dtz, idtz);
-    hydroFindMinDt(z, z0, zlength, dtz, idtz, dtnext, idtnext);
+    hydroFindMinDt(z, z0, zlength, dtz, idtz, dtnext, idtnext, ctemp, ctemp2);
 
 }
 
@@ -825,6 +838,11 @@ static __global__ void gpuMain2()
     const int s4 = mapss4[s];
     const int s04 = s4 - schsfirst[sch];
 
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
 
@@ -836,8 +854,8 @@ static __global__ void gpuMain2()
     zvol0[z] = zvol[z];
 
     // 1a. compute new mesh geometry
-    calcZoneCtrs(s, s0, z, p1, pxp, zxp);
-    meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl);
+    calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
+    meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
 
@@ -857,7 +875,7 @@ static __global__ void gpuMain2()
     // 4. compute forces
     pgasCalcForce(s, z, zp, ssurf, sfp);
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
 
 }
 
@@ -901,6 +919,11 @@ static __global__ void gpuMain4()
     const int s4 = mapss4[s];
     const int s04 = s4 - schsfirst[sch];
 
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
 
@@ -909,13 +932,13 @@ static __global__ void gpuMain4()
     const int s3 = s + dss3[s0];
 
     // 6a. compute new mesh geometry
-    calcZoneCtrs(s, s0, z, p1, px, zx);
+    calcZoneCtrs(s, s0, z, p1, px, zx, dss4, ctemp2);
     calcSideVols(s, z, p1, p2, px, zx, sarea, svol);
     calcZoneVols(s, s0, z, sarea, svol, zarea, zvol);
 
     // 7. compute work
     hydroCalcWork(s, s0, s3, z, p1, p2, sfp, sfq, pu0, pu, pxp, dt,
-            zw, zetot);
+		  zw, zetot, dss4, ctemp);
 
 }
 
@@ -928,7 +951,10 @@ static __global__ void gpuMain5()
     const int z0 = threadIdx.x;
     const int zlength = min(CHUNK_SIZE, numz - blockIdx.x * CHUNK_SIZE);
 
-    // 7. compute work
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+
+  // 7. compute work
     hydroCalcWorkRate(z, zvol0, zvol, zw, zp, dt, zwrate);
 
     // 8. update state variables
@@ -937,7 +963,7 @@ static __global__ void gpuMain5()
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
-            dtnext, idtnext);
+		dtnext, idtnext, ctemp, ctemp2);
 
 }
 
