@@ -1275,23 +1275,23 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
-    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, );
+    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
-    hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, );
+    hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
     meshCheckBadSides();
 
-    hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0, );
+    hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
     double bigval = 1.e99;
     CHKERR(hipMemcpyToSymbol(&dtnext, &bigval, sizeof(double)));
 
-    hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, );
+    hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
-    hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, );
+    hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
     meshCheckBadSides();
 
