@@ -15,7 +15,7 @@ DEPS += $(BUILDDIR)/HydroGPU.d
 
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
-CPPFLAGS := -I.
+CPPFLAGS := -I. -I/home/rene/repos/Thrust
 
 # begin compiler-dependent flags
 #
