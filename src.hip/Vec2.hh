@@ -20,6 +20,7 @@
 
 
 #ifdef __HIPCC__
+#include <hip/hip_runtime.h>
 #define FNQUALIFIERS __host__ __device__
 #else
 #define FNQUALIFIERS
@@ -85,22 +86,6 @@ inline double2 make_double2(const double& x_, const double& y_) {
 #else
 // we are in CUDA; double2 is defined but needs op= operators
 FNQUALIFIERS
-inline double2& operator+=(double2& v, const double2& v2)
-{
-    v.x += v2.x;
-    v.y += v2.y;
-    return(v);
-}
-
-FNQUALIFIERS
-inline double2& operator-=(double2& v, const double2& v2)
-{
-    v.x -= v2.x;
-    v.y -= v2.y;
-    return(v);
-}
-
-FNQUALIFIERS
 inline double2& operator*=(double2& v, const double& r)
 {
     v.x *= r;
@@ -117,23 +102,6 @@ inline double2& operator/=(double2& v, const double& r)
 }
 #endif
 
-
-
-// comparison operators:
-
-// equals
-FNQUALIFIERS
-inline bool operator==(const double2& v1, const double2& v2)
-{
-    return((v1.x == v2.x) && (v1.y == v2.y));
-}
-
-// not-equals
-FNQUALIFIERS
-inline bool operator!=(const double2& v1, const double2& v2)
-{
-    return(!(v1 == v2));
-}
 
 
 // unary operators:
@@ -155,33 +123,19 @@ inline double2 operator-(const double2& v)
 
 // binary operators:
 
-// add
-FNQUALIFIERS
-inline double2 operator+(const double2& v1, const double2& v2)
-{
-    return(make_double2(v1.x + v2.x, v1.y + v2.y));
-}
+// // multiply vector by scalar
+// FNQUALIFIERS
+// inline double2 operator*(const double2& v, const double& r)
+// {
+//     return(make_double2(v.x * r, v.y * r));
+// }
 
-// subtract
-FNQUALIFIERS
-inline double2 operator-(const double2& v1, const double2& v2)
-{
-    return(make_double2(v1.x - v2.x, v1.y - v2.y));
-}
-
-// multiply vector by scalar
-FNQUALIFIERS
-inline double2 operator*(const double2& v, const double& r)
-{
-    return(make_double2(v.x * r, v.y * r));
-}
-
-// multiply scalar by vector
-FNQUALIFIERS
-inline double2 operator*(const double& r, const double2& v)
-{
-    return(make_double2(v.x * r, v.y * r));
-}
+// // multiply scalar by vector
+// FNQUALIFIERS
+// inline double2 operator*(const double& r, const double2& v)
+// {
+//     return(make_double2(v.x * r, v.y * r));
+// }
 
 // divide vector by scalar
 FNQUALIFIERS
@@ -212,7 +166,7 @@ inline double cross(const double2& v1, const double2& v2)
 FNQUALIFIERS
 inline double length(const double2& v)
 {
-    return(std::sqrt(v.x * v.x + v.y * v.y));
+    return(sqrt(v.x * v.x + v.y * v.y));
 }
 
 // length squared
