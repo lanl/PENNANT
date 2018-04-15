@@ -112,7 +112,7 @@ int checkCudaError(const hipError_t err, const char* cmd)
 }
 
 #define CHKERR(cmd) checkCudaError(cmd, #cmd)
-
+// #define CHKERR(cmd) cmd
 
 static __device__ void advPosHalf(
         const int p,
@@ -1258,7 +1258,6 @@ void hydroInit(
 
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(&numsbad, &zero, sizeof(int)));
-
 }
 
 
@@ -1268,6 +1267,7 @@ void hydroDoCycle(
         int& idtnextH) {
     int gridSizeS, gridSizeP, gridSizeZ, chunkSize;
 
+    printf("hydroDoCycle: checkpoint 0\n"); fflush(0);
     CHKERR(hipMemcpyToSymbol(&dt, &dtH, sizeof(double)));
 
     gridSizeS = numschH;
@@ -1275,28 +1275,35 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
+    printf("hydroDoCycle: checkpoint 1\n"); fflush(0);
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
+    printf("hydroDoCycle: checkpoint 2\n"); fflush(0);
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
     meshCheckBadSides();
 
+    printf("hydroDoCycle: checkpoint 3\n"); fflush(0);
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
     double bigval = 1.e99;
     CHKERR(hipMemcpyToSymbol(&dtnext, &bigval, sizeof(double)));
 
+    printf("hydroDoCycle: checkpoint 4\n"); fflush(0);
     hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
+    printf("hydroDoCycle: checkpoint 5\n"); fflush(0);
     hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
     meshCheckBadSides();
 
+    printf("hydroDoCycle: checkpoint 6\n"); fflush(0);
     CHKERR(hipMemcpyFromSymbol(&dtnextH, &dtnext, sizeof(double),0,hipMemcpyDeviceToHost));
     CHKERR(hipMemcpyFromSymbol(&idtnextH, &idtnext, sizeof(int),0,hipMemcpyDeviceToHost));
+    printf("hydroDoCycle: checkpoint 7\n"); fflush(0);
 
 }
 
