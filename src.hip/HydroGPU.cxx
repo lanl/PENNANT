@@ -491,7 +491,7 @@ static __device__ void pgasCalcEOS(
     double* __restrict__ zss)
 {
     const double gm1 = pgamma - 1.;
-    const double ss2 = max(pssmin * pssmin, 1.e-99);
+    const double ss2 = fmax(pssmin * pssmin, 1.e-99);
 
     double rx = zr[z];
     double ex = max(ze[z], 0.0);
