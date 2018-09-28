@@ -30,6 +30,18 @@ using namespace std;
 
 const int CHUNK_SIZE = 64;
 
+
+double __device__ max(double s1, double s2)
+{
+  return s1*(s1>s2)+s2*(1-(s1>s2));
+}
+
+double __device__ min(double s1, double s2)
+{
+   return s1*(1-(s1>s2))+s2*(s1>s2);
+}
+
+
 // __constant__ int gpuinit;
 
 // __constant__ int numsch;
@@ -46,9 +58,9 @@ __constant__ double2 vfixx, vfixy;
 __constant__ int numbcx, numbcy;
 __constant__ double bcx[2], bcy[2];
 
-static __device__ int numsbad;
-static __device__ double dtnext;
-static __device__ int idtnext;
+static int * numsbad;
+static double * dtnext;
+static int * idtnext;
 
 __constant__ const int* schsfirst;
 __constant__ const int* schslast;
@@ -167,7 +179,7 @@ static __device__ void calcSideVols(
     sarea[s] = sa;
     svol[s] = sv;
     
-    if (sv <= 0.) atomicAdd(&numsbad, 1);
+    if (sv <= 0.) atomicAdd(numsbad, 1);
 }
 
 
@@ -752,8 +764,6 @@ static __device__ void hydroFindMinDt(
         const int zlength,
         const double dtz,
         const int idtz,
-        double& dtnext,
-        int& idtnext,
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE]) {
 
@@ -774,11 +784,11 @@ static __device__ void hydroFindMinDt(
         __syncthreads();
         half = len >> 1;
     }
-    if (z0 == 0 && ctemp[0] < dtnext) {
-        atomicMin(&dtnext, ctemp[0]);
+    if (z0 == 0 && ctemp[0] < dtnext[0]) {
+        atomicMin(&dtnext[0], ctemp[0]);
         // This line isn't 100% thread-safe, but since it is only for
         // a debugging aid, I'm not going to worry about it.
-        if (dtnext == ctemp[0]) idtnext = ctempi[0];
+        if (dtnext[0] == ctemp[0]) idtnext[0] = ctempi[0];
     }
 }
 
@@ -793,8 +803,6 @@ static __device__ void hydroCalcDt(
         const double* __restrict__ zvol,
         const double* __restrict__ zvol0,
         const double dtlast,
-        double& dtnext,
-        int& idtnext,
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE]) {
 
@@ -802,7 +810,7 @@ static __device__ void hydroCalcDt(
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
     hydroCalcDtVolume(z, zvol, zvol0, dt, dtz, idtz);
-    hydroFindMinDt(z, z0, zlength, dtz, idtz, dtnext, idtnext, ctemp, ctemp2);
+    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2);
 
 }
 
@@ -964,7 +972,7 @@ static __global__ void gpuMain5()
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
-		dtnext, idtnext, ctemp, ctemp2);
+		ctemp, ctemp2);
 
 }
 
@@ -972,7 +980,7 @@ static __global__ void gpuMain5()
 void meshCheckBadSides() {
 
     int numsbadH;
-    CHKERR(hipMemcpy(&numsbadH, &numsbad, sizeof(int), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpy(&numsbadH, numsbad, sizeof(int), hipMemcpyDeviceToHost));
     // if there were negative side volumes, error exit
     if (numsbadH > 0) {
         cerr << "Error: " << numsbadH << " negative side volumes" << endl;
@@ -1257,8 +1265,12 @@ void hydroInit(
             mappsfirstD, mapssnextD);
     hipDeviceSynchronize();
 
+    hipMalloc( (void **) &dtnext,  sizeof(double));
+    hipMalloc( (void **) &idtnext, sizeof(int));
+    hipMalloc( (void **) &numsbad, sizeof(int));
+
     int zero = 0;
-    CHKERR(hipMemcpy(&numsbad, &zero, sizeof(int), hipMemcpyHostToDevice));
+    CHKERR(hipMemcpy(numsbad, &zero, sizeof(int), hipMemcpyHostToDevice));
 }
 
 
@@ -1286,7 +1298,7 @@ void hydroDoCycle(
     hipDeviceSynchronize();
 
     double bigval = 1.e99;
-    CHKERR(hipMemcpy(&dtnext, &bigval, sizeof(double), hipMemcpyHostToDevice));
+    CHKERR(hipMemcpy(dtnext, &bigval, sizeof(double), hipMemcpyHostToDevice));
 
     hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
@@ -1295,8 +1307,8 @@ void hydroDoCycle(
     hipDeviceSynchronize();
     meshCheckBadSides();
 
-    CHKERR(hipMemcpy(&dtnextH, &dtnext, sizeof(double), hipMemcpyDeviceToHost));
-    CHKERR(hipMemcpy(&idtnextH, &idtnext, sizeof(int), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpy(&dtnextH, dtnext, sizeof(double), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpy(&idtnextH, idtnext, sizeof(int), hipMemcpyDeviceToHost));
 }
 
 
