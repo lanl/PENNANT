@@ -1,5 +1,5 @@
 PENNANT Mini-App
-Instructions and Run Rules for ACES Benchmarking
+Instructions and Run Rules for Crossroads Benchmarking
 
 A.) Description
 
@@ -50,7 +50,7 @@ OpenMP, specify the OMP_NUM_THREADS environment variable.
 
 D.) Required Problems
 
-The ACES RFP defines problem sizes to be used in benchmarking.
+The Crossroads Benchmarks website defines problem sizes to be used in benchmarking.
 The PENNANT test problems corresponding to this definition are:
 
 "Small" problem:   leblancbig
@@ -64,10 +64,10 @@ by the RFP definition.
 
 E.) Verification
 
-Sample outputs for the ACES test problems are given in the sample_outputs
+Sample outputs for the Crossroads test problems are given in the sample_outputs
 directory of the PENNANT distribution.  These outputs are from earlier runs
 on the Edison cluster at NERSC, and can be found in the
-test/sample_outputs/edison directory.  More recent runs on Trinity
+test/sample_outputs/edison directory.  More recent runs on Trinity (Haswell)
 gave similar outputs, though with different runtimes:
 
 leblancbig, 1 node:  2.047821e+01
@@ -98,14 +98,12 @@ For both the base and optimized versions, vendors are also allowed to
 tune the "chunksize" input parameter to a value best suited to their
 architecture.
 
-The problem size for the ACES benchmark was chosen to give a zone/rank
-count typical of production runs of FLAG (the LANL full application
-for which PENNANT is a proxy).  FLAG contains more complex physics models
-than PENNANT, and uses more memory per zone than PENNANT; as a result,
-the PENNANT benchmark run uses only a small fraction of system memory.
-It would be possible to run PENNANT with a higher zone count per node,
-or a smaller number of nodes; however, this usage is not allowed in vendor
-proposals, since it would not be representative of FLAG production runs.
+The problem size for the Crossroads benchmark was chosen to give a zone/rank count
+typical of production runs of full multi-material, multi-physics applications.  In production, the PENNANT benchmark uses only a small fraction of system
+memory, with the remaining memory filled using more materials and more physics (not available in PENNANT) rather than more zones.
+
+Vendor submissions must not attempt to fill memory by running a larger problem
+size, or consuming all of the node memory and running the given problem on a small number of nodes.  Instead, submissions must run the leblancx64.pnt reference problem distributed on a set of nodes providing at least ~400 TB total memory.  (For reference, the benchmark run on 4096 Trinity Haswell nodes had 512 TB available.)
 
 G.) Figure of Merit (FOM) Computation
 
@@ -116,7 +114,7 @@ can be computed from three lines in PENNANT standard output:
   - run time:  in line "hydro cycle run time=" near the bottom (note that
     this time excludes initialization and finalization stages)
 
-For the ACES leblancx64 benchmark on Trinity:
+For the Crossroads leblancx64 benchmark on Trinity (Haswell):
 FOM = zones * cycles / time
     = 943718400 * 236621 / 1.529997e+03
     = 1.459503e+11
