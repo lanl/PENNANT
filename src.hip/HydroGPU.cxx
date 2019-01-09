@@ -557,9 +557,10 @@ static __global__ void gpuInvMap(
     const int i = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (i >= nums) return;
 
+
     int p = mapspkey[i];
     int pp = mapspkey[i+1];
-    int pm = mapspkey[i-1];
+    int pm = i == 0 ? -1 : mapspkey[i-1];
     int s = mapspval[i];
     int sp = mapspval[i+1];
 
@@ -963,7 +964,7 @@ static __global__ void gpuMain5()
     if (z >= numz) return;
 
     const int z0 = threadIdx.x;
-    const int zlength = min(CHUNK_SIZE, numz - blockIdx.x * CHUNK_SIZE);
+    const int zlength = min((int)CHUNK_SIZE, (int)(numz - blockIdx.x * CHUNK_SIZE));
 
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
@@ -1082,7 +1083,6 @@ void hydroInit(
         const int* znumpH) {
 
     printf("Running Hydro on device...\n");
-
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
             schsfirstH, schslastH, schzfirstH, schzlastH);
     numpchH = (numpH+CHUNK_SIZE-1) / CHUNK_SIZE;
