@@ -20,16 +20,16 @@ CPPFLAGS := -I.
 # begin compiler-dependent flags
 #
 # gcc flags:
-#CXX := g++
-#CXXFLAGS_DEBUG := -g
-#CXXFLAGS_OPT := -O3
+CXX := g++
+CXXFLAGS_DEBUG := -g
+CXXFLAGS_OPT := -O3
 #CXXFLAGS_OPENMP := -fopenmp
 
 # intel flags:
-CXX := icpc
-CXXFLAGS_DEBUG := -g
-CXXFLAGS_OPT := -O3 -fast -fno-alias
-CXXFLAGS_OPENMP := -openmp
+#CXX := icpc
+#CXXFLAGS_DEBUG := -g
+#CXXFLAGS_OPT := -O3 -fast -fno-alias
+#CXXFLAGS_OPENMP := -openmp
 
 # pgi flags:
 #CXX := pgCC
@@ -40,12 +40,12 @@ CXXFLAGS_OPENMP := -openmp
 # end compiler-dependent flags
 
 CUDAC := nvcc
-CUDACFLAGS := -arch=sm_21 --ptxas-options=-v
+CUDACFLAGS := -arch=sm_70
 CUDACFLAGS_DEBUG := -G -lineinfo
 CUDACFLAGS_OPT := -O3
 
 LD := $(CXX)
-LDFLAGS := -L$(CUDA_INSTALL_PATH)/lib64 -lcudart
+LDFLAGS := -L$(CUDA_LIB_PATH) -lcudart
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS)
