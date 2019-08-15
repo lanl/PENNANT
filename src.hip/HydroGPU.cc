@@ -29,18 +29,6 @@ using namespace std;
 
 const int CHUNK_SIZE = 64;
 
-
-double __device__ max(double s1, double s2)
-{ 
-   return s1>s2 ? s1 : s2;
-}
-
-double __device__ min(double s1, double s2)
-{
-   return s1>s2 ? s2 : s1;
-}
-
-
 // __constant__ int gpuinit;
 
 // __constant__ int numsch;
