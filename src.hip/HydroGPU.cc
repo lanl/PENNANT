@@ -10,7 +10,6 @@
  * license; see top-level LICENSE file for full license text.
  */
 
-//#define HIP_ENABLE_PRINTF
 #include "HydroGPU.hh"
 
 #include <cmath>
