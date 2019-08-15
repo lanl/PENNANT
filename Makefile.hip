@@ -1,4 +1,4 @@
-THRUSTDIR := /home/rvanoo/repos/Thrust
+THRUSTDIR := /opt/rocm/rocthrust
 
 BUILDDIR := build_hip
 PRODUCT := pennant
@@ -17,7 +17,7 @@ DEPS += $(BUILDDIR)/HydroGPU.d
 
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
-CPPFLAGS := -I. -I$(THRUSTDIR)
+CPPFLAGS := -I. -I$(THRUSTDIR)/include
 
 # begin compiler-dependent flags
 #
