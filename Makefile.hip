@@ -10,10 +10,10 @@ SRCS := $(wildcard $(SRCDIR)/*.cc)
 OBJS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.o)
 DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 
-HDRS += $(SRCDIR)/HydroGPU.hh
-SRCS += $(SRCDIR)/HydroGPU.cxx
-OBJS += $(BUILDDIR)/HydroGPU.o
-DEPS += $(BUILDDIR)/HydroGPU.d
+#HDRS += $(SRCDIR)/HydroGPU.hh
+#SRCS += $(SRCDIR)/HydroGPU.cxx
+#OBJS += $(BUILDDIR)/HydroGPU.o
+#DEPS += $(BUILDDIR)/HydroGPU.d
 
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
