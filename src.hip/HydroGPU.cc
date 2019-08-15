@@ -45,9 +45,9 @@ __constant__ double2 vfixx, vfixy;
 __constant__ int numbcx, numbcy;
 __constant__ double bcx[2], bcy[2];
 
-static int * numsbad;
-static double * dtnext;
-static int * idtnext;
+__constant__ int numsbad;
+__constant__ double dtnext;
+__constant__ int idtnext;
 
 __constant__ const int* schsfirst;
 __constant__ const int* schslast;
@@ -166,7 +166,7 @@ static __device__ void calcSideVols(
     sarea[s] = sa;
     svol[s] = sv;
     
-    if (sv <= 0.) atomicAdd(numsbad, 1);
+    if (sv <= 0.) atomicAdd(&numsbad, 1);
 }
 
 
@@ -772,11 +772,11 @@ static __device__ void hydroFindMinDt(
         __syncthreads();
         half = len >> 1;
     }
-    if (z0 == 0 && ctemp[0] < dtnext[0]) {
-        atomicMin(&dtnext[0], ctemp[0]);
+    if (z0 == 0 && ctemp[0] < dtnext) {
+        atomicMin(&dtnext, ctemp[0]);
         // This line isn't 100% thread-safe, but since it is only for
         // a debugging aid, I'm not going to worry about it.
-        if (dtnext[0] == ctemp[0]) idtnext[0] = ctempi[0];
+        if (dtnext == ctemp[0]) idtnext = ctempi[0];
     }
 }
 
@@ -968,7 +968,7 @@ static __global__ void gpuMain5()
 void meshCheckBadSides() {
 
     int numsbadH;
-    CHKERR(hipMemcpy(&numsbadH, numsbad, sizeof(int), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpyFromSymbol(&numsbadH, HIP_SYMBOL(numsbad), sizeof(int)));
     // if there were negative side volumes, error exit
     if (numsbadH > 0) {
         cerr << "Error: " << numsbadH << " negative side volumes" << endl;
@@ -1252,12 +1252,8 @@ void hydroInit(
             mappsfirstD, mapssnextD);
     hipDeviceSynchronize();
 
-    hipMalloc( (void **) &dtnext,  sizeof(double));
-    hipMalloc( (void **) &idtnext, sizeof(int));
-    hipMalloc( (void **) &numsbad, sizeof(int));
-
     int zero = 0;
-    CHKERR(hipMemcpy(numsbad, &zero, sizeof(int), hipMemcpyHostToDevice));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
 }
 
 
@@ -1285,7 +1281,7 @@ void hydroDoCycle(
     hipDeviceSynchronize();
 
     double bigval = 1.e99;
-    CHKERR(hipMemcpy(dtnext, &bigval, sizeof(double), hipMemcpyHostToDevice));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dtnext), &bigval, sizeof(double)));
 
     hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
@@ -1294,8 +1290,8 @@ void hydroDoCycle(
     hipDeviceSynchronize();
     meshCheckBadSides();
 
-    CHKERR(hipMemcpy(&dtnextH, dtnext, sizeof(double), hipMemcpyDeviceToHost));
-    CHKERR(hipMemcpy(&idtnextH, idtnext, sizeof(int), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
+    CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
 }
 
 
