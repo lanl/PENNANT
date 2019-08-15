@@ -26,11 +26,6 @@
 
 using namespace std;
 
-// workaround for broken __longlong_as_double, that breaks the CAS loop implementation
-// of atomicMin below. TODO: remove workaround when __longlong_as_double has been fixed in ROCm stack
-__device__ double ull2d(const unsigned long long& val){
-  return *((double*) &val);
-}
 
 const int CHUNK_SIZE = 64;
 
@@ -757,9 +752,9 @@ static __device__ double atomicMin(double* address, double val)
         assumed = old;
         old = atomicCAS(address_as_ull, assumed,
                 __double_as_longlong(min(val,
-                ull2d(assumed))));
+                __longlong_as_double(assumed))));
     } while (assumed != old);
-    return ull2d(old);
+    return __longlong_as_double(old);
 }
 
 
