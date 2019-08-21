@@ -112,7 +112,7 @@ int checkCudaError(const hipError_t err, const char* cmd)
 }
 
 #define CHKERR(cmd) checkCudaError(cmd, #cmd)
-//#define CHKERR(cmd) cmd
+
 
 static __device__ void advPosHalf(
         const int p,
@@ -539,7 +539,6 @@ static __global__ void gpuInvMap(
     const int i = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (i >= nums) return;
 
-
     int p = mapspkey[i];
     int pp = mapspkey[i+1];
     int pm = i == 0 ? -1 : mapspkey[i-1];
@@ -807,7 +806,7 @@ static __global__ void gpuMain1()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
-    
+
     double dth = 0.5 * dt;
 
     // save off point variable values from previous cycle
@@ -951,7 +950,7 @@ static __global__ void gpuMain5()
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
 
-  // 7. compute work
+    // 7. compute work
     hydroCalcWorkRate(z, zvol0, zvol, zw, zp, dt, zwrate);
 
     // 8. update state variables
@@ -1065,34 +1064,35 @@ void hydroInit(
         const int* znumpH) {
 
     printf("Running Hydro on device...\n");
+
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
             schsfirstH, schslastH, schzfirstH, schzlastH);
     numpchH = (numpH+CHUNK_SIZE-1) / CHUNK_SIZE;
     numzchH = (numzH+CHUNK_SIZE-1) / CHUNK_SIZE;
 
-    // CHKERR(hipMemcpyToSymbol("numsch", &numschH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("nump", &numpH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("numz", &numzH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("nums", &numsH, sizeof(int)));
-    // CHKERR(hipMemcpyToSymbol("numc", &numcH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("pgamma", &pgammaH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("pssmin", &pssminH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("talfa", &talfaH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("tssmin", &tssminH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("qgamma", &qgammaH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("q1", &q1H, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("q2", &q2H, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("hcfl", &hcflH, sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("hcflv", &hcflvH, sizeof(double)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsch), &numschH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(nump), &numpH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numz), &numzH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(nums), &numsH, sizeof(int)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numc), &numcH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pgamma), &pgammaH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pssmin), &pssminH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(talfa), &talfaH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(tssmin), &tssminH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(qgamma), &qgammaH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(q1), &q1H, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(q2), &q2H, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(hcfl), &hcflH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(hcflv), &hcflvH, sizeof(double)));
 
     const double2 vfixxH = make_double2(1., 0.);
     const double2 vfixyH = make_double2(0., 1.);
-    CHKERR(hipMemcpyToSymbol("vfixx", &vfixxH, sizeof(double2)));
-    CHKERR(hipMemcpyToSymbol("vfixy", &vfixyH, sizeof(double2)));
-    CHKERR(hipMemcpyToSymbol("numbcx", &numbcxH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("numbcy", &numbcyH, sizeof(int)));
-    CHKERR(hipMemcpyToSymbol("bcx", bcxH, numbcxH*sizeof(double)));
-    CHKERR(hipMemcpyToSymbol("bcy", bcyH, numbcyH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(vfixx), &vfixxH, sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(vfixy), &vfixyH, sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numbcx), &numbcxH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numbcy), &numbcyH, sizeof(int)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(bcx), bcxH, numbcxH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(bcy), bcyH, numbcyH*sizeof(double)));
 
     CHKERR(hipMalloc(&schsfirstD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schslastD, numschH*sizeof(int)));
@@ -1157,66 +1157,66 @@ void hydroInit(
     CHKERR(hipMalloc(&mappsfirstD, numpH*sizeof(int)));
     CHKERR(hipMalloc(&mapssnextD, numsH*sizeof(int)));
 
-    CHKERR(hipMemcpyToSymbol("schsfirst", &schsfirstD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("schslast", &schslastD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol("schzfirst", &schzfirstD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol("schzlast", &schzlastD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mapsp1", &mapsp1D, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mapsp2", &mapsp2D, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mapsz", &mapszD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mapss4", &mapss4D, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol("mapspkey", &mapspkeyD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol("mapspval", &mapspvalD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mappsfirst", &mappsfirstD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("mapssnext", &mapssnextD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("znump", &znumpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schslast), &schslastD, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schzfirst), &schzfirstD, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schzlast), &schzlastD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp1), &mapsp1D, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp2), &mapsp2D, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsz), &mapszD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapss4), &mapss4D, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapspkey), &mapspkeyD, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapspval), &mapspvalD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mappsfirst), &mappsfirstD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapssnext), &mapssnextD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(znump), &znumpD, sizeof(void*)));
 
-    CHKERR(hipMemcpyToSymbol("px", &pxD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pxp", &pxpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("px0", &px0D, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zx", &zxD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zxp", &zxpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pu", &puD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pu0", &pu0D, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pap", &papD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("ssurf", &ssurfD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zm", &zmD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zr", &zrD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zrp", &zrpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("sarea", &sareaD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("svol", &svolD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zarea", &zareaD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zvol", &zvolD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zvol0", &zvol0D, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zdl", &zdlD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zdu", &zduD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("ze", &zeD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zetot", &zetotD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zw", &zwD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zwrate", &zwrateD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zp", &zpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zss", &zssD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("smf", &smfD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("careap", &careapD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("sareap", &sareapD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("svolp", &svolpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zareap", &zareapD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zvolp", &zvolpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cmaswt", &cmaswtD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pmaswt", &pmaswtD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("sfp", &sfpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("sft", &sftD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("sfq", &sfqD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cftot", &cftotD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("pf", &pfD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cevol", &cevolD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cdu", &cduD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cdiv", &cdivD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("zuc", &zucD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol("crmu", &crmuD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cqe", &cqeD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("ccos", &ccosD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol("cw", &cwD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(px), &pxD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pxp), &pxpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(px0), &px0D, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zx), &zxD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp), &zxpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu), &puD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu0), &pu0D, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pap), &papD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ssurf), &ssurfD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zm), &zmD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zr), &zrD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zrp), &zrpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sarea), &sareaD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(svol), &svolD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zarea), &zareaD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol), &zvolD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0), &zvol0D, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl), &zdlD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdu), &zduD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ze), &zeD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zetot), &zetotD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zw), &zwD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zwrate), &zwrateD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp), &zpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss), &zssD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(smf), &smfD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(careap), &careapD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sareap), &sareapD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(svolp), &svolpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zareap), &zareapD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp), &zvolpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt), &cmaswtD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pmaswt), &pmaswtD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfp), &sfpD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sft), &sftD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfq), &sfqD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cevol), &cevolD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdu), &cduD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdiv), &cdivD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zuc), &zucD, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(crmu), &crmuD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
 
     CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(schslastD, schslastH, numschH*sizeof(int), hipMemcpyHostToDevice));
@@ -1254,6 +1254,7 @@ void hydroInit(
 
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
+
 }
 
 
@@ -1263,7 +1264,7 @@ void hydroDoCycle(
         int& idtnextH) {
     int gridSizeS, gridSizeP, gridSizeZ, chunkSize;
 
-    CHKERR(hipMemcpyToSymbol("dt", &dtH, sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dt), &dtH, sizeof(double)));
 
     gridSizeS = numschH;
     gridSizeP = numpchH;
@@ -1292,6 +1293,7 @@ void hydroDoCycle(
 
     CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
     CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
+
 }
 
 
@@ -1316,7 +1318,7 @@ void hydroInitGPU()
     int one = 1;
 
     CHKERR(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-    // CHKERR(hipMemcpyToSymbol("gpuinit", &one, sizeof(int))); 
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(gpuinit), &one, sizeof(int))); 
 
 }
 
