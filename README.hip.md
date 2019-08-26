@@ -1,46 +1,50 @@
-## General information on Pennant
-See the [README](README) file, or the [PDF documentation](http://gitlab1.amd.com/rvanoo/pennant-hip/blob/master/doc/pennantdoc.pdf).
+# PENNANT HIP version
 
-## Getting the HIP version of Pennant
+The HIP version of PENNANT, intended to run in AMD GPUs, is based off the 
+cuda branch of the PENNANT repository at https://github.com/lanl/PENNANT
+git@github.com. AMD is in the process of open-sourcing
+the hip branch. Pending legal review, AMD provides the hip branch as a
+tarball to the DoE under NDA.
 
-```
-git clone -b hip http://gitlab1.amd.com/rvanoo/pennant-hip.git
-```
+## Prerequisites
 
-## Building the HIP version Pennant
-The HIP port of Pennant depends on HIP versions of Thrust and CUB. To install these:
-
+The HIP version of PENNANT depends assumes a ROCm 2.7 install (older versions
+may work too), and on rocThrust; 
+see https://github.com/ROCmSoftwarePlatform/rocThrust, or install it on
+Ubuntu systems with
 ```
-git clone https://github.com/ROCmSoftwarePlatform/Thrust.git
-cd Thrust/thrust/system/cuda/detail
-git clone -b hip_port_1.7.3 https://github.com/ROCmSoftwarePlatform/cub-hip.git
-ln -s cub-hip cub
-sed -i.bak 's/32 - LOGICAL_WARP/64 - LOGICAL_WARP/' ./cub-hip/cub/warp/specializations/warp_scan_smem.cuh
-```
-Next, in Pennant's Makefile.hip, set
-
-```
-THRUSTDIR := /path/to/hip/version/of/Thrust
+sudo apt install rocthrust
 ```
 
-To build Pennant:
+## Building
+
+To build PENNANT:
 
 ```
 make -f Makefile.hip -j `nproc`
 ```
 
-## Running Pennant
-After building, Pennant's executable is in the build_hip directory. Pennant 
-comes with a number of test inputs in subdirectories of the test directory. The
-*.pnt files in each subdirectory are Pennant's input files, to be provided as
-argument to the binary, e.g.:
-```
-build_hip/pennant test/leblancbig/leblancbig.pnt
-```
+This will build the PENNANT binary in directory build_hip.
 
-Pennant runs an iterative process; each iteration is called a "cycle". To limit
-the number of cycles Pennant runs on a particular input, add a line with 
-`cstop <n>` to the *.pnt file. E.g., to limit to 100 iterations, add
-```
-cstop 100
-```
+## Changes w.r.t. the CUDA version
+
+The CUDA version contains only two source files with CUDA code: `HydroGPU.cu`
+and `Vec2.hh`, both in the `src` directory. We hipified these into a new
+`src.hip` directory, and added symlinks to the remaining files that needed
+no hipification. Some manual changes were required to get the hipified
+files to compile, and we list the most significant ones here:
+
+* The clang-based HIP compiler does not allow `static __constant__` and
+  `static __device__` declarations at the global scope. We replaced
+  these with `__constant__` declarations.
+* The HIP compiler does not allow the declaration of `__shared__` arrays
+  at global scope. Instead, we declared those arrays in `__global__` kernels
+  or `__device__` functions, and passed pointers to the `__shared__` arrays
+  to `__device__` functions called from those kernels or device functions.
+
+Ideally, instead of modifying the hipified version of PENNANT, we would modify
+the CUDA version of PENNANT such that (a) there is no difference in
+correctness of performance between the original and modified CUDA versions, and
+(b) the hipified version of the modified CUDA version requires no further
+changes in order to compile and run. We will look into this for future
+versions of the HIP version of PENNANT.
