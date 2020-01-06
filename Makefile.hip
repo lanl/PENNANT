@@ -3,6 +3,7 @@ PRODUCT := pennant
 
 SRCDIR := src.hip
 THRUSTDIR := /opt/rocm/rocthrust
+PRIMDIR := /opt/rocm/rocprim
 
 HDRS := $(wildcard $(SRCDIR)/*.hh)
 SRCS := $(wildcard $(SRCDIR)/*.cc)
@@ -11,7 +12,7 @@ DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
-CPPFLAGS := -I. -I$(THRUSTDIR)/include
+CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
 
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
