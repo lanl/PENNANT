@@ -1,15 +1,9 @@
-%%%%%%%%%% BEGIN PREAMBLE %%%%%%%%%%
-\documentclass[11pt,letterpaper]{article} % 11pt font = 12pt Word font
+\documentclass[11pt,letterpaper]{article}
 \usepackage{graphicx}
-\usepackage{fancyhdr,lastpage}
-\usepackage[T1]{fontenc}
-\usepackage[latin1]{inputenc}
 \usepackage[english]{babel}
-\usepackage{helvet}
 \usepackage{hyperref}
 \usepackage{pdfpages}
 \usepackage{times}
-\usepackage{comment}
 \usepackage{geometry}
 
 \geometry{pdftex, portrait,
@@ -18,13 +12,16 @@
           left=72pt, right=72pt
 }
 
+
 \begin{document}
 
 \title{The PENNANT Mini-App}
 \author{Charles R. Ferenbaugh \\
         Los Alamos National Laboratory \\
         {\tt cferenba@lanl.gov}}
-\date{Version 0.5 -- May 2013}
+\date{Version 0.9 -- February 2016 \\
+      LA-CC-12-021 \\
+      \url{https://github.com/lanl/PENNANT}}
 \maketitle
 
 PENNANT is an unstructured mesh physics mini-app designed for advanced
@@ -32,8 +29,9 @@ architecture research.
 It contains mesh data structures and a few physics algorithms adapted
 from the LANL rad-hydro code FLAG, and gives a
 sample of the typical memory access patterns of FLAG.
-%It is capable of running several
-%standard test problems in shock physics.
+
+Details on the performance of PENNANT can be found in~\cite{pnt1,pnt2}.
+
 
 \section{Building and running the code}
 
@@ -42,11 +40,11 @@ sample of the typical memory access patterns of FLAG.
 A simple {\tt Makefile} is provided in the top-level directory for building
 the code.  Before using it, you may wish to edit the definitions of CXX
 and CXXFLAGS to specify your desired C++ compiler and flags, and to
-choose between optimized/debug and serial/OpenMP builds.  Then
+choose between optimized/debug and serial/OpenMP/MPI builds.  Then
 a simple ``{\tt make}'' command will create a {\tt build} subdirectory and
 build the {\tt pennant} binary in that directory.
 
-PENNANT has been tested under GCC 4.6.1, PGI 11.10, and Intel 12.1.2.
+PENNANT has been tested under GCC 5.1.0, PGI 15.3, and Intel 15.0.3.
 Building under other compilers should require only minor changes.
 
 \subsection{Running tests}
@@ -54,52 +52,67 @@ Building under other compilers should require only minor changes.
 Several test problems are provided in subdirectories under the {\tt test}
 directory.  The command line
 \begin{quote}
-{\tt pennant} {\em testname}{\tt.pnt}
+{\tt pennant \emph{testname}.pnt}
 \end{quote}
-is used to run a test.
+is used to run a test in serial mode.  If running under MPI, this should
+be preceded by {\tt mpirun} or similar command as appropriate on your
+system.
 
 The available test problems are listed in Table~\ref{tbl:tests}.
 The smaller problems run quickly and are useful for debugging and
 regression tests; gold standard files are provided (see next section).
 The larger tests take longer to run and are suitable for timing tests.
+Most of these problems have sizes chosen to match a typical FLAG run
+on a single node of a cluster; the exceptions are the two Leblanc
+problems specifically labeled as multi-node.
 
 \begin{table}
 \centering
 \caption{Test problems provided with PENNANT.}
 \label{tbl:tests}
-\begin{tabular}{lll}
+\begin{tabular}{lrll}
     \hline
-    name & \# zones & zone type \\
+    name & \# zones & mesh shape & zone type \\
     \hline
     Leblanc problems~\cite{leblanc}: \\
-    leblanc    &   900 & square \\
-    leblancbig & 57600 & square \\
+    leblanc    &    900 & rectangle & quad \\
+    leblancbig & 230400 & rectangle & quad \\
+    \hline
+    Leblanc problems, multi-node versions: \\
+    leblancx4  & $3.69 \times 10^6$ & rectangle & quad \\
+    leblancx16 & $5.90 \times 10^7$ & rectangle & quad \\
+    leblancx64 & $9.44 \times 10^8$ & rectangle & quad \\
     \hline
     Noh problems~\cite{noh}: \\
-    nohsmall   &    40 & triangle/quad \\
-    nohsquare  & 32400 & square \\
-    nohpoly    & 22801 & mostly hexagons \\
+    nohsmall   &     40 & radial    & triangle/quad \\
+    noh        &   3000 & radial    & triangle/quad \\
+    nohsquare  & 129600 & square    & quad \\
+    nohpoly    &  63001 & square    & mostly hexagons \\
     \hline
     Sedov problems~\cite{sedov}: \\
-    sedovsmall &    81 & square \\
-    sedov      &  2025 & square \\
-    sedovbig   & 72900 & square \\
+    sedovsmall &     81 & square    & quad \\
+    sedov      &   2025 & square    & quad \\
+    sedovbig   & 291600 & square    & quad \\
     \hline
 \end{tabular}
 \end{table}
 
 \subsection{Test inputs and outputs}
 
-Each test problem directory contains two input files.  The {\tt.pnt}
-file is a small text file containing input parameters for the test.
-The {\tt.gmv} file contains the input mesh in LANL GMV format; its name
-is specified as one of the entries in the {\tt.pnt} file.
+Each test problem directory contains an input file with the {\tt.pnt}
+suffix.  This is a small text file containing input parameters for the
+test.
 
-PENNANT generates output files of two kinds.  The {\tt.xy} output file
+PENNANT can generate output files of two kinds.  The {\tt.xy} output file
 is a text file containing the per-zone values of zone density, energy,
 and pressure.  (It is modeled after a similar file generated by FLAG.)
-For the smaller tests, a gold standard file {\em testname}{\tt.xy.std}
-is provided for reference.
+Note that, when running under MPI, the order of the output values in
+this file may vary when the number of PEs changes.
+For the smaller tests, two gold standard files are provided for reference.
+The {\tt.xy.std} file gives the expected results for a serial run (or
+1-PE MPI run), while the {\tt.xy.std4} file gives expected results for
+a 4-PE MPI run.  (These files are identical except for the ordering of
+zones, which is done differently depending on the number of PEs in use.)
 
 There are also several graphics output files in Ensight Gold format:
 the main file has suffix {\tt.case}, and it refers to auxiliary files
@@ -118,29 +131,67 @@ Sample outputs are shown in Figure~\ref{fig:output}.
     \includegraphics[width=0.40\textwidth]{sedov-result.png} \\
     (a) && (b) \\
     \end{tabular}
-    \caption{Final state of (a) {\tt nohsquare} and (b) {\tt sedovbig}
-    problems, colored by zone density.}
+    \begin{tabular}{c}
+    \includegraphics[width=0.40\textwidth]{leblanc-result.png} \\
+    (c) \\
+    \end{tabular}
+    \caption{Final state of (a) {\em nohsquare}, (b) {\em sedovbig},
+    and (c) {\em leblancbig} problems, colored by zone density.}
     \label{fig:output}
 \end{figure}
 
-For users who would like to generate additional test cases of varying
-sizes (e.g., for scaling studies), the utility script {\tt gmvrect.py}
-is provided in the {\tt tools} directory.  This generates rectangular
-meshes containing square zones, with user-specified dimensions.
-Usage is:
-\begin{verbatim}
-Usage:  gmvrect.py NZX [NZY [LENX [LENY]]]
-where nzx, nzy   = number of zones in x, y directions
-                   (no default for nzx; default nzy = nzx)
-      lenx, leny = total length in x, y directions
-                   (default for both = 1.0)
-\end{verbatim}
+These outputs are off by default, but can be activated using the
+{\tt writexy} and {\tt writegold} input file flags respectively
+(see next section).
+Note that the file writers are not optimized to work well on large
+numbers of MPI ranks (this will be fixed in a future release).
 
-Note that changing the number
-of zones in a problem typically requires a corresponding change to the
-{\tt dtinit} parameter in the input file.  As a rule of thumb, if the
-resolution of the problem is increased by a factor of $r$, {\tt dtinit}
-must decrease by a factor of $r$.
+\subsection{Input file parameters}
+
+In most cases, there is no need for users to modify input files.  However,
+here are a few parameters that ambitious users might want to know about:
+\begin{description}
+    \item[{\tt writexy}]  (integer) If nonzero, write {\tt .xy} file
+        at end of run.
+    \item[{\tt writegold}]  (integer) If nonzero, write Ensight Gold
+        file at end of run.
+    \item[{\tt cstop}]  (integer) Stop run when problem reaches given
+        cycle number.
+    \item[{\tt tstop}]  (real) Stop run when problem reaches given
+        simulation time.
+    \item[{\tt chunksize}]  (integer) Process mesh elements in chunks of
+        given size; see section~\ref{sec:chunk} for more details on
+        chunk processing.
+        If {\tt chunksize} is zero, the entire mesh is
+        treated as a single chunk (this is the default).
+        Typically, for best performance, this value will be chosen so
+        that a chunk can fit in L1 or L2 cache as appropriate; it
+        follows that the optimal value is architecture-dependent.
+    \item[{\tt meshparams}]  (list of integers and reals)
+        Parameters for internal mesh generator.
+        These may be modified if additional test cases of varying sizes are
+        desired (e.g., for scaling studies).  The format of this line
+        is: \\
+        {\tt meshparams \emph{nzx [nzy [lenx [leny]]]}} \\
+        where the parameters have the following meanings: \\
+        \begin{tabular}{lp{320pt}}
+            {\tt\emph{nzx, nzy}} &
+            number of zones in x, y directions
+            (no default for nzx; default nzy = nzx) \\
+            {\tt\emph{lenx, leny}} &
+            total length in x, y directions
+            (default for both = 1.0, except when meshtype = pie,
+            in which case default for lenx = 90.0)
+        \end{tabular} \\
+        For the {\em pie} mesh type, {\em x} and {\em y}
+        should be understood as $\theta$ and {\em r} respectively.
+    \item[{\tt dtinit}]  (real) Initial timestep.  This shouldn't need to be
+        changed unless the mesh has been changed (see
+        {\tt meshparams} above).  As a rule of thumb, if the resolution
+        of the problem is increased by a factor of $r$ in each direction,
+        {\tt dtinit} must decrease by a factor of $r$.
+\end{description}
+
 
 \section{Data structure details}
 
@@ -179,32 +230,24 @@ of zone volumes.  There are scalar variables of the form
 {\tt numX} which give the number of {\tt X}'s in the problem:
 {\tt nump} is the number of points, and so on.
 
-PENNANT also stores various mapping arrays between different entity
-types.  Most of these are side-based, as shown in Figure~\ref{fig:side}.
+PENNANT also stores various mapping arrays from sides to other entity
+types.  These are shown in Figure~\ref{fig:side}.
 Given a side $s$, the following mapping arrays are available:
-\begin{itemize}
+\begin{itemize} \itemsep1pt \parskip0pt
 \item {\tt mapsz} gives the zone $z$ of which $s$ is a subregion.
 \item {\tt mapse} gives the edge $e$ on the boundary of $s$.
 \item {\tt mapsp1} and {\tt mapsp2} give the two mesh points $p_1$ and
 $p_2$ on the boundary of $s$.  It is assumed that the mesh is oriented
 according to a right-hand rule, so that the edge from $p_1$ to $p_2$
 is always in a counter-clockwise direction relative to the zone.
-\item {\tt mapsc1} and {\tt mapsc2} give the two corners $c_1$ and
-$c_2$ which overlap with $s$, where $c_1$ is before $c_2$ in
-a counter-clockwise traversal of the zone.
 \item {\tt mapss3} and {\tt mapss4} give the two sides $s_3$ and
 $s_4$ on either side of $s$, where $s_3$ is before $s$ and $s_4$ is
 after it in a counter-clockwise traversal of the zone.
-\footnote{If you're wondering why there isn't a {\tt mapss2}:
-FLAG uses $s_2$ to denote the side that is across the edge $e$ from
-side $s$.  This variable isn't currently needed by PENNANT, so I didn't
-implement it or include it in the figure.  It may be implemented in
-a future PENNANT release.}
 \end{itemize}
-There are also two edge-based arrays {\tt mapep1} and {\tt mapep2},
-which give the two endpoints of an edge~$e$; and two corner-based
-arrays {\tt mapcz} and {\tt mapcp}, which give the associated zone
-and point, respectively, of a corner~$c$.
+Since there is a one-to-one correspondence between sides and corners,
+side-to-corner arrays are not used.  By convention, the corner labeled
+$c_1$ in Figure~\ref{fig:side} has the same index as $s$.  It follows
+that $c_2$ has the same index as $s_4$, or {\tt mapss4[s]}.
 
 \begin{figure}
     \centering
@@ -219,17 +262,41 @@ volumes, and surface vectors.  The surface vector for a side $s$, shown
 by the vector {\bf S} in Figure~\ref{fig:side}, is used by force
 computations in the hydro algorithms described later.
 
+\subsection{Mesh generators}
+
+PENNANT has internal mesh generation code that will generate three
+different types of meshes, shown in Figure~\ref{fig:meshtype}.
+\begin{figure}
+    \centering
+    \begin{tabular}{ccccc}
+    \includegraphics[width=0.25\textwidth]{rect-meshtype.png} &
+    \hspace{0.025\textwidth} &
+    \includegraphics[width=0.25\textwidth]{pie-meshtype.png} &
+    \hspace{0.025\textwidth} &
+    \includegraphics[width=0.25\textwidth]{hex-meshtype.png} \\
+    (a) && (b) && (c) \\
+    \end{tabular}
+    \caption{Mesh types generated by PENNANT mesh generators:
+    (a) {\tt rect}, (b) {\tt pie}, and (c) {\tt hex}.}
+    \label{fig:meshtype}
+\end{figure}
+
+Note that the physics routines in PENNANT can process 2-D meshes of
+any geometry; they are not limited to the mesh types shown here.
+However, the internal mesh generators are set up to also generate domain
+connectivity information needed by MPI (see section~\ref{sec:domain}),
+which would be difficult to generate for arbitrary meshes.
+
 \subsection{Chunk processing}
+\label{sec:chunk}
 
-The PENNANT {\tt Mesh} class has been set up to support computation
-on chunks of the mesh in parallel.  This is used to implement an OpenMP
-version of the code and should lend itself to other task-based approaches
-as well.
-
+The PENNANT {\tt Mesh} class has been set up to support computation on
+chunks of the mesh in parallel.  This is used to implement OpenMP and CUDA
+versions of the code and should lend itself to other task-based approaches
+as well.  (MPI parallelism is implemented differently, using geometric
+domain decomposition, as described in section~\ref{sec:domain}).
 The maximum chunk size is controlled by the input file parameter
-{\tt chunksize}.  If {\tt chunksize} is larger than the total number of
-sides in the mesh, the entire mesh is treated as a single chunk
-(this is the default).
+{\tt chunksize}.
 
 In the current chunking approach, the lists of points and zones are
 simply divided into chunks of size {\tt chunksize} (except for the final,
@@ -256,6 +323,51 @@ use scratch arrays the size of the chunk currently being processed.
 The prefix {\tt s0} is used for an array with one entry per side
 in the current chunk, with prefixes {\tt c0} and {\tt z0} used similarly
 for corners and zones respectively.
+
+\subsection{Domain decomposition}
+\label{sec:domain}
+
+The MPI implementation of PENNANT uses domain decomposition to put
+a geometrically contiguous subset of the mesh on each processor.
+It also generates information to allow point data to be communicated
+across processors, as described below.
+
+PENNANT follows FLAG in assigning each zone, corner and side to
+a single MPI rank when decomposing the mesh.  However, any point on
+a rank boundary is replicated on each rank which needs it; see
+Figure~\ref{fig:decomp} for an illustration.  For any duplicated
+point, one of its instances is designated as the {\em master}, and
+the others are its {\em slaves}.  (The current PENNANT mesh generators
+use the convention that the master point is the one on the
+lowest-numbered MPI rank.)  When it is time to sum a quantity
+from corners to points, the summation is first done for on-processor
+corners in {\tt Mesh::sumOnProc}.  Then the summation is extended across
+processors in three stages:
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.6\textwidth]{domain-decomp.png}
+    \caption{Example MPI decomposition of a mesh.  Master points are
+        shown as blue, slaves as red, and proxies as white.
+        MPI communications between slaves and proxies are shown
+        as arrows.}
+    \label{fig:decomp}
+\end{figure}
+
+\begin{enumerate} \itemsep1pt \parskip0pt
+    \item In {\tt Mesh::parallelGather},
+        slave point values are assembled into messages, and sent
+        to corresponding {\em proxy} points on the same rank as
+        their masters (using MPI).
+    \item In {\tt Mesh::parallelSum},
+        master points sum their own values and all proxy values, and
+        store sum at master and all proxies (on-processor only, no MPI
+        is used).
+    \item In {\tt Mesh::parallelScatter},
+        the updated proxy point values are assembled into messages
+        and sent back to their corresponding slave points (using MPI).
+\end{enumerate}
+
 
 \section{Physics details}
 
@@ -311,7 +423,7 @@ To facilitate these calculations, many of the calculation loops are done
 over sides, and some intermediate variables are stored on sides.
 This works since each side can be easily correlated to its
 corresponding zone and points using the mapping arrays in the {\tt Mesh}
-object.
+object.  A few routines use corners in a similar manner.
 
 PENNANT hydro uses a {\em predictor-corrector} time integration
 method.  Each cycle can be broken into two steps, shown in the table.
@@ -324,7 +436,7 @@ then used to advance all variables to the end of the timestep.
 To implement the predictor-corrector scheme, it is necessary to store
 multiple values of some of the problem variables.  This is done
 using the following notation convention:
-\begin{itemize}
+\begin{itemize} \itemsep1pt \parskip0pt
 \item suffix $0$ = the beginning of the timestep (``cycle n'')
 \item suffix $p$ = half-way through the timestep (``cycle n + 1/2'')
 \item no suffix = completion of the timestep    (``cycle n + 1'')
@@ -342,24 +454,38 @@ are needed at all times.
     & \multicolumn{3}{c}{Part of time step} \\
     quantity & begin & middle & end \\
     \hline
-    point coordinate       &   px0     &   pxp     &   px  \\
-    point velocity         &   pu0     &           &   pu    \\
-    point acceleration     &           &   pap  \\
-    point force            &           &   pf  \\
-    point mass             &           &   pmaswt  \\
+    point coordinate       & px0   & pxp     & px \\
+    point velocity         & pu0   &         & pu \\
+    point acceleration     &       & pap \\
+    point force            &       & pf \\
+    point mass             &       & pmaswt \\
     \\
-    zone center coordinate &           &   zxp      &   zx  \\
-    zone mass              &           &           &   zm      \\
-    zone volume            &   zvol0   &   zvolp   &   zvol       \\
-    zone density           &           &   zrp      &   zr      \\
-    zone specific energy   &           &           &   ze  \\
+    zone center coordinate &       & zxp     & zx \\
+    zone mass              &       &         & zm \\
+    zone volume            & zvol0 & zvolp   & zvol \\
+    zone density           &       & zrp     & zr \\
+    zone specific energy   &       &         & ze \\
     \\
-    side volume            &           &   svolp    &   svol    \\
-    side surface vector    &           &   ssurfp \\
+    side volume            &       & svolp   & svol \\
+    side surface vector    &       & ssurfp \\
     \hline
 \end{tabular}
 \end{table}
 
+\subsection{Energy check}
+
+The hydro algorithms in PENNANT are intended to conserve total energy
+as a simulation progresses.  However, in the 2D cylindrical geometry
+used by PENNANT, the conservation is not always exact.  An energy
+check diagnostic is printed at the beginning and end of each run to
+verify conservation.  For the {\tt leblanc} problems, energy is
+typically conserved to within the accuracy of the printout (seven
+decimal places).  For other problems, there can be a relative error
+of about $2\times 10^{-4}$ (for the {\tt noh} problems) or
+$2\times 10^{-2}$ (for the {\tt sedov} problems).  These errors are
+due to limitations of the numerical algorithms in the cylindrical case,
+and should not change significantly between different platforms or
+implementations of PENNANT.
 
 \subsection{Material model}
 
@@ -368,7 +494,6 @@ gas material model, implemented in the {\tt PolyGas} class.
 This class includes code to compute a simple gamma-law gas
 equation of state, and to compute the resulting pressure-based
 forces.
-
 
 \subsection{Subzonal pressures}
 
@@ -384,7 +509,6 @@ to the subzonal pressure treatment, an artificial viscosity algorithm
 based on the subzonal pressures; the artificial viscosity is not part of
 the standard TTS description in the references.  Only the subzonal pressure
 part of TTS is implemented in PENNANT.
-
 
 \subsection{Artificial viscosity}
 
@@ -402,7 +526,12 @@ the problem state variables.
 
 Thanks to Mikhail Shashkov and the ASCR ``Mimetic Methods for PDEs''
 project, and the ASC Hydrodynamics project, for providing support for
-this work.
+this work.  Thanks to Pat McCormick and the ASC Programming Models
+project for providing some additional support for development of the
+MPI version.  Thanks to Sriram Swaminarayan and the ASC Code Strategies
+for Emerging Platforms project for supporting PENNANT modifications
+for the APEX NERSC-9/Crossroads procurement.
+
 Thanks also to the Lagrangian Applications Project members who have
 contributed to the FLAG code; parts of the PENNANT code and documentation
 are adapted from their work.
@@ -437,13 +566,25 @@ E.J. Caramana and M.J. Shashkov.
   by means of {L}agarangian subzonal masses and pressures.
 \newblock {\em J. Comput. Phys.}, 142:521--561, 1998.
 
+\bibitem{pnt1}
+C. Ferenbaugh.
+\newblock {PENNANT}: An unstructured mesh mini-app for advanced
+  architecture research.
+\newblock {\em Concurrency Computat.: Pract. Exper.}, 27:4555--4572, 2015.
+
+\bibitem{pnt2}
+C. Ferenbaugh.  
+\newblock Performance evaluation of unstructured mesh physics on
+  advanced architectures.
+\newblock {\em Proceedings of IEEE Cluster 2015}, Chicago, IL, 721-728, 2015.
+
 \bibitem{noh}
-W. F. Noh,
+W.F. Noh.
 \newblock Errors for calculations of strong shocks using an artificial viscosity and an artificial heat flux.
 \newblock {\em J. Comput. Phys.}, 72:78, 1987.
 
 \bibitem{sedov}
-L. I. Sedov,
+L.I. Sedov.
 \newblock Similarity and Dimensional Methods in Mechanics.
 \newblock Academic Press, New York, 1959.
 
@@ -456,37 +597,71 @@ K.B. Wallick.
 
 \end{thebibliography}
 
+
 \appendix
 \section{Version Log}
 
 \begin{description}
-\item[0.5] May 2013.  Further optimizations.
-\item[0.4] January 2013.  First open-source release.
-Fixed a bug in QCS and added some optimizations.
-Added Sedov and Leblanc test problems, and some new input keywords to
-support them.
-\item[0.3] July 2012.  Added OpenMP pragmas and point chunk processing.
-Modified physics state arrays to be flat arrays instead of STL vectors.
-\item[0.2] June 2012.  Added side chunk processing.  Miscellaneous minor cleanup.
-\item[0.1] March 2012.  Initial release, internal LANL only.
+\item[0.9] February 2016 \\
+     Added leblancx64 problem.  Added energy check diagnostic
+     for verifying large problems.
+
+\item[0.8] November 2015 \\
+     Added multi-node test problems.  Added information for
+     APEX benchmark testing.
+
+\item[0.7] February 2015 \\
+     Further optimizations for MPI+OpenMP.
+
+\item[0.6] February 2014 \\
+     First MPI version.  MPI capability is working and mostly
+     optimized; MPI+OpenMP is working but needs optimization.
+     Replaced GMV mesh reader with internal mesh generators.
+     Added QCS velocity difference routine to reflect a recent
+     bugfix in FLAG.  Increased size of big test problems.
+
+\item[0.5] May 2013 \\
+     Further optimizations.
+
+\item[0.4] January 2013 \\
+     First open-source release.  Fixed a bug in QCS and added some
+     optimizations.  Added Sedov and Leblanc test problems, and some
+     new input keywords to support them.
+
+\item[0.3] July 2012 \\
+     Added OpenMP pragmas and point chunk processing.  Modified physics
+     state arrays to be flat arrays instead of STL vectors.
+
+\item[0.2] June 2012 \\
+     Added side chunk processing.  Miscellaneous minor cleanup.
+
+\item[0.1] March 2012 \\
+     Initial release, internal LANL only.
 \end{description}
 
 \section{Copyright and License Information}
 
-Copyright \copyright 2012, Los Alamos National Security, LLC.
+Copyright \copyright 2012, Triad National Security, LLC.
 All rights reserved.
 
-Copyright 2012. Los Alamos National Security, LLC.
 This software was produced under U.S. Government contract
-DE-AC52-06NA25396 for Los Alamos National Laboratory (LANL), which is
-operated by Los Alamos National Security, LLC for the U.S. Department
-of Energy. The U.S. Government has rights to use, reproduce, and
-distribute this software. NEITHER THE GOVERNMENT NOR LOS ALAMOS
-NATIONAL SECURITY, LLC MAKES ANY WARRANTY, EXPRESS OR IMPLIED, OR
-ASSUMES ANY LIABILITY FOR THE USE OF THIS SOFTWARE. If software is
-modified to produce derivative works, such modified software should be
-clearly marked, so as not to confuse it with the version available from
-LANL.
+89233218CNA000001 for Los Alamos National Laboratory (LANL), which is
+operated by Triad National Security, LLC for the U.S. Department of
+Energy/National Nuclear Security Administration.
+
+All rights in the program are reserved by Triad National Security, LLC,
+and the U.S. Department of Energy/National Nuclear Security
+Administration. The Government is granted for itself and others acting
+on its behalf a nonexclusive, paid-up, irrevocable worldwide license in
+this material to reproduce, prepare derivative works, distribute copies
+to the public, perform publicly and display publicly, and to permit
+others to do so.
+
+NEITHER THE GOVERNMENT NOR TRIAD NATIONAL SECURITY, LLC MAKES ANY
+WARRANTY, EXPRESS OR IMPLIED, OR ASSUMES ANY LIABILITY FOR THE USE OF
+THIS SOFTWARE. If software is modified to produce derivative works,
+such modified software should be clearly marked, so as not to confuse it
+with the version available from LANL.
 
 Additionally, redistribution and use in source and binary forms, with
 or without modification, are permitted provided that the following
@@ -499,16 +674,16 @@ conditions are met:
    copyright notice, this list of conditions and the following
    disclaimer in the documentation and/or other materials provided
    with the distribution.
-\item Neither the name of Los Alamos National Security, LLC, Los Alamos
+\item Neither the name of Triad National Security, LLC, Los Alamos
    National Laboratory, LANL, the U.S. Government, nor the names of its
    contributors may be used to endorse or promote products derived from
    this software without specific prior written permission.
 \end{enumerate}
 
-THIS SOFTWARE IS PROVIDED BY LOS ALAMOS NATIONAL SECURITY, LLC AND
+THIS SOFTWARE IS PROVIDED BY TRIAD NATIONAL SECURITY, LLC AND
 CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,
 BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL LOS ALAMOS
+FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL TRIAD
 NATIONAL SECURITY, LLC OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
 INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
