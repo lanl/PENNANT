@@ -2,18 +2,18 @@
 
 The HIP version of PENNANT, intended to run in AMD GPUs, is based off the 
 cuda branch of the PENNANT repository at https://github.com/lanl/PENNANT
-git@github.com. AMD is in the process of open-sourcing
-the hip branch. Pending legal review, AMD provides the hip branch as a
-tarball to the DoE under NDA.
+git@github.com. The current HIP version is a straightforward HIP port, without
+any optimizations. 
 
 ## Prerequisites
 
-The HIP version of PENNANT depends assumes a ROCm 2.7 install (older versions
-may work too), and on rocThrust; 
-see https://github.com/ROCmSoftwarePlatform/rocThrust, or install it on
+The HIP version of PENNANT depends assumes a ROCm 3.0 install (older versions
+may work too), and on the rocThrust and rocPrim libearies. 
+See https://github.com/ROCmSoftwarePlatform/rocThrust and
+https://github.com/ROCmSoftwarePlatform/rocPrim, or install these libraries on
 Ubuntu systems with
 ```
-sudo apt install rocthrust
+sudo apt install rocthrust rocprim
 ```
 
 ## Building
