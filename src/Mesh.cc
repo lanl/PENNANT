@@ -18,6 +18,7 @@
 
 #include "Vec2.hh"
 #include "Memory.hh"
+#include "Parallel.hh"
 #include "InputFile.hh"
 #include "GenMesh.hh"
 #include "WriteXY.hh"
@@ -59,11 +60,18 @@ void Mesh::init() {
     // read mesh from gmv file
     vector<double2> nodepos;
     vector<int> cellstart, cellsize, cellnodes;
-    vector<int> masterpes, mastercounts, slavepoints;
+/*    vector<int> masterpes, mastercounts, slavepoints;
     vector<int> slavepes, slavecounts, masterpoints;
     gmesh->generate(nodepos, cellstart, cellsize, cellnodes,
             masterpes, mastercounts, slavepoints,
             slavepes, slavecounts, masterpoints);
+*/
+
+    vector<int> slavemstrpes, slavemstrcounts, slavepoints;
+    vector<int> masterslvpes, masterslvcounts, masterpoints;
+    gmesh->generate(nodepos, cellstart, cellsize, cellnodes,
+            slavemstrpes, slavemstrcounts, slavepoints,
+            masterslvpes, masterslvcounts, masterpoints);
 
     nump = nodepos.size();
     numz = cellstart.size();
@@ -89,7 +97,19 @@ void Mesh::init() {
     initCorners();
 
     // populate chunk information
-    initChunks();
+   initChunks();
+// create inverse map for corner-to-point gathers
+    initInvMap();
+   // calculate parallel data structures
+    initParallel(slavemstrpes, slavemstrcounts, slavepoints,
+            masterslvpes, masterslvcounts, masterpoints);
+    // release memory from parallel-related arrays
+    slavemstrpes.resize(0);
+    slavemstrcounts.resize(0);
+    slavepoints.resize(0);
+    masterslvpes.resize(0);
+    masterslvcounts.resize(0);
+    masterpoints.resize(0);
 
     // write mesh statistics
     writeStats();
@@ -238,10 +258,106 @@ void Mesh::initChunks() {
     }
     numpch = pchpfirst.size();
 
+/*     // compute zone chunks
+    int z1, z2 = 0;
+    while (z2 < numz) {
+        z1 = z2;
+        z2 = min(z2 + chunksize, numz);
+        zchzfirst.push_back(z1);
+        zchzlast.push_back(z2);
+    }
+    numzch = zchzfirst.size();
+    */
 }
 
+void Mesh::initInvMap() {
+    mappcfirst = Memory::alloc<int>(nump);
+    mapccnext = Memory::alloc<int>(nums);
+
+    vector<pair<int, int> > pcpair(nums);
+    for (int c = 0; c < numc; ++c)
+        pcpair[c] = make_pair(mapsp1[c], c);
+    sort(pcpair.begin(), pcpair.end());
+    for (int i = 0; i < numc; ++i) {
+        int p = pcpair[i].first;
+        int pp = pcpair[i+1].first;
+        int pm = pcpair[i-1].first;
+        int c = pcpair[i].second;
+        int cp = pcpair[i+1].second;
+
+        if (i == 0 || p != pm)  mappcfirst[p] = c;
+        if (i+1 == numc || p != pp)
+            mapccnext[c] = -1;
+        else
+            mapccnext[c] = cp;
+    }
+
+}
+
+void Mesh::initParallel(
+        const vector<int>& slavemstrpes,
+        const vector<int>& slavemstrcounts,
+        const vector<int>& slavepoints,
+        const vector<int>& masterslvpes,
+        const vector<int>& masterslvcounts,
+        const vector<int>& masterpoints) {
+    if (Parallel::numpe == 1) return;
+
+    nummstrpe = slavemstrpes.size();
+    mapmstrpepe = Memory::alloc<int>(nummstrpe);
+    copy(slavemstrpes.begin(), slavemstrpes.end(), mapmstrpepe);
+    mstrpenumslv = Memory::alloc<int>(nummstrpe);
+    copy(slavemstrcounts.begin(), slavemstrcounts.end(), mstrpenumslv);
+    mapmstrpeslv1 = Memory::alloc<int>(nummstrpe);
+    int count = 0;
+    for (int mstrpe = 0; mstrpe < nummstrpe; ++mstrpe) {
+        mapmstrpeslv1[mstrpe] = count;
+        count += mstrpenumslv[mstrpe];
+    }
+    numslv = slavepoints.size();
+    mapslvp = Memory::alloc<int>(numslv);
+    copy(slavepoints.begin(), slavepoints.end(), mapslvp);
+
+    numslvpe = masterslvpes.size();
+    mapslvpepe = Memory::alloc<int>(numslvpe);
+    copy(masterslvpes.begin(), masterslvpes.end(), mapslvpepe);
+    slvpenumprx = Memory::alloc<int>(numslvpe);
+    copy(masterslvcounts.begin(), masterslvcounts.end(), slvpenumprx);
+    mapslvpeprx1 = Memory::alloc<int>(numslvpe);
+    count = 0;
+    for (int slvpe = 0; slvpe < numslvpe; ++slvpe) {
+        mapslvpeprx1[slvpe] = count;
+        count += slvpenumprx[slvpe];
+    }
+    numprx = masterpoints.size();
+    mapprxp = Memory::alloc<int>(numprx);
+    copy(masterpoints.begin(), masterpoints.end(), mapprxp);
+//    printf("%d:Mesh:nummstrpeH:%d numslvpeH:%d numprxH:%d numslvH:%d, \n",Parallel::mype, nummstrpe, numslvpe, numprx, numslv);
+}
 
 void Mesh::writeStats() {
+
+    int gnump = nump;
+    // make sure that boundary points aren't double-counted;
+    // only count them if they are masters
+    if (Parallel::numpe > 1) gnump -= numslv;
+    int gnumz = numz;
+    int gnums = nums;
+    int gnume = nume;
+    int gnumpch = numpch;
+    int gnumzch = numz;
+    int gnumsch = numsch;
+
+    Parallel::globalSum(gnump);
+    Parallel::globalSum(gnumz);
+    Parallel::globalSum(gnums);
+    Parallel::globalSum(gnume);
+    Parallel::globalSum(gnumpch);
+    Parallel::globalSum(gnumzch);
+    Parallel::globalSum(gnumsch);
+
+    if (Parallel::mype > 0) return;
+
     cout << "--- Mesh Information ---" << endl;
     cout << "Points:  " << nump << endl;
     cout << "Zones:  "  << numz << endl;
@@ -369,4 +485,275 @@ void Mesh::calcSideFracs(
     }
 }
 
+template <typename T>
+void Mesh::parallelGather(
+        const T* pvar, T* slvvar,
+        T* prxvar) {
+#ifdef USE_MPI
+    // This routine gathers slave values for which MYPE owns the masters.
+    const int tagmpi = 100;
+    const int type_size = sizeof(T);
+//    std::vector<T> slvvar(numslv);
+/*    T* slvvar = Memory::alloc<T>(numslv);
 
+// Load slave data buffer from points.
+    for (int slv = 0; slv < numslv; ++slv) {
+        int p = mapslvp[slv];
+        slvvar[slv] = pvar[p];
+    }
+
+*/
+    // Post receives for incoming messages from slaves.
+    // Store results in proxy buffer.
+//    vector<MPI_Request> request(numslvpe);
+    MPI_Request* request = Memory::alloc<MPI_Request>(numslvpe);
+    for (int slvpe = 0; slvpe < numslvpe; ++slvpe) {
+        int pe = mapslvpepe[slvpe];
+        int nprx = slvpenumprx[slvpe];
+        int prx1 = mapslvpeprx1[slvpe];
+        MPI_Irecv(&prxvar[prx1], nprx * type_size, MPI_BYTE,
+                pe, tagmpi, MPI_COMM_WORLD, &request[slvpe]);
+    }
+
+/*    // Load slave data buffer from points.
+    for (int slv = 0; slv < numslv; ++slv) {
+        int p = mapslvp[slv];
+        slvvar[slv] = pvar[p];
+    }
+*/
+    // Send slave data to master PEs.
+    for (int mstrpe = 0; mstrpe < nummstrpe; ++mstrpe) {
+        int pe = mapmstrpepe[mstrpe];
+        int nslv = mstrpenumslv[mstrpe];
+        int slv1 = mapmstrpeslv1[mstrpe];
+        MPI_Send(&slvvar[slv1], nslv * type_size, MPI_BYTE,
+                pe, tagmpi, MPI_COMM_WORLD);
+    }
+
+    // Wait for all receives to complete.
+//    vector<MPI_Status> status(numslvpe);
+    MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
+    int ierr = MPI_Waitall(numslvpe, &request[0], &status[0]);
+    if (ierr != 0) {
+        cerr << "Error: parallelGather MPI error " << ierr <<
+                " on PE " << Parallel::mype << endl;
+        cerr << "Exiting..." << endl;
+        exit(1);
+    }
+    Memory::free(slvvar);
+    Memory::free(request);
+    Memory::free(status);
+#endif
+}
+
+
+template <typename T>
+void Mesh::parallelSum(
+        T* pvar,
+        T* prxvar) {
+#ifdef USE_MPI
+    // Compute sum of all (proxy/master) sets.
+    // Store results in master.
+    for (int prx = 0; prx < numprx; ++prx) {
+        int p = mapprxp[prx];
+        pvar[p] += prxvar[prx];
+    }
+
+    // Copy updated master data back to proxies.
+    for (int prx = 0; prx < numprx; ++prx) {
+        int p = mapprxp[prx];
+        prxvar[prx] = pvar[p];
+    }
+#endif
+}
+
+
+template <typename T>
+void Mesh::parallelScatter(
+        T* pvar,
+        const T* prxvar) {
+#ifdef USE_MPI
+    // This routine scatters master values on MYPE to all slave copies
+    // owned by other PEs.
+    const int tagmpi = 200;
+    const int type_size = sizeof(T);
+//    std::vector<T> slvvar(numslv);
+    T* slvvar = Memory::alloc<T>(numslv);
+
+    // Post receives for incoming messages from masters.
+    // Store results in slave buffer.
+//    vector<MPI_Request> request(nummstrpe);
+    MPI_Request* request = Memory::alloc<MPI_Request>(nummstrpe);
+    for (int mstrpe = 0; mstrpe < nummstrpe; ++mstrpe) {
+        int pe = mapmstrpepe[mstrpe];
+        int nslv = mstrpenumslv[mstrpe];
+        int slv1 = mapmstrpeslv1[mstrpe];
+        MPI_Irecv(&slvvar[slv1], nslv * type_size, MPI_BYTE,
+                pe, tagmpi, MPI_COMM_WORLD,  &request[mstrpe]);
+    }
+
+    // Send updated slave data from proxy buffer back to slave PEs.
+    for (int slvpe = 0; slvpe < numslvpe; ++slvpe) {
+        int pe = mapslvpepe[slvpe];
+        int nprx = slvpenumprx[slvpe];
+        int prx1 = mapslvpeprx1[slvpe];
+        MPI_Send((void*)&prxvar[prx1], nprx * type_size, MPI_BYTE,
+                pe, tagmpi, MPI_COMM_WORLD);
+    }
+
+    // Wait for all receives to complete.
+//    vector<MPI_Status> status(nummstrpe);
+    MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
+    int ierr = MPI_Waitall(nummstrpe, &request[0], &status[0]);
+    if (ierr != 0) {
+        cerr << "Error: parallelScatter MPI error " << ierr <<
+                " on PE " << Parallel::mype << endl;
+        cerr << "Exiting..." << endl;
+        exit(1);
+    }
+
+    // Store slave data from buffer back to points.
+    for (int slv = 0; slv < numslv; ++slv) {
+        int p = mapslvp[slv];
+        pvar[p] = slvvar[slv];
+    }
+
+    Memory::free(slvvar);
+    Memory::free(request);
+    Memory::free(status);
+#endif
+}
+
+
+//template <typename T>
+void Mesh::sumAcrossProcs(double* pvar) {
+    if (Parallel::numpe == 1) return;
+     double* slvvar = Memory::alloc<double>(numslv);
+    for (int slv = 0; slv < numslv; ++slv) {
+        int p = mapslvp[slv];
+        slvvar[slv] = pvar[p];
+    }
+
+//    std::vector<T> prxvar(numprx);
+    double* prxvar = Memory::alloc<double>(numprx);
+    parallelGather(pvar, slvvar, &prxvar[0]);
+    parallelSum(pvar, &prxvar[0]);
+    parallelScatter(pvar, &prxvar[0]);
+    Memory::free(prxvar);
+}
+
+
+//template <typename T>
+void Mesh::sumAcrossProcs(double2* pvar) {
+    if (Parallel::numpe == 1) return;
+//    std::vector<T> prxvar(numprx);
+    double2* prxvar = Memory::alloc<double2>(numprx);
+    double2* slvvar = Memory::alloc<double2>(numslv);
+    for (int slv = 0; slv < numslv; ++slv) {
+        int p = mapslvp[slv];
+        slvvar[slv] = pvar[p];
+    }
+    parallelGather(pvar, slvvar, &prxvar[0]);
+    parallelSum(pvar, &prxvar[0]);
+    parallelScatter(pvar, &prxvar[0]);
+    Memory::free(prxvar);
+}
+
+
+/*template <typename T>
+void Mesh::sumOnProc(
+        const T* cvar,
+        T* pvar) {
+
+//    #pragma omp parallel for schedule(static)
+    for (int pch = 0; pch < numpch; ++pch) {
+        int pfirst = pchpfirst[pch];
+        int plast = pchplast[pch];
+        for (int p = pfirst; p < plast; ++p) {
+            T x = T();
+            for (int c = mappcfirst[p]; c >= 0; c = mapccnext[c]) {
+                x += cvar[c];
+            }
+            pvar[p] = x;
+        }  // for p
+    }  // for pch
+
+}
+*/
+template <>
+void Mesh::sumToPoints(
+        const double* cvar,
+        double* pvar) {
+
+    sumOnProc(cvar, pvar);
+    if (Parallel::numpe > 1)
+        sumAcrossProcs(pvar);
+
+}
+
+
+template <>
+void Mesh::sumToPoints(
+        const double2* cvar,
+        double2* pvar) {
+
+/*	    for (int pch = 0; pch < numpch; ++pch) {
+        int pfirst = pchpfirst[pch];
+        int plast = pchplast[pch];
+        for (int p = pfirst; p < plast; ++p) {
+           double2 x = make_double2(0.,0.);
+            for (int c = mappcfirst[p]; c >= 0; c = mapccnext[c]) {
+                x += cvar[c];
+            }
+            pvar[p] = x;
+        }  // for p
+    }  // for pch
+*/
+    sumOnProc(cvar, pvar);
+    if (Parallel::numpe > 1)
+        sumAcrossProcs(pvar);
+
+}
+
+
+
+
+void Mesh::sumOnProc(
+        const double* cvar,
+        double* pvar) {
+
+//    #pragma omp parallel for schedule(static)
+    for (int pch = 0; pch < numpch; ++pch) {
+        int pfirst = pchpfirst[pch];
+        int plast = pchplast[pch];
+        for (int p = pfirst; p < plast; ++p) {
+            double x = 0.;
+            for (int c = mappcfirst[p]; c >= 0; c = mapccnext[c]) {
+                x += cvar[c];
+            }
+            pvar[p] = x;
+        }  // for p
+    }  // for pch
+
+}
+
+
+
+void Mesh::sumOnProc(
+        const double2* cvar,
+        double2* pvar) {
+
+//    #pragma omp parallel for schedule(static)
+    for (int pch = 0; pch < numpch; ++pch) {
+        int pfirst = pchpfirst[pch];
+        int plast = pchplast[pch];
+        for (int p = pfirst; p < plast; ++p) {
+            double2 x = make_double2(0.,0.);
+            for (int c = mappcfirst[p]; c >= 0; c = mapccnext[c]) {
+                x += cvar[c];
+            }
+            pvar[p] = x;
+        }  // for p
+    }  // for pch
+
+}

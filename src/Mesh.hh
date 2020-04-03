@@ -87,6 +87,24 @@ public:
     double* smf;       // side mass fraction
     double* zdl;       // zone characteristic length
 
+        // point-to-corner inverse map is stored as a linked list...
+    int* mappcfirst;   // map:  point -> first corner
+    int* mapccnext;    // map:  corner -> next corner
+
+    // mpi comm variables
+    int nummstrpe;     // number of messages mype sends to master pes
+    int numslvpe;      // number of messages mype receives from slave pes
+    int numprx;        // number of proxies on mype
+    int numslv;        // number of slaves on mype
+    int* mapslvpepe;   // map: slave pe -> (global) pe
+    int* mapslvpeprx1; // map: slave pe -> first proxy in proxy buffer
+    int* mapprxp;      // map: proxy -> corresponding (master) point
+    int* slvpenumprx;  // number of proxies for each slave pe
+    int* mapmstrpepe;  // map: master pe -> (global) pe
+    int* mstrpenumslv; // number of slaves for each master pe
+    int* mapmstrpeslv1;// map: master pe -> first slave in slave buffer
+    int* mapslvp;      // map: slave -> corresponding (slave) point
+
     int numsch;                    // number of side chunks
     std::vector<int> schsfirst;    // start/stop index for side chunks
     std::vector<int> schslast;
@@ -108,6 +126,15 @@ public:
             const std::vector<int>& cellnodes);
     void initEdges();
     void initCorners();
+    // populate inverse map
+    void initInvMap();
+        void initParallel(
+            const std::vector<int>& slavemstrpes,
+            const std::vector<int>& slavemstrcounts,
+            const std::vector<int>& slavepoints,
+            const std::vector<int>& masterslvpes,
+            const std::vector<int>& masterslvcounts,
+            const std::vector<int>& masterpoints);
 
     // populate chunk information
     void initChunks();
@@ -152,6 +179,47 @@ public:
             double* smf,
             const int sfirst,
             const int slast);
+
+
+
+        // sum corner variables to points (double or double2)
+    template <typename T>
+    void sumToPoints(
+            const T* cvar,
+            T* pvar);
+
+    // helper routines for sumToPoints
+/*    template <typename T>
+    void sumOnProc(
+            const T* cvar,
+            T* pvar);
+*/
+    void sumOnProc(
+            const double* cvar,
+            double* pvar);
+    void sumOnProc(
+            const double2* cvar,
+            double2* pvar);
+
+
+
+
+  //  template <typename T>
+    void sumAcrossProcs(double* pvar);
+    void sumAcrossProcs(double2* pvar);
+    template <typename T>
+    void parallelGather(
+            const T* pvar, T* slvvar,
+            T* prxvar);
+    template <typename T>
+    void parallelSum(
+            T* pvar,
+            T* prxvar);
+    template <typename T>
+    void parallelScatter(
+            T* pvar,
+            const T* prxvar);
+
 
 }; // class Mesh
 
