@@ -47,7 +47,7 @@ public:
 
     void run();
     void calcGlobalDt();
-
+    void calcGlobalDt_opt();
 };  // class Driver
 
 
