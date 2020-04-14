@@ -21,6 +21,10 @@
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
 
+#ifdef USE_MPI
+#include "Parallel.hh"
+#endif
+
 #include "Memory.hh"
 #include "Vec2.hh"
 
@@ -1277,6 +1281,8 @@ void hydroInit(
 
 }
 
+void sumToPoints() {
+}
 
 void hydroDoCycle(
         const double dtH,
@@ -1300,8 +1306,12 @@ void hydroDoCycle(
 
 #ifdef USE_MPI
     hipLaunchKernelGGL((gpuGatherToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+
+    if(Parallel::numpe > 1){
+      sumToPoints();
+    }
 #endif
-    
+
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
