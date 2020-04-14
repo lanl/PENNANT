@@ -68,5 +68,20 @@ void hydroInitGPU();
 
 void hydroFinalGPU();
 
+#ifdef USE_MPI
+void hydroInitMPI(
+	const int nummstrpe,
+	const int numslvpe,
+	const int numprx,
+	const int numslv,
+	const int* mapslvpepe,
+	const int* mapslvpeprx1,
+	const int* mapprxp,
+	const int* slvpenumprx,
+	const int* mapmstrpepe,
+	const int* mstrpenumslv,
+	const int* mapmstrpeslv1,
+	const int* mapslvp);
+#endif
 
 #endif /* HYDROGPU_HH_ */

@@ -1361,6 +1361,59 @@ void hydroGetData(
 
 }
 
+#ifdef USE_MPI
+void hydroInitMPI(const int nummstrpeH,
+		  const int numslvpeH,
+		  const int numprxH1,
+		  const int numslvH1,
+		  const int* mapslvpepeH,
+		  const int* mapslvpeprx1H,
+		  const int* mapprxpH,
+		  const int* slvpenumprxH,
+		  const int* mapmstrpepeH,
+		  const int* mstrpenumslvH,
+		  const int* mapmstrpeslv1H,
+		  const int* mapslvpH){
+
+  numslvH = numslvH1;
+  numprxH = numprxH1;
+
+  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numslv), &numslvH, sizeof(int)));
+  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numprx), &numprxH, sizeof(int)));
+
+  CHKERR(hipMalloc(&mapslvpD1, numslvH*sizeof(int)));
+  CHKERR(hipMalloc(&mapprxpD, numprxH*sizeof(int)));
+
+  mapslvpepeD = Memory::alloc<int>(numslvpeH);
+  mapslvpeprx1D = Memory::alloc<int>(numslvpeH);
+  slvpenumprxD = Memory::alloc<int>(numslvpeH);
+  mapmstrpepeD = Memory::alloc<int>(nummstrpeH);
+  mstrpenumslvD=Memory::alloc<int>(nummstrpeH);
+  mapmstrpeslv1D=Memory::alloc<int>(nummstrpeH);
+  mapslvpD=Memory::alloc<int>(numslvH);
+
+  memcpy(mapslvpepeD, mapslvpepeH, numslvpeH*sizeof(int));
+  memcpy(mapslvpeprx1D, mapslvpeprx1H, numslvpeH*sizeof(int));
+  memcpy(slvpenumprxD, slvpenumprxH, numslvpeH*sizeof(int));
+  memcpy(mapmstrpepeD, mapmstrpepeH, nummstrpeH*sizeof(int));
+  memcpy(mstrpenumslvD, mstrpenumslvH, nummstrpeH*sizeof(int));
+  memcpy(mapmstrpeslv1D, mapmstrpeslv1H, nummstrpeH*sizeof(int));
+  memcpy(mapslvpD,mapslvpH, numslvH*sizeof(int));
+
+  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapslvp), &mapslvpD1, sizeof(void*)));
+  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapprxp), &mapprxpD, sizeof(void*)));
+
+  nummstrpeD = nummstrpeH;
+  numslvpeD = numslvpeH;
+  CHKERR(hipMemcpy( mapslvpD1, mapslvpH, numslvH*sizeof(int), hipMemcpyHostToDevice));
+  CHKERR(hipMemcpy( mapprxpD, mapprxpH, numprxH*sizeof(int), hipMemcpyHostToDevice));
+
+  hipMalloc(&slvvar, numslvH*sizeof(double));
+  hipMalloc(&prxvarD, numprxH*sizeof(double));
+  hipMalloc(&slvvar1, numslvH*sizeof(double2));
+  hipMalloc(&prxvarD2, numprxH*sizeof(double2));
+}
+#endif
 
 void hydroInitGPU()
 {
