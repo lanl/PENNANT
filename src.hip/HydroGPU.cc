@@ -35,6 +35,14 @@ const int CHUNK_SIZE = 64;
 
 // __constant__ int gpuinit;
 
+#ifdef USE_MPI
+__constant__  int mype;
+__constant__ int numslv;
+__constant__ int numprx;
+__constant__ int* mapprxp;
+__constant__ int* mapslvp;
+#endif
+
 // __constant__ int numsch;
 __constant__ int nump;
 __constant__ int numz;
@@ -105,6 +113,13 @@ static double *zmD, *zrD, *zrpD,
 static double *cmaswtD, *pmaswtD;
 static double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 
+#ifdef USE_MPI
+static int numslvD, nummstrpeD, numslvpeD;
+static int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
+static int numslvH, numprxH;
+double *slvvar, *prxvarD;
+double2 *slvvar1, *prxvarD2;
+#endif
 
 int checkCudaError(const hipError_t err, const char* cmd)
 {
