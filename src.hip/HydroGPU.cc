@@ -875,8 +875,15 @@ static __global__ void gpuMain2()
 
 }
 
+// If we use MPI, then we need to gather corner masses and forces to points first,
+// then sum the values of the points across MPI ranks for points on the boundaries
+// between ranks, and then invoke gpuMain3.
+// If we don't use MPI, then the gathering of corner masses and forces to points
+// is done as the first step in gpuMain3 instead, to reduce the number of kernel
+// invocations.
 
-static __global__ void gpuMain3()
+#ifdef USE_MPI
+static __global__ void gpuGatherToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -884,6 +891,19 @@ static __global__ void gpuMain3()
     // gather corner masses, forces to points
     gatherToPoints(p, cmaswt, pmaswt);
     gatherToPoints(p, cftot, pf);
+}
+#endif
+
+static __global__ void gpuMain3()
+{
+    const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
+    if (p >= nump) return;
+
+#ifndef USEMPI
+    // gather corner masses, forces to points
+    gatherToPoints(p, cmaswt, pmaswt);
+    gatherToPoints(p, cftot, pf);
+#endif
 
     // 4a. apply boundary conditions
     for (int bc = 0; bc < numbcx; ++bc)
@@ -1278,6 +1298,10 @@ void hydroDoCycle(
     hipDeviceSynchronize();
     meshCheckBadSides();
 
+#ifdef USE_MPI
+    hipLaunchKernelGGL((gpuGatherToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+#endif
+    
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipDeviceSynchronize();
 
