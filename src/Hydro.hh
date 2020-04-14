@@ -57,7 +57,8 @@ public:
     double2* pap;      // point acceleration
     double2* pf;       // point force
     double* pmaswt;    // point mass, weighted by 1/r
-    double* smaswt;    // side contribution to pmaswt
+    double* cmaswt;    // side contribution to pmaswt // TODO: original name was smaswt. Check comment; check usage in rest of code
+    double2* cftot;    
 
     double* zm;        // zone mass
     double* zr;        // zone density
@@ -76,6 +77,22 @@ public:
     double2* sfq;      // side force from artificial visc.
     double2* sft;      // side force from tts
 
+#ifdef USE_MPI
+    // mpi comm variables
+    int nummstrpe;     // number of messages mype sends to master pes
+    int numslvpe;      // number of messages mype receives from slave pes
+    int numprx;        // number of proxies on mype
+    int numslv;        // number of slaves on mype
+    int* mapslvpepe;   // map: slave pe -> (global) pe
+    int* mapslvpeprx1; // map: slave pe -> first proxy in proxy buffer
+    int* mapprxp;      // map: proxy -> corresponding (master) point
+    int* slvpenumprx;  // number of proxies for each slave pe
+    int* mapmstrpepe;  // map: master pe -> (global) pe
+    int* mstrpenumslv; // number of slaves for each master pe
+    int* mapmstrpeslv1;// map: master pe -> first slave in slave buffer
+    int* mapslvp;     
+#endif
+
     Hydro(const InputFile* inp, Mesh* m);
     ~Hydro();
 
@@ -91,6 +108,22 @@ public:
             double& dtnew,
             std::string& msgdtnew);
 
+   void sumEnergy(
+        const double* zetot,
+        const double* zarea,
+        const double* zvol,
+        const double* zm,
+        const double* smf,
+        const double2* px,
+        const double2* pu,
+        double& ei,
+        double& ek,
+        const int zfirst,
+        const int zlast,
+        const int sfirst,
+        const int slast);
+
+   void writeEnergyCheck();
 }; // class Hydro
 
 

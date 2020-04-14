@@ -57,12 +57,16 @@ void hydroDoCycle(
         int& idtnextH);
 
 void hydroGetData(
+	double *zareaH,
+        double *zetot,
+        double *zvol,
         const int numpH,
         const int numzH,
         double2* pxH,
         double* zrH,
         double* zeH,
-        double* zpH);
+        double* zpH,
+	double2* puH);
 
 void hydroInitGPU();
 

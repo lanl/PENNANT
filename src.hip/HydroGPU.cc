@@ -1347,18 +1347,25 @@ void hydroDoCycle(
 
 
 void hydroGetData(
+        double *zareaH,
+	double *zetotH,
+	double *zvolH,
         const int numpH,
         const int numzH,
         double2* pxH,
         double* zrH,
         double* zeH,
-        double* zpH) {
+        double* zpH,
+	double2* puH) {
 
+    CHKERR(hipMemcpy(zareaH, zareaD, numzH*sizeof(double), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpy(zetotH, zetotD, numzH*sizeof(double), hipMemcpyDeviceToHost));
+    CHKERR(hipMemcpy(zvolH, zvolD, numzH*sizeof(double), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(pxH, pxD, numpH*sizeof(double2), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(zrH, zrD, numzH*sizeof(double), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(zeH, zeD, numzH*sizeof(double), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(zpH, zpD, numzH*sizeof(double), hipMemcpyDeviceToHost));
-
+    CHKERR(hipMemcpy(puH, puD, numpH*sizeof(double2), hipMemcpyDeviceToHost));
 }
 
 #ifdef USE_MPI
