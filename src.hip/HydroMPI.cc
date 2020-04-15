@@ -10,19 +10,18 @@
  * license; see top-level LICENSE file for full license text.
  */
 
+#ifdef USE_MPI
+
 #include "Parallel.hh"
 #include "Memory.hh"
 #include "HydroMPI.hh"
-
-
 
 void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
 		    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1, 
 		    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1,	
         	    const double* pvar, double* prxvar, double2* prxvar1, double *slvvar, double2 *slvvar1) {
-#ifdef USE_MPI
 
-using Parallel::numpe;
+    using Parallel::numpe;
     using Parallel::mype;
     // This routine gathers slave values for which MYPE owns the masters.
     const int tagmpi = 100;
@@ -63,22 +62,15 @@ using Parallel::numpe;
     Memory::free(status);
     Memory::free(request1);
     Memory::free(status1);
-#endif
 }
-
-
-
-
-
 
 
 void parallelScatter(const int numslv, const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
                     double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1){
-#ifdef USE_MPI
     const int tagmpi = 200;
-using Parallel::mype;
+    using Parallel::mype;
     // Post receives for incoming messages from masters.
     // Store results in slave buffer.
     MPI_Request* request = Memory::alloc<MPI_Request>(nummstrpe);
@@ -115,9 +107,8 @@ using Parallel::mype;
     // Store slave data from buffer back to points.
     Memory::free(request);
     Memory::free(status);
-     Memory::free(request1);
+    Memory::free(request1);
     Memory::free(status1);
-#endif
 }
 
-
+#endif // USE_MPI

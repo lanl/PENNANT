@@ -10,33 +10,20 @@
  * license; see top-level LICENSE file for full license text.
  */
 
+#ifndef HYDROMPI_H_
+#define HYDROMPI_H_
+
+#ifdef USE_MPI
 #include <hip/hip_runtime.h>
-
-void test(int *send, int *recv);
-
-void parallelGather(
-                    const double* pvar, double* prxvar);
 
 void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, 
                     const double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
 
-void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
-                    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
-                    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
-                    const double2* pvar, double2* prxvar, double2* slvvar);
-
 void parallelScatter(const int numslv, const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
                     double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
-
-void parallelScatter(const int numslv, const int numslvpe, const int nummstrpe,
-                    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
-                    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
-                    double2* pvar, double2* prxvar);
-
-
-
-
+#endif // USE_MPI
+#endif // HYDROMPI_H_
