@@ -16,6 +16,9 @@
 #include "Memory.hh"
 #include "HydroMPI.hh"
 
+// TODO: check if the two functions below try to send from device buffers, or if they use host buffers
+// In the former case, figure out if that requires a specific MPI stack and/or UCX support
+
 void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
 		    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1, 
 		    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1,	
