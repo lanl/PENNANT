@@ -1296,8 +1296,10 @@ void hydroInit(
 
 }
 
+#ifdef USE_MPI
 void sumToPoints() {
 }
+#endif
 
 void hydroDoCycle(
         const double dtH,
