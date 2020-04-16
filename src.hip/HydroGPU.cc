@@ -573,7 +573,7 @@ static __global__ void gpuInvMap(
 }
 
 
-static __device__ void gatherToPoints(
+static __device__ void localReduceToPoints(
         const int p,
         const double* __restrict__ cvar,
         double* __restrict__ pvar)
@@ -586,7 +586,7 @@ static __device__ void gatherToPoints(
 }
 
 
-static __device__ void gatherToPoints(
+static __device__ void localReduceToPoints(
         const int p,
         const double2* __restrict__ cvar,
         double2* __restrict__ pvar)
@@ -894,22 +894,22 @@ static __global__ void gpuMain2()
 
 }
 
-// If we use MPI, then we need to gather corner masses and forces to points first,
+// If we use MPI, then we need to sum corner masses and forces to points locally first,
 // then sum the values of the points across MPI ranks for points on the boundaries
 // between ranks, and then invoke gpuMain3.
-// If we don't use MPI, then the gathering of corner masses and forces to points
+// If we don't use MPI, then the summing of corner masses and forces to points
 // is done as the first step in gpuMain3 instead, to reduce the number of kernel
 // invocations.
 
 #ifdef USE_MPI
-static __global__ void gpuGatherToPoints()
+static __global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
-    // gather corner masses, forces to points
-    gatherToPoints(p, cmaswt, pmaswt);
-    gatherToPoints(p, cftot, pf);
+    // sum corner masses, forces to points
+    localReduceToPoints(p, cmaswt, pmaswt);
+    localReduceToPoints(p, cftot, pf);
 }
 #endif
 
@@ -919,9 +919,9 @@ static __global__ void gpuMain3()
     if (p >= nump) return;
 
 #ifndef USEMPI
-    // gather corner masses, forces to points
-    gatherToPoints(p, cmaswt, pmaswt);
-    gatherToPoints(p, cftot, pf);
+    // sum corner masses, forces to points
+    localReduceToPoints(p, cmaswt, pmaswt);
+    localReduceToPoints(p, cftot, pf);
 #endif
 
     // 4a. apply boundary conditions
@@ -1297,7 +1297,7 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
-void sumToPoints() {
+void GlobalReduceToPoints() {
 }
 #endif
 
@@ -1322,10 +1322,10 @@ void hydroDoCycle(
     meshCheckBadSides();
 
 #ifdef USE_MPI
-    hipLaunchKernelGGL((gpuGatherToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
 
     if(Parallel::numpe > 1){
-      sumToPoints();
+      GlobalReduceToPoints();
     }
 #endif
 
