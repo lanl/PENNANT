@@ -14,6 +14,7 @@ DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
+CPPFLAGS += -Wall
 
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
