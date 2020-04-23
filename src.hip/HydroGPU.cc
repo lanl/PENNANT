@@ -1295,7 +1295,7 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
-void GlobalReduceToPoints() {
+void globalReduceToPoints() {
 
 }
 #endif
@@ -1324,7 +1324,7 @@ void hydroDoCycle(
     hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
 
     if(Parallel::numpe > 1){
-      GlobalReduceToPoints();
+      globalReduceToPoints();
     }
 #endif
 
