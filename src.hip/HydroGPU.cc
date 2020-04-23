@@ -573,32 +573,6 @@ static __global__ void gpuInvMap(
 }
 
 
-static __device__ void localReduceToPoints(
-        const int p,
-        const double* __restrict__ cvar,
-        double* __restrict__ pvar)
-{
-    double x = 0.;
-    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
-        x += cvar[s];
-    }
-    pvar[p] = x;
-}
-
-
-static __device__ void localReduceToPoints(
-        const int p,
-        const double2* __restrict__ cvar,
-        double2* __restrict__ pvar)
-{
-    double2 x = make_double2(0., 0.);
-    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
-        x += cvar[s];
-    }
-    pvar[p] = x;
-}
-
-
 static __device__ void applyFixedBC(
         const int p,
         const double2* __restrict__ px,
@@ -900,6 +874,30 @@ static __global__ void gpuMain2()
 // If we don't use MPI, then the summing of corner masses and forces to points
 // is done as the first step in gpuMain3 instead, to reduce the number of kernel
 // invocations.
+static __device__ void localReduceToPoints(
+        const int p,
+        const double* __restrict__ cvar,
+        double* __restrict__ pvar)
+{
+    double x = 0.;
+    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
+        x += cvar[s];
+    }
+    pvar[p] = x;
+}
+
+
+static __device__ void localReduceToPoints(
+        const int p,
+        const double2* __restrict__ cvar,
+        double2* __restrict__ pvar)
+{
+    double2 x = make_double2(0., 0.);
+    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
+        x += cvar[s];
+    }
+    pvar[p] = x;
+}
 
 #ifdef USE_MPI
 static __global__ void localReduceToPoints()
@@ -918,7 +916,7 @@ static __global__ void gpuMain3()
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
-#ifndef USEMPI
+#ifndef USE_MPI
     // sum corner masses, forces to points
     localReduceToPoints(p, cmaswt, pmaswt);
     localReduceToPoints(p, cftot, pf);
@@ -1298,6 +1296,7 @@ void hydroInit(
 
 #ifdef USE_MPI
 void GlobalReduceToPoints() {
+
 }
 #endif
 
