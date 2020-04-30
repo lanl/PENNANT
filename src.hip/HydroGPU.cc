@@ -36,7 +36,6 @@ using namespace std;
 const int CHUNK_SIZE = 64;
 
 #ifdef USE_MPI
-__constant__  int mype;
 __constant__ int numslv;
 __constant__ int numprx;
 __constant__ int* mapprxp;
