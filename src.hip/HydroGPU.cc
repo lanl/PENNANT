@@ -35,8 +35,6 @@ using namespace std;
 
 const int CHUNK_SIZE = 64;
 
-// __constant__ int gpuinit;
-
 #ifdef USE_MPI
 __constant__  int mype;
 __constant__ int numslv;
@@ -116,7 +114,7 @@ static double *cmaswtD, *pmaswtD;
 static double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 
 #ifdef USE_MPI
-static int numslvD, nummstrpeD, numslvpeD;
+static int nummstrpeD, numslvpeD;
 static int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
 static int numslvH, numprxH;
 double *slvvar, *prxvarD;
@@ -1312,15 +1310,15 @@ void reduceToMasterPointsAndProxies(){
 
 void globalReduceToPoints() {
   auto [pmaswt_slave_buf, pf_slave_buf] = copySlavePointDataToMPIBuffers();
-  parallelGather( numslvD, numslvpeD, nummstrpeD,
-                     mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-                     mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-                     pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+  parallelGather( numslvpeD, nummstrpeD,
+		  mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		  mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
+		  pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
   reduceToMasterPointsAndProxies();
-  parallelScatter( numslvD, numslvpeD, nummstrpeD,
-                     mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-                     mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-                     pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+  parallelScatter( numslvpeD, nummstrpeD,
+		   mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		   mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
+		   pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
   copyMPIBuffersToSlavePointData();
 }
 #endif
@@ -1450,11 +1448,6 @@ void hydroInitMPI(const int nummstrpeH,
 
 void hydroInitGPU()
 {
-    int one = 1;
-
-    CHKERR(hipDeviceSetCacheConfig(hipFuncCachePreferL1));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(gpuinit), &one, sizeof(int))); 
-
 }
 
 

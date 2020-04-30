@@ -19,7 +19,7 @@
 // TODO: check if the two functions below try to send from device buffers, or if they use host buffers
 // In the former case, figure out if that requires a specific MPI stack and/or UCX support
 
-void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
+void parallelGather(const int numslvpe, const int nummstrpe,
 		    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1, 
 		    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1,	
         	    const double* pvar, double* prxvar, double2* prxvar1, double *slvvar, double2 *slvvar1) {
@@ -68,7 +68,7 @@ void parallelGather(const int numslv, const int numslvpe, const int nummstrpe,
 }
 
 
-void parallelScatter(const int numslv, const int numslvpe, const int nummstrpe,
+void parallelScatter(const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
                     double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1){
