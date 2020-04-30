@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
+#include <tuple>
 #include <hip/hip_runtime.h>
 #include <thrust/copy.h>
 #include <thrust/sequence.h>
@@ -23,6 +24,7 @@
 
 #ifdef USE_MPI
 #include "Parallel.hh"
+#include "HydroMPI.hh"
 #endif
 
 #include "Memory.hh"
@@ -1295,8 +1297,31 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
-void globalReduceToPoints() {
+// TODO: stub. Implement the real thing
+std::tuple<double*, double2*> copySlavePointDataToMPIBuffers(){
+  return {nullptr, nullptr};
+}
 
+// TODO: stub. Implement the real thing
+void copyMPIBuffersToSlavePointData(){
+}
+
+// TODO: stub. Implement the real thing
+void reduceToMasterPointsAndProxies(){
+}
+
+void globalReduceToPoints() {
+  auto [pmaswt_slave_buf, pf_slave_buf] = copySlavePointDataToMPIBuffers();
+  parallelGather( numslvD, numslvpeD, nummstrpeD,
+                     mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+                     mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
+                     pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+  reduceToMasterPointsAndProxies();
+  parallelScatter( numslvD, numslvpeD, nummstrpeD,
+                     mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+                     mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
+                     pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+  copyMPIBuffersToSlavePointData();
 }
 #endif
 
