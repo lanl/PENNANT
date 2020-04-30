@@ -117,9 +117,17 @@ static double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 static int nummstrpeD, numslvpeD;
 static int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
 static int numslvH, numprxH;
-double *slvvar, *prxvarD;
-double2 *slvvar1, *prxvarD2;
-#endif
+double *prxvarD;
+double2 *prxvarD2;
+double *pmaswt_slave_buffer;   // used for MPI comms; equals either the host or device pointer,
+double2 *pf_slave_buffer;      // depending on if we use GPU aware MPI
+double *pmaswt_slave_buffer_D; // buffers on the device; always used
+double2 *pf_slave_buffer_D;
+#ifndef USE_GPU_AWARE_MPI
+double *pmaswt_slave_buffer_H; // buffers on the host; only used if we can't use GPU aware MPI
+double2 *pf_slave_buffer_H;
+#endif // USE_GPU_AWARE_MPI
+#endif // USE_MPI
 
 int checkCudaError(const hipError_t err, const char* cmd)
 {
@@ -1439,10 +1447,19 @@ void hydroInitMPI(const int nummstrpeH,
   CHKERR(hipMemcpy( mapslvpD1, mapslvpH, numslvH*sizeof(int), hipMemcpyHostToDevice));
   CHKERR(hipMemcpy( mapprxpD, mapprxpH, numprxH*sizeof(int), hipMemcpyHostToDevice));
 
-  hipMalloc(&slvvar, numslvH*sizeof(double));
+  hipMalloc(&pmaswt_slave_buffer_D, numslvH*sizeof(double));
   hipMalloc(&prxvarD, numprxH*sizeof(double));
-  hipMalloc(&slvvar1, numslvH*sizeof(double2));
+  hipMalloc(&pf_slave_buffer_D, numslvH*sizeof(double2));
   hipMalloc(&prxvarD2, numprxH*sizeof(double2));
+#ifndef USE_GPU_AWARE_MPI
+  pmaswt_slave_buffer_H = Memory::alloc<double>(numslvH);
+  pf_slave_buffer_H = Memory::alloc<double2>(numslvH);
+  pmaswt_slave_buffer = pmaswt_slave_buffer_H;
+  pf_slave_buffer = pf_slave_buffer_H;
+#else
+  pmaswt_slave_buffer = pmaswt_slave_buffer_D;
+  pf_slave_buffer = pf_slave_buffer_D;
+#endif
 }
 #endif
 
