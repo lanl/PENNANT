@@ -1320,12 +1320,12 @@ void globalReduceToPoints() {
   parallelGather( numslvpeD, nummstrpeD,
 		  mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		  mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-		  pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+		  prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
   reduceToMasterPointsAndProxies();
   parallelScatter( numslvpeD, nummstrpeD,
 		   mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		   mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-		   pmaswtD, prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+		   prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
   copyMPIBuffersToSlavePointData();
 }
 #endif

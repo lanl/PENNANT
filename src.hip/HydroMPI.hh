@@ -19,11 +19,11 @@
 void parallelGather(const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, 
-                    const double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
+                    double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
 
 void parallelScatter(const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
-                    double* pvar, double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
+                    double* prxvar, double2* prxvar1, double* slvvar, double2* slvvar1);
 #endif // USE_MPI
 #endif // HYDROMPI_H_
