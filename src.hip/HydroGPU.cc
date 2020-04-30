@@ -1448,10 +1448,19 @@ void hydroInitMPI(const int nummstrpeH,
 
 void hydroInitGPU()
 {
+#ifdef USE_MPI
+  // TODO: consider letting slurm handle the pe to device mapping
+  int nDevices;
+  hipGetDeviceCount(&nDevices);
+  using Parallel::mype;
+  int device_num = mype % nDevices;
+  hipSetDevice(device_num);
+#endif
 }
 
 
 void hydroFinalGPU()
 {
+  // TODO: free resources
 }
 
