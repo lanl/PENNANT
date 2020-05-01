@@ -1302,13 +1302,43 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
-// TODO: stub. Implement the real thing
-std::tuple<double*, double2*> copySlavePointDataToMPIBuffers(){
-  return {nullptr, nullptr};
+__global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffer_D,
+						      double2* pf_slave_buffer_D){
+  int slave = blockIdx.x * blockDim.x + threadIdx.x;
+  if(slave > numslv) { return; }
+  int point = mapslvp[slave];
+  pmaswt_slave_buffer_D[slave] = pmaswt[point];
+  pf_slave_buffer_D[slave] = pf[point];
 }
 
-// TODO: stub. Implement the real thing
+void copySlavePointDataToMPIBuffers(){
+  constexpr int blocksize = 256;
+  const int blocks = (blocksize + numslvH -1) / numslvH;
+  copySlavePointDataToMPIBuffers_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
+#ifndef USE_GPU_AWARE_MPI
+  hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost);
+  hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost);
+#endif
+}
+
+
+__global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffer_D,
+						      double2* pf_slave_buffer_D){
+  int slave = blockIdx.x * blockDim.x + threadIdx.x;
+  if(slave > numslv) { return; }
+  int point = mapslvp[slave];
+  pmaswt[point] = pmaswt_slave_buffer_D[slave];
+  pf[point] = pf_slave_buffer_D[slave];
+}
+
 void copyMPIBuffersToSlavePointData(){
+#ifndef USE_GPU_AWARE_MPI
+  hipMemcpy(pmaswt_slave_buffer_D, pmaswt_slave_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice);
+  hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice);
+#endif
+  constexpr int blocksize = 256;
+  const int blocks = (blocksize + numslvH -1) / numslvH;
+  copyMPIBuffersToSlavePointData_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
 }
 
 // TODO: stub. Implement the real thing
@@ -1316,16 +1346,16 @@ void reduceToMasterPointsAndProxies(){
 }
 
 void globalReduceToPoints() {
-  auto [pmaswt_slave_buf, pf_slave_buf] = copySlavePointDataToMPIBuffers();
+  copySlavePointDataToMPIBuffers();
   parallelGather( numslvpeD, nummstrpeD,
 		  mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		  mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-		  prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+		  prxvarD, prxvarD2, pmaswt_slave_buffer, pf_slave_buffer);
   reduceToMasterPointsAndProxies();
   parallelScatter( numslvpeD, nummstrpeD,
 		   mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		   mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-		   prxvarD, prxvarD2, pmaswt_slave_buf, pf_slave_buf);
+		   prxvarD, prxvarD2, pmaswt_slave_buffer, pf_slave_buffer);
   copyMPIBuffersToSlavePointData();
 }
 #endif
