@@ -14,6 +14,7 @@ BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
 CPPFLAGS += -Wall
++CPPFLAGS += -Wno-unused-command-line-argument
 
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
@@ -21,7 +22,7 @@ CXXFLAGS_DEBUG := -g
 CXXFLAGS_OPT := -O3
 
 LD := $(CXX)
-LDFLAGS := 
+LDFLAGS := -Wno-unused-command-line-argument
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS)
