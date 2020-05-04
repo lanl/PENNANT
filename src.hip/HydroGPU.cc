@@ -1348,12 +1348,49 @@ void copyMPIBuffersToSlavePointData(){
   hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice);
 #endif
   constexpr int blocksize = 256;
-  const int blocks = (blocksize + numslvH -1) / numslvH;
+  const int blocks = (blocksize + numslvH - 1) / numslvH;
   copyMPIBuffersToSlavePointData_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
 }
 
-// TODO: stub. Implement the real thing
+
+__global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
+					   double2* pf_proxy_buffer_D){
+  int proxy = blockIdx.x * blockDim.x + threadIdx.x;
+  if(proxy > numprx) { return; }
+
+  int point = mapprxp[proxy];
+  atomicAdd(&pmaswt[point], pmaswt_proxy_buffer_D[proxy]);
+  atomicAdd(&pf[point].x, pf_proxy_buffer_D[proxy].x);
+  atomicAdd(&pf[point].x, pf_proxy_buffer_D[proxy].x);
+}
+
+
+__global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
+					 double2* pf_proxy_buffer_D){
+  int proxy = blockIdx.x * blockDim.x + threadIdx.x;
+  if(proxy > numprx) { return; }
+
+  int point = mapprxp[proxy];
+  pmaswt_proxy_buffer_D[proxy] = pmaswt[point];
+  pf_proxy_buffer_D[proxy] = pf[point];
+}
+
+
 void reduceToMasterPointsAndProxies(){
+#ifndef USE_GPU_AWARE_MPI
+  hipMemcpy(pmaswt_proxy_buffer_D, pmaswt_proxy_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice);
+  hipMemcpy(pf_proxy_buffer_D, pf_proxy_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice);
+#endif
+
+  constexpr int blocksize = 256;
+  const int blocks = (blocksize + numprxH - 1) / numprxH;
+  reduceToMasterPoints<<<blocks, blocksize>>>(pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  copyPointValuesToProxies<<<blocks, blocksize>>>(pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+
+#ifndef USE_GPU_AWARE_MPI
+  hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost);
+  hipMemcpy(pf_proxy_buffer_H, pf_proxy_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost);
+#endif
 }
 
 void globalReduceToPoints() {
