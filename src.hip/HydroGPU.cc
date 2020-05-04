@@ -116,15 +116,26 @@ static double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 static int nummstrpeD, numslvpeD;
 static int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
 static int numslvH, numprxH;
-double *prxvarD;
-double2 *prxvarD2;
-double *pmaswt_slave_buffer;   // used for MPI comms; equals either the host or device pointer,
-double2 *pf_slave_buffer;      // depending on if we use GPU aware MPI
-double *pmaswt_slave_buffer_D; // buffers on the device; always used
-double2 *pf_slave_buffer_D;
+
+// We need to communnicate data between slave points on our rank to proxy points on other ranks,
+// and between proxy points on our ranks and slave points on other ranks.
+// Since point data is not consecutive in memory (which is desirable for MPI comms, to minimize the
+// number of Send/Recv ops), we allocate array buffers as a staging area for the data to be exchanged.
+// Properties that need to be send/received: pmaswt (doubles) and pf (double2s).
+// for both of these properties, we'll have arrays on the device (*_D).
+// If we cannot use GPU-aware MPI, we'll have to copy data between host and device before and after
+// MPI comms. In that case, we use additional arrays on the host (*_H).
+// To simplify the MPI code, we'll use one additional pointer for each *_D and (optional) *_H buffer:
+// this pointer equals the device pointer if we can use GPU-aware MPI, and it equals the host pointer otherwise.
+// The name of the latter pointer equals the device/host pointer without the _D/_H suffix.
+
+double *pmaswt_proxy_buffer, *pmaswt_slave_buffer;      // copies of either *_D or *_H pointers
+double2 *pf_proxy_buffer, *pf_slave_buffer;
+double *pmaswt_proxy_buffer_D, *pmaswt_slave_buffer_D;  // pointers used to allocate device memory
+double2 *pf_proxy_buffer_D, *pf_slave_buffer_D;
 #ifndef USE_GPU_AWARE_MPI
-double *pmaswt_slave_buffer_H; // buffers on the host; only used if we can't use GPU aware MPI
-double2 *pf_slave_buffer_H;
+double *pmaswt_proxy_buffer_H, *pmaswt_slave_buffer_H;  // pointers used to allocat host memory in case
+double2 *pf_proxy_buffer_H, *pf_slave_buffer_H;         // we can't do MPI transfers from/to device memory
 #endif // USE_GPU_AWARE_MPI
 #endif // USE_MPI
 
@@ -1350,12 +1361,14 @@ void globalReduceToPoints() {
   parallelGather( numslvpeD, nummstrpeD,
 		  mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		  mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-		  prxvarD, prxvarD2, pmaswt_slave_buffer, pf_slave_buffer);
+		  pmaswt_proxy_buffer, pf_proxy_buffer,
+		  pmaswt_slave_buffer, pf_slave_buffer);
   reduceToMasterPointsAndProxies();
   parallelScatter( numslvpeD, nummstrpeD,
 		   mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
 		   mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-		   prxvarD, prxvarD2, pmaswt_slave_buffer, pf_slave_buffer);
+		   pmaswt_proxy_buffer, pf_proxy_buffer,
+		   pmaswt_slave_buffer, pf_slave_buffer);
   copyMPIBuffersToSlavePointData();
 }
 #endif
@@ -1476,17 +1489,24 @@ void hydroInitMPI(const int nummstrpeH,
   CHKERR(hipMemcpy( mapslvpD1, mapslvpH, numslvH*sizeof(int), hipMemcpyHostToDevice));
   CHKERR(hipMemcpy( mapprxpD, mapprxpH, numprxH*sizeof(int), hipMemcpyHostToDevice));
 
+  hipMalloc(&pmaswt_proxy_buffer_D, numprxH*sizeof(double));
   hipMalloc(&pmaswt_slave_buffer_D, numslvH*sizeof(double));
-  hipMalloc(&prxvarD, numprxH*sizeof(double));
+  hipMalloc(&pf_proxy_buffer_D, numprxH*sizeof(double2));
   hipMalloc(&pf_slave_buffer_D, numslvH*sizeof(double2));
-  hipMalloc(&prxvarD2, numprxH*sizeof(double2));
 #ifndef USE_GPU_AWARE_MPI
+  pmaswt_proxy_buffer_H = Memory::alloc<double>(numslvH);
   pmaswt_slave_buffer_H = Memory::alloc<double>(numslvH);
+  pf_proxy_buffer_H = Memory::alloc<double2>(numslvH);
   pf_slave_buffer_H = Memory::alloc<double2>(numslvH);
+
+  pmaswt_proxy_buffer = pmaswt_proxy_buffer_H;
   pmaswt_slave_buffer = pmaswt_slave_buffer_H;
+  pf_proxy_buffer = pf_proxy_buffer_H;
   pf_slave_buffer = pf_slave_buffer_H;
 #else
+  pmaswt_proxy_buffer = pmaswt_proxy_buffer_D;
   pmaswt_slave_buffer = pmaswt_slave_buffer_D;
+  pf_proxy_buffer = pf_proxy_buffer_D;
   pf_slave_buffer = pf_slave_buffer_D;
 #endif
 }
