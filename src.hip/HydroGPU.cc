@@ -1316,19 +1316,20 @@ void hydroInit(
 __global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
-  if(slave > numslv) { return; }
+  if(slave >= numslv) { return; }
   int point = mapslvp[slave];
   pmaswt_slave_buffer_D[slave] = pmaswt[point];
   pf_slave_buffer_D[slave] = pf[point];
 }
 
 void copySlavePointDataToMPIBuffers(){
+  if(numslvH==0) { return; }
   constexpr int blocksize = 256;
   const int blocks = (blocksize + numslvH -1) / numslvH;
   copySlavePointDataToMPIBuffers_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
 #ifndef USE_GPU_AWARE_MPI
-  hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost);
+  CHKERR(hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost));
+  CHKERR(hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost));
 #endif
 }
 
@@ -1336,7 +1337,7 @@ void copySlavePointDataToMPIBuffers(){
 __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
-  if(slave > numslv) { return; }
+  if(slave >= numslv) { return; }
   int point = mapslvp[slave];
   pmaswt[point] = pmaswt_slave_buffer_D[slave];
   pf[point] = pf_slave_buffer_D[slave];
@@ -1344,8 +1345,8 @@ __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffe
 
 void copyMPIBuffersToSlavePointData(){
 #ifndef USE_GPU_AWARE_MPI
-  hipMemcpy(pmaswt_slave_buffer_D, pmaswt_slave_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice);
+  CHKERR(hipMemcpy(pmaswt_slave_buffer_D, pmaswt_slave_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice));
+  CHKERR(hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice));
 #endif
   constexpr int blocksize = 256;
   const int blocks = (blocksize + numslvH - 1) / numslvH;
@@ -1356,7 +1357,7 @@ void copyMPIBuffersToSlavePointData(){
 __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
 					   double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
-  if(proxy > numprx) { return; }
+  if(proxy >= numprx) { return; }
 
   int point = mapprxp[proxy];
   atomicAdd(&pmaswt[point], pmaswt_proxy_buffer_D[proxy]);
@@ -1368,7 +1369,7 @@ __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
 __global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
 					 double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
-  if(proxy > numprx) { return; }
+  if(proxy >= numprx) { return; }
 
   int point = mapprxp[proxy];
   pmaswt_proxy_buffer_D[proxy] = pmaswt[point];
@@ -1377,9 +1378,10 @@ __global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
 
 
 void reduceToMasterPointsAndProxies(){
+  if(numprxH == 0){ return; }
 #ifndef USE_GPU_AWARE_MPI
-  hipMemcpy(pmaswt_proxy_buffer_D, pmaswt_proxy_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice);
-  hipMemcpy(pf_proxy_buffer_D, pf_proxy_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice);
+  CHKERR(hipMemcpy(pmaswt_proxy_buffer_D, pmaswt_proxy_buffer_H, numprxH * sizeof(double), hipMemcpyHostToDevice));
+  CHKERR(hipMemcpy(pf_proxy_buffer_D, pf_proxy_buffer_H, numprxH * sizeof(double2), hipMemcpyHostToDevice));
 #endif
 
   constexpr int blocksize = 256;
@@ -1388,8 +1390,8 @@ void reduceToMasterPointsAndProxies(){
   copyPointValuesToProxies<<<blocks, blocksize>>>(pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
 
 #ifndef USE_GPU_AWARE_MPI
-  hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost);
-  hipMemcpy(pf_proxy_buffer_H, pf_proxy_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost);
+  CHKERR(hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numprxH * sizeof(double), hipMemcpyDeviceToHost));
+  CHKERR(hipMemcpy(pf_proxy_buffer_H, pf_proxy_buffer_D, numprxH * sizeof(double2), hipMemcpyDeviceToHost));
 #endif
 }
 
