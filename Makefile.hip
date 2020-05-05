@@ -1,5 +1,6 @@
 BUILDDIR := build_hip
 PRODUCT := pennant
+MPI := OpenMPI
 
 SRCDIR := src.hip
 THRUSTDIR := /opt/rocm/rocthrust
@@ -14,7 +15,7 @@ BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
 CPPFLAGS += -Wall
-+CPPFLAGS += -Wno-unused-command-line-argument
+CPPFLAGS += -Wno-unused-command-line-argument
 
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
@@ -25,7 +26,13 @@ LD := $(CXX)
 LDFLAGS := -Wno-unused-command-line-argument
 
 # select optimized or debug
-CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS)
+CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS) -g
+
+# MPI compile and link flags
+ifeq ($(MPI),OpenMPI)
+	CXXFLAGS += $(shell mpicc.openmpi --showme:compile) -DUSE_MPI
+	LDFLAGS += $(shell mpicc.openmpi --showme:link)
+endif
 
 all : $(BINARY)
 
