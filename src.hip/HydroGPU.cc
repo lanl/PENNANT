@@ -894,28 +894,21 @@ static __global__ void gpuMain2()
 // invocations.
 static __device__ void localReduceToPoints(
         const int p,
-        const double* __restrict__ cvar,
-        double* __restrict__ pvar)
+        const double* __restrict__ cmaswt,
+        double* __restrict__ pmaswt,
+        const double2* __restrict__ cftot,
+        double2* __restrict__ pf)
 {
-    double x = 0.;
+    double cmaswt_sum = 0.;
+    double2 cftot_sum = make_double2(0., 0.);
     for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
-        x += cvar[s];
+        cmaswt_sum += cmaswt[s];
+	cftot_sum += cftot[s];
     }
-    pvar[p] = x;
+    pmaswt[p] = cmaswt_sum;
+    pf[p] = cftot_sum;
 }
 
-
-static __device__ void localReduceToPoints(
-        const int p,
-        const double2* __restrict__ cvar,
-        double2* __restrict__ pvar)
-{
-    double2 x = make_double2(0., 0.);
-    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
-        x += cvar[s];
-    }
-    pvar[p] = x;
-}
 
 #ifdef USE_MPI
 static __global__ void localReduceToPoints()
@@ -924,21 +917,19 @@ static __global__ void localReduceToPoints()
     if (p >= nump) return;
 
     // sum corner masses, forces to points
-    localReduceToPoints(p, cmaswt, pmaswt);
-    localReduceToPoints(p, cftot, pf);
+    localReduceToPoints(p, cmaswt, pmaswt, cftot, pf);
 }
 #endif
 
-static __global__ void gpuMain3()
+static __global__ void gpuMain3(bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
-#ifndef USE_MPI
-    // sum corner masses, forces to points
-    localReduceToPoints(p, cmaswt, pmaswt);
-    localReduceToPoints(p, cftot, pf);
-#endif
+    if(doLocalReduceToPoints){
+      // sum corner masses, forces to points
+      localReduceToPoints(p, cmaswt, pmaswt, cftot, pf);
+    }
 
     // 4a. apply boundary conditions
     for (int bc = 0; bc < numbcx; ++bc)
@@ -1433,15 +1424,26 @@ void hydroDoCycle(
     hipDeviceSynchronize();
     meshCheckBadSides();
 
+    bool doLocalReduceToPointInGpuMain3 = true;
 #ifdef USE_MPI
-    hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
-
     if(Parallel::numpe > 1){
+      // local reduction to points needs to be done either way, but if numpe == 1, then
+      // we can do in in gpuMain3, which saves a kernel call
+      doLocalReduceToPointInGpuMain3 = false;
+      hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
       globalReduceToPoints();
     }
 #endif
 
-    hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    // static int cycle=1;
+    // constexpr int print_cycle = 3775;
+    // if(cycle==print_cycle){
+    //   printPoints();
+    // }
+    // ++cycle;
+
+    hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
+		       doLocalReduceToPointInGpuMain3);
     hipDeviceSynchronize();
 
     double bigval = 1.e99;
@@ -1456,7 +1458,6 @@ void hydroDoCycle(
 
     CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
     CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
-
 }
 
 
