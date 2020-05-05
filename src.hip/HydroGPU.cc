@@ -1296,7 +1296,6 @@ void hydroInit(
     int chunkSize = CHUNK_SIZE;
     hipLaunchKernelGGL((gpuInvMap), dim3(gridSize), dim3(chunkSize), 0, 0, mapspkeyD, mapspvalD,
             mappsfirstD, mapssnextD);
-    hipDeviceSynchronize();
 
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
@@ -1418,10 +1417,8 @@ void hydroDoCycle(
     chunkSize = CHUNK_SIZE;
 
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
-    hipDeviceSynchronize();
 
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    hipDeviceSynchronize();
     meshCheckBadSides();
 
     bool doLocalReduceToPointInGpuMain3 = true;
@@ -1444,16 +1441,13 @@ void hydroDoCycle(
 
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
 		       doLocalReduceToPointInGpuMain3);
-    hipDeviceSynchronize();
 
     double bigval = 1.e99;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dtnext), &bigval, sizeof(double)));
 
     hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    hipDeviceSynchronize();
 
     hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
-    hipDeviceSynchronize();
     meshCheckBadSides();
 
     CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
