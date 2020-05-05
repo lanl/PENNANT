@@ -1344,6 +1344,7 @@ __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffe
 }
 
 void copyMPIBuffersToSlavePointData(){
+  if(numslvH==0) { return; }
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_slave_buffer_D, pmaswt_slave_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice));
   CHKERR(hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice));
