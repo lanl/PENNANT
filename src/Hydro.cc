@@ -282,7 +282,7 @@ void Hydro::writeEnergyCheck() {
             ek += ekchunk;
         }
     }
-#ifdef USEMPI
+#ifdef USE_MPI
     Parallel::globalSum(ei);
     Parallel::globalSum(ek);
 #endif
