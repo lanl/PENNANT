@@ -1529,15 +1529,15 @@ void hydroInitMPI(const int nummstrpeH,
   CHKERR(hipMemcpy( mapslvpD1, mapslvpH, numslvH*sizeof(int), hipMemcpyHostToDevice));
   CHKERR(hipMemcpy( mapprxpD, mapprxpH, numprxH*sizeof(int), hipMemcpyHostToDevice));
 
-  hipMalloc(&pmaswt_proxy_buffer_D, numprxH*sizeof(double));
-  hipMalloc(&pmaswt_slave_buffer_D, numslvH*sizeof(double));
-  hipMalloc(&pf_proxy_buffer_D, numprxH*sizeof(double2));
-  hipMalloc(&pf_slave_buffer_D, numslvH*sizeof(double2));
+  if(numprxH) hipMalloc(&pmaswt_proxy_buffer_D, numprxH*sizeof(double));
+  if(numslvH) hipMalloc(&pmaswt_slave_buffer_D, numslvH*sizeof(double));
+  if(numprxH) hipMalloc(&pf_proxy_buffer_D, numprxH*sizeof(double2));
+  if(numslvH) hipMalloc(&pf_slave_buffer_D, numslvH*sizeof(double2));
 #ifndef USE_GPU_AWARE_MPI
-  pmaswt_proxy_buffer_H = Memory::alloc<double>(numslvH);
-  pmaswt_slave_buffer_H = Memory::alloc<double>(numslvH);
-  pf_proxy_buffer_H = Memory::alloc<double2>(numslvH);
-  pf_slave_buffer_H = Memory::alloc<double2>(numslvH);
+  if(numprxH) pmaswt_proxy_buffer_H = Memory::alloc<double>(numprxH);
+  if(numslvH) pmaswt_slave_buffer_H = Memory::alloc<double>(numslvH);
+  if(numprxH) pf_proxy_buffer_H = Memory::alloc<double2>(numprxH);
+  if(numslvH) pf_slave_buffer_H = Memory::alloc<double2>(numslvH);
 
   pmaswt_proxy_buffer = pmaswt_proxy_buffer_H;
   pmaswt_slave_buffer = pmaswt_slave_buffer_H;
