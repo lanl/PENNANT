@@ -1363,7 +1363,7 @@ __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
   int point = mapprxp[proxy];
   atomicAdd(&pmaswt[point], pmaswt_proxy_buffer_D[proxy]);
   atomicAdd(&pf[point].x, pf_proxy_buffer_D[proxy].x);
-  atomicAdd(&pf[point].x, pf_proxy_buffer_D[proxy].x);
+  atomicAdd(&pf[point].y, pf_proxy_buffer_D[proxy].y);
 }
 
 
