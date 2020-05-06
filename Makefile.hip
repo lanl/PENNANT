@@ -1,6 +1,6 @@
 BUILDDIR := build_hip
 PRODUCT := pennant
-MPI := OpenMPI
+# MPI := OpenMPI # uncomment this line, or set MPI as an environment variable, to compile with MPI support
 
 SRCDIR := src.hip
 THRUSTDIR := /opt/rocm/rocthrust
