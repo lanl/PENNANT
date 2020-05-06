@@ -11,6 +11,7 @@
  */
 
 #ifdef USE_MPI
+// TODO: check result codes of all MPI calls
 
 #include "Parallel.hh"
 #include "Memory.hh"
@@ -59,8 +60,8 @@ void parallelGather(const int numslvpe, const int nummstrpe,
     // Wait for all receives to complete.
     MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
     MPI_Status* status1 = Memory::alloc<MPI_Status>(numslvpe);
-    int ierr = MPI_Waitall(numslvpe, &request[0], &status[0]);
-    int ierr1 = MPI_Waitall(numslvpe, &request1[0], &status1[0]);
+    MPI_Waitall(numslvpe, &request[0], &status[0]);
+    MPI_Waitall(numslvpe, &request1[0], &status1[0]);
 
     Memory::free(request);
     Memory::free(status);
@@ -106,8 +107,8 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
     // Wait for all receives to complete.
     MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
     MPI_Status* status1 = Memory::alloc<MPI_Status>(nummstrpe);
-    int ierr = MPI_Waitall(nummstrpe, &request[0], &status[0]);
-    int ierr1 = MPI_Waitall(nummstrpe, &request1[0], &status1[0]);
+    MPI_Waitall(nummstrpe, &request[0], &status[0]);
+    MPI_Waitall(nummstrpe, &request1[0], &status1[0]);
 
     // Store slave data from buffer back to points.
     Memory::free(request);

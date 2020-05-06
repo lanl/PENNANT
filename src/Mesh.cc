@@ -28,11 +28,12 @@ using namespace std;
 
 
 Mesh::Mesh(const InputFile* inp) :
-        gmesh(NULL), egold(NULL), wxy(NULL) {
+  gmesh(NULL), wxy(NULL), egold(NULL) {
 
     chunksize = inp->getInt("chunksize", 0);
     if (chunksize < 0) {
         cerr << "Error: bad chunksize " << chunksize << endl;
+	exit(1);
     }
     subregion = inp->getDoubleList("subregion", vector<double>());
     if (subregion.size() != 0 && subregion.size() != 4) {

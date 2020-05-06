@@ -14,7 +14,7 @@ DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
-CPPFLAGS += -Wall
+CPPFLAGS += -Wall -Werror
 CPPFLAGS += -Wno-unused-command-line-argument
 
 # hipcc flags:

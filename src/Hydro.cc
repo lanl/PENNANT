@@ -184,9 +184,6 @@ void Hydro::doCycle(
             const double dt) {
 
     int idtrec;
-    const int nump = mesh->nump;
-    const int numz = mesh->numz;
-    const int nums = mesh->nums;
 
     hydroDoCycle(dt, dtrec, idtrec);
     int z = idtrec >> 1;

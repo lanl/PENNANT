@@ -38,7 +38,6 @@ Driver::Driver(const InputFile* inp, const string& pname)
     using Parallel::numpe;
     using Parallel::mype;
 #else
-    constexpr int numpe = 1;
     constexpr int mype = 0;
 #endif
 
@@ -174,7 +173,6 @@ void  Driver::calcGlobalDt_opt(){
     using Parallel::numpe;
 #else
     constexpr int mype = 0;
-    constexpr int numpe = 1;
 #endif
 
 	// Save timestep from last cycle
