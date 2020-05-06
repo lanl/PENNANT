@@ -1316,7 +1316,8 @@ void copySlavePointDataToMPIBuffers(){
   if(numslvH==0) { return; }
   constexpr int blocksize = 256;
   const int blocks = (blocksize + numslvH -1) / numslvH;
-  copySlavePointDataToMPIBuffers_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel, blocks, blocksize, 0, 0,
+		     pmaswt_slave_buffer_D, pf_slave_buffer_D);
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost));
   CHKERR(hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost));
@@ -1341,7 +1342,8 @@ void copyMPIBuffersToSlavePointData(){
 #endif
   constexpr int blocksize = 256;
   const int blocks = (blocksize + numslvH - 1) / numslvH;
-  copyMPIBuffersToSlavePointData_kernel<<<blocks, blocksize>>>(pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel, blocks, blocksize, 0, 0,
+		     pmaswt_slave_buffer_D, pf_slave_buffer_D);
 }
 
 
@@ -1377,8 +1379,10 @@ void reduceToMasterPointsAndProxies(){
 
   constexpr int blocksize = 256;
   const int blocks = (blocksize + numprxH - 1) / numprxH;
-  reduceToMasterPoints<<<blocks, blocksize>>>(pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
-  copyPointValuesToProxies<<<blocks, blocksize>>>(pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  hipLaunchKernelGGL(reduceToMasterPoints, blocks, blocksize, 0, 0,
+		     pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  hipLaunchKernelGGL(copyPointValuesToProxies, blocks, blocksize, 0, 0,
+		     pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
 
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numprxH * sizeof(double), hipMemcpyDeviceToHost));
