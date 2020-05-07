@@ -153,7 +153,7 @@ void Driver::run() {
 
         cout << endl;
         cout << "************************************" << endl;
-        cout << "hydro cycle run Time= " << setw(14) << runtime << endl;
+        cout << "hydro cycle run time= " << setw(14) << runtime << endl;
         cout << "************************************" << endl;
     } // if mype
 
