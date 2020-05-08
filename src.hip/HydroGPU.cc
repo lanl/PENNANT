@@ -97,25 +97,25 @@ __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
 
-static int numschH, numpchH, numzchH;
-static int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
-static int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
-static int *mapsp1D, *mapsp2D, *mapszD, *mapss4D, *znumpD;
-static int *mapspkeyD, *mapspvalD;
-static int *mappsfirstD, *mapssnextD;
-static double2 *pxD, *pxpD, *px0D, *zxD, *zxpD, *puD, *pu0D, *papD,
+int numschH, numpchH, numzchH;
+int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
+int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
+int *mapsp1D, *mapsp2D, *mapszD, *mapss4D, *znumpD;
+int *mapspkeyD, *mapspvalD;
+int *mappsfirstD, *mapssnextD;
+double2 *pxD, *pxpD, *px0D, *zxD, *zxpD, *puD, *pu0D, *papD,
     *ssurfD, *sfpD, *sftD, *sfqD, *cftotD, *pfD, *zucD, *cqeD;
-static double *zmD, *zrD, *zrpD,
+double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
     *zpD, *zssD, *smfD, *careapD, *sareapD, *svolpD, *zareapD, *zvolpD;
-static double *cmaswtD, *pmaswtD;
-static double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
+double *cmaswtD, *pmaswtD;
+double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 
 #ifdef USE_MPI
-static int nummstrpeD, numslvpeD;
-static int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
-static int numslvH, numprxH;
+int nummstrpeD, numslvpeD;
+int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
+int numslvH, numprxH;
 
 // We need to communnicate data between slave points on our rank to proxy points on other ranks,
 // and between proxy points on our ranks and slave points on other ranks.
@@ -151,7 +151,7 @@ int checkCudaError(const hipError_t err, const char* cmd)
 #define CHKERR(cmd) checkCudaError(cmd, #cmd)
 
 
-static __device__ void advPosHalf(
+__device__ void advPosHalf(
         const int p,
         const double2* __restrict__ px0,
         const double2* __restrict__ pu0,
@@ -163,7 +163,7 @@ static __device__ void advPosHalf(
 }
 
 
-static __device__ void calcZoneCtrs(
+__device__ void calcZoneCtrs(
         const int s,
         const int s0,
         const int z,
@@ -187,7 +187,7 @@ static __device__ void calcZoneCtrs(
 }
 
 
-static __device__ void calcSideVols(
+__device__ void calcSideVols(
     const int s,
     const int z,
     const int p1,
@@ -207,7 +207,7 @@ static __device__ void calcSideVols(
 }
 
 
-static __device__ void calcZoneVols(
+__device__ void calcZoneVols(
     const int s,
     const int s0,
     const int z,
@@ -230,7 +230,7 @@ static __device__ void calcZoneVols(
 }
 
 
-static __device__ void meshCalcCharLen(
+__device__ void meshCalcCharLen(
         const int s,
         const int s0,
         const int s3,
@@ -258,7 +258,7 @@ static __device__ void meshCalcCharLen(
     zdl[z] = sdlmin;
 }
 
-static __device__ void hydroCalcRho(const int z,
+__device__ void hydroCalcRho(const int z,
         const double* __restrict__ zm,
         const double* __restrict__ zvol,
         double* __restrict__ zr)
@@ -267,7 +267,7 @@ static __device__ void hydroCalcRho(const int z,
 }
 
 
-static __device__ void pgasCalcForce(
+__device__ void pgasCalcForce(
         const int s,
         const int z,
         const double* __restrict__ zp,
@@ -277,7 +277,7 @@ static __device__ void pgasCalcForce(
 }
 
 
-static __device__ void ttsCalcForce(
+__device__ void ttsCalcForce(
         const int s,
         const int z,
         const double* __restrict__ zarea,
@@ -301,7 +301,7 @@ static __device__ void ttsCalcForce(
 //     [2.2] Compute the cos angle for c
 //     [2.3] Find the evolution factor cevol(c)
 //           and the Delta u(c) = du(c)
-static __device__ void qcsSetCornerDiv(
+__device__ void qcsSetCornerDiv(
         const int s,
         const int s0,
         const int s3,
@@ -385,7 +385,7 @@ static __device__ void qcsSetCornerDiv(
 
 
 // Routine number [4]  in the full algorithm CS2DQforce(...)
-static __device__ void qcsSetQCnForce(
+__device__ void qcsSetQCnForce(
         const int s,
         const int s3,
         const int z,
@@ -415,7 +415,7 @@ static __device__ void qcsSetQCnForce(
 
 
 // Routine number [5]  in the full algorithm CS2DQforce(...)
-static __device__ void qcsSetForce(
+__device__ void qcsSetForce(
         const int s,
         const int s4,
         const int p1,
@@ -439,7 +439,7 @@ static __device__ void qcsSetForce(
 
 
 // Routine number [6]  in the full algorithm
-static __device__ void qcsSetVelDiff(
+__device__ void qcsSetVelDiff(
         const int s,
         const int s0,
         const int p1,
@@ -467,7 +467,7 @@ static __device__ void qcsSetVelDiff(
 }
 
 
-static __device__ void qcsCalcForce(
+__device__ void qcsCalcForce(
         const int s,
         const int s0,
         const int s3,
@@ -505,7 +505,7 @@ static __device__ void qcsCalcForce(
 }
 
 
-static __device__ void calcCrnrMass(
+__device__ void calcCrnrMass(
     const int s,
     const int s3,
     const int z,
@@ -519,7 +519,7 @@ static __device__ void calcCrnrMass(
 }
 
 
-static __device__ void pgasCalcEOS(
+__device__ void pgasCalcEOS(
     const int z,
     const double* __restrict__ zr,
     const double* __restrict__ ze,
@@ -542,7 +542,7 @@ static __device__ void pgasCalcEOS(
 }
 
 
-static __device__ void pgasCalcStateAtHalf(
+__device__ void pgasCalcStateAtHalf(
     const int z,
     const double* __restrict__ zr0,
     const double* __restrict__ zvolp,
@@ -567,7 +567,7 @@ static __device__ void pgasCalcStateAtHalf(
 }
 
 
-static __global__ void gpuInvMap(
+__global__ void gpuInvMap(
         const int* mapspkey,
         const int* mapspval,
         int* mappsfirst,
@@ -591,7 +591,7 @@ static __global__ void gpuInvMap(
 }
 
 
-static __device__ void applyFixedBC(
+__device__ void applyFixedBC(
         const int p,
         const double2* __restrict__ px,
         double2* __restrict__ pu,
@@ -610,7 +610,7 @@ static __device__ void applyFixedBC(
 }
 
 
-static __device__ void calcAccel(
+__device__ void calcAccel(
         const int p,
         const double2* __restrict__ pf,
         const double* __restrict__ pmass,
@@ -622,7 +622,7 @@ static __device__ void calcAccel(
 }
 
 
-static __device__ void advPosFull(
+__device__ void advPosFull(
         const int p,
         const double2* __restrict__ px0,
         const double2* __restrict__ pu0,
@@ -637,7 +637,7 @@ static __device__ void advPosFull(
 }
 
 
-static __device__ void hydroCalcWork(
+__device__ void hydroCalcWork(
         const int s,
         const int s0,
         const int s3,
@@ -678,7 +678,7 @@ static __device__ void hydroCalcWork(
 }
 
 
-static __device__ void hydroCalcWorkRate(
+__device__ void hydroCalcWorkRate(
         const int z,
         const double* __restrict__ zvol0,
         const double* __restrict__ zvol,
@@ -693,7 +693,7 @@ static __device__ void hydroCalcWorkRate(
 }
 
 
-static __device__ void hydroCalcEnergy(
+__device__ void hydroCalcEnergy(
         const int z,
         const double* __restrict__ zetot,
         const double* __restrict__ zm,
@@ -705,7 +705,7 @@ static __device__ void hydroCalcEnergy(
 }
 
 
-static __device__ void hydroCalcDtCourant(
+__device__ void hydroCalcDtCourant(
         const int z,
         const double* __restrict__ zdu,
         const double* __restrict__ zss,
@@ -722,7 +722,7 @@ static __device__ void hydroCalcDtCourant(
 }
 
 
-static __device__ void hydroCalcDtVolume(
+__device__ void hydroCalcDtVolume(
         const int z,
         const double* __restrict__ zvol,
         const double* __restrict__ zvol0,
@@ -741,7 +741,7 @@ static __device__ void hydroCalcDtVolume(
 }
 
 
-static __device__ double atomicMin(double* address, double val)
+__device__ double atomicMin(double* address, double val)
 {
     unsigned long long int* address_as_ull =
             (unsigned long long int*)address;
@@ -756,7 +756,7 @@ static __device__ double atomicMin(double* address, double val)
 }
 
 
-static __device__ void hydroFindMinDt(
+__device__ void hydroFindMinDt(
         const int z,
         const int z0,
         const int zlength,
@@ -791,7 +791,7 @@ static __device__ void hydroFindMinDt(
 }
 
 
-static __device__ void hydroCalcDt(
+__device__ void hydroCalcDt(
         const int z,
         const int z0,
         const int zlength,
@@ -813,7 +813,7 @@ static __device__ void hydroCalcDt(
 }
 
 
-static __global__ void gpuMain1()
+__global__ void gpuMain1()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -831,7 +831,7 @@ static __global__ void gpuMain1()
 }
 
 
-static __global__ void gpuMain2()
+__global__ void gpuMain2()
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -892,7 +892,7 @@ static __global__ void gpuMain2()
 // If we don't use MPI, then the summing of corner masses and forces to points
 // is done as the first step in gpuMain3 instead, to reduce the number of kernel
 // invocations.
-static __device__ void localReduceToPoints(
+__device__ void localReduceToPoints(
         const int p,
         const double* __restrict__ cmaswt,
         double* __restrict__ pmaswt,
@@ -911,7 +911,7 @@ static __device__ void localReduceToPoints(
 
 
 #ifdef USE_MPI
-static __global__ void localReduceToPoints()
+__global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -921,7 +921,7 @@ static __global__ void localReduceToPoints()
 }
 #endif
 
-static __global__ void gpuMain3(bool doLocalReduceToPoints)
+__global__ void gpuMain3(bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -947,7 +947,7 @@ static __global__ void gpuMain3(bool doLocalReduceToPoints)
 }
 
 
-static __global__ void gpuMain4()
+__global__ void gpuMain4()
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -985,7 +985,7 @@ static __global__ void gpuMain4()
 }
 
 
-static __global__ void gpuMain5()
+__global__ void gpuMain5()
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (z >= numz) return;
@@ -1433,7 +1433,7 @@ void hydroDoCycle(
     }
 #endif
 
-    // static int cycle=1;
+    // int cycle=1;
     // constexpr int print_cycle = 3775;
     // if(cycle==print_cycle){
     //   printPoints();
