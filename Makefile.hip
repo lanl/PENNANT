@@ -1,6 +1,7 @@
 BUILDDIR := build_hip
 PRODUCT := pennant
-# MPI := OpenMPI # uncomment this line, or set MPI as an environment variable, to compile with MPI support
+# uncomment the line below, or set MPI as an environment variable, to compile with MPI support
+# MPI := OpenMPI
 
 SRCDIR := src.hip
 THRUSTDIR := /opt/rocm/rocthrust
@@ -34,7 +35,17 @@ ifeq ($(MPI),OpenMPI)
 	LDFLAGS += $(shell mpicc.openmpi --showme:link)
 endif
 
-all : $(BINARY)
+ifeq ($(findstring -DUSE_MPI,${CXXFLAGS}),-DUSE_MPI)
+MPI_MSG="*** using MPI ***"
+else
+MPI_MSG="*** NOT using MPI ***"
+endif
+
+all : showconf $(BINARY)
+	$(showconfig)
+
+showconf:
+	$(showconfig)
 
 -include $(DEPS)
 
@@ -55,6 +66,10 @@ $(BUILDDIR)/%.d : $(SRCDIR)/%.cc
 
 define maketargetdir
 	-@mkdir -p $(dir $@) > /dev/null 2>&1
+endef
+
+define showconfig
+	@echo ${MPI_MSG}
 endef
 
 clean :
