@@ -12,9 +12,22 @@ SRCS := $(wildcard $(SRCDIR)/*.cc)
 OBJS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.o)
 DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 
+PAJAMADIR := pajama
+
+PJ_HDRS := $(PAJAMADIR)/pajama.h
+PJ_SRCS := $(PAJAMADIR)/pajama.cpp
+PJ_OBJS := $(PJ_SRCS:$(PAJAMADIR)/%.cpp=$(BUILDDIR)/%.o)
+PJ_DEPS := $(PJ_SRCS:$(PAJAMADIR)/%.cpp=$(BUILDDIR)/%.d)
+
+HDRS += $(PJ_HDRS)
+SRCS += $(PJ_SRCS)
+OBJS += $(PJ_OBJS)
+DEPS += $(PJ_DEPS)
+
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
-CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
+CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include
+CPPFLAGS += -I$(PAJAMADIR) -Wno-c++17-extensions
 CPPFLAGS += -Wall -Werror
 CPPFLAGS += -Wno-unused-command-line-argument
 
@@ -59,7 +72,17 @@ $(BUILDDIR)/%.o : $(SRCDIR)/%.cc
 	$(maketargetdir)
 	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
 
+$(BUILDDIR)/%.o : $(PAJAMADIR)/%.cpp
+	@echo compiling $<
+	$(maketargetdir)
+	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
+
 $(BUILDDIR)/%.d : $(SRCDIR)/%.cc
+	@echo making depends for $<
+	$(maketargetdir)
+	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
+
+$(BUILDDIR)/%.d : $(PAJAMADIR)/%.cpp
 	@echo making depends for $<
 	$(maketargetdir)
 	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@

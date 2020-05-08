@@ -30,6 +30,8 @@
 #include "Memory.hh"
 #include "Vec2.hh"
 
+#include "pajama.h"
+
 using namespace std;
 
 
