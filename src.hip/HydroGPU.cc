@@ -42,11 +42,9 @@ __constant__ int* mapprxp;
 __constant__ int* mapslvp;
 #endif
 
-// __constant__ int numsch;
 __constant__ int nump;
 __constant__ int numz;
 __constant__ int nums;
-// __constant__ int numc;
 __constant__ double dt;
 __constant__ double pgamma, pssmin;
 __constant__ double talfa, tssmin;
@@ -62,13 +60,10 @@ __constant__ int idtnext;
 
 __constant__ const int* schsfirst;
 __constant__ const int* schslast;
-// __constant__ const int* schzfirst;
-// __constant__ const int* schzlast;
 __constant__ const int* mapsp1;
 __constant__ const int* mapsp2;
 __constant__ const int* mapsz;
 __constant__ const int* mapss4;
-// __constant__ const int *mapspkey, *mapspval;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
 
@@ -92,7 +87,6 @@ __constant__ double* cevol;
 __constant__ double* cdu;
 __constant__ double* cdiv;
 __constant__ double2* zuc;
-// __constant__ double* crmu;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -114,7 +108,8 @@ double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
-int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD, *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
+int *mapslvpepeD, *mapslvpeprx1D, *mapprxpD, *slvpenumprxD, *mapmstrpepeD,
+  *mstrpenumslvD, *mapmstrpeslv1D, *mapslvpD, *mapslvpD1;
 int numslvH, numprxH;
 
 // We need to communnicate data between slave points on our rank to proxy points on other ranks,
@@ -1116,11 +1111,9 @@ void hydroInit(
     numpchH = (numpH+CHUNK_SIZE-1) / CHUNK_SIZE;
     numzchH = (numzH+CHUNK_SIZE-1) / CHUNK_SIZE;
 
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsch), &numschH, sizeof(int)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(nump), &numpH, sizeof(int)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numz), &numzH, sizeof(int)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(nums), &numsH, sizeof(int)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numc), &numcH, sizeof(int)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pgamma), &pgammaH, sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pssmin), &pssminH, sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(talfa), &talfaH, sizeof(double)));
@@ -1205,14 +1198,10 @@ void hydroInit(
 
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schslast), &schslastD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schzfirst), &schzfirstD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schzlast), &schzlastD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp1), &mapsp1D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp2), &mapsp2D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsz), &mapszD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapss4), &mapss4D, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapspkey), &mapspkeyD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapspval), &mapspvalD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mappsfirst), &mappsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapssnext), &mapssnextD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(znump), &znumpD, sizeof(void*)));
@@ -1259,7 +1248,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdu), &cduD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdiv), &cdivD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zuc), &zucD, sizeof(void*)));
-    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(crmu), &crmuD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
@@ -1423,6 +1411,7 @@ void hydroDoCycle(
     meshCheckBadSides();
 
     bool doLocalReduceToPointInGpuMain3 = true;
+
 #ifdef USE_MPI
     if(Parallel::numpe > 1){
       // local reduction to points needs to be done either way, but if numpe == 1, then
@@ -1432,13 +1421,6 @@ void hydroDoCycle(
       globalReduceToPoints();
     }
 #endif
-
-    // int cycle=1;
-    // constexpr int print_cycle = 3775;
-    // if(cycle==print_cycle){
-    //   printPoints();
-    // }
-    // ++cycle;
 
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
 		       doLocalReduceToPointInGpuMain3);
