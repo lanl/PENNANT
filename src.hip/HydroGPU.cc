@@ -30,7 +30,6 @@
 #include "Vec2.hh"
 
 #include "pajama.h"
-#include <memory>
 
 using namespace std;
 
@@ -1293,6 +1292,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
 
     replacement_t replacements {
+      { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
       { "${nump}", jit_string(numpH) },
       { "${px}", jit_string(pxD) },
       { "${px0}", jit_string(px0D) },
