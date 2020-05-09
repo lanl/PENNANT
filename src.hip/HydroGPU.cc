@@ -93,6 +93,7 @@ __constant__ double* ccos;
 __constant__ double* cw;
 
 int numschH, numpchH, numzchH;
+int* numsbadD;
 int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapss4D, *znumpD;
@@ -1011,7 +1012,11 @@ __global__ void gpuMain5()
 void meshCheckBadSides() {
 
     int numsbadH;
+#ifdef USE_JIT
+    CHKERR(hipMemcpy(&numsbadH, numsbadD, sizeof(int), hipMemcpyDeviceToHost));
+#else
     CHKERR(hipMemcpyFromSymbol(&numsbadH, HIP_SYMBOL(numsbad), sizeof(int)));
+#endif
     // if there were negative side volumes, error exit
     if (numsbadH > 0) {
         cerr << "Error: " << numsbadH << " negative side volumes" << endl;
@@ -1136,6 +1141,8 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(bcx), bcxH, numbcxH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(bcy), bcyH, numbcyH*sizeof(double)));
 
+    
+    CHKERR(hipMalloc(&numsbadD, sizeof(int)));
     CHKERR(hipMalloc(&schsfirstD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schslastD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schzfirstD, numschH*sizeof(int)));
@@ -1290,6 +1297,7 @@ void hydroInit(
 
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
+    CHKERR(hipMemcpy(numsbadD, &zero, sizeof(int), hipMemcpyHostToDevice));
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
@@ -1307,6 +1315,7 @@ void hydroInit(
       { "${mapss4}", jit_string(mapss4D) },
       { "${mapsz}", jit_string(mapszD) },
       { "${nump}", jit_string(numpH) },
+      { "${numsbad}", jit_string(numsbadD) },
       { "${pgamma}", jit_string(pgammaH) },
       { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
@@ -1317,7 +1326,7 @@ void hydroInit(
       { "${q1}", jit_string(q1H) },
       { "${q2}", jit_string(q2H) },
       { "${qgamma}", jit_string(qgammaH) },
-      { "${sareap}", jit_string(sareap) },
+      { "${sareap}", jit_string(sareapD) },
       { "${schsfirst}", jit_string(schsfirstD) },
       { "${schslast}", jit_string(schslastD) },
       { "${sfp}", jit_string(sfpD) },
@@ -1325,10 +1334,10 @@ void hydroInit(
       { "${sft}", jit_string(sftD) },
       { "${smf}", jit_string(smfD) },
       { "${ssurf}", jit_string(ssurfD) },
-      { "${svolp}", jit_string(svolp) },
+      { "${svolp}", jit_string(svolpD) },
       { "${talfa}", jit_string(talfaH) },
       { "${tssmin}", jit_string(tssminH) },
-      { "${zareap}", jit_string(zareap) },
+      { "${zareap}", jit_string(zareapD) },
       { "${zdl}", jit_string(zdlD) },
       { "${zdu}", jit_string(zduD) },
       { "${ze}", jit_string(zeD) },
@@ -1340,7 +1349,7 @@ void hydroInit(
       { "${zss}", jit_string(zssD) },
       { "${zuc}", jit_string(zucD) },
       { "${zvol0}", jit_string(zvol0D) },
-      { "${zvolp}", jit_string(zvolp) },
+      { "${zvolp}", jit_string(zvolpD) },
       { "${zvol}", jit_string(zvolD) },
       { "${zwrate}", jit_string(zwrateD) },
       { "${zxp}", jit_string(zxpD) }
@@ -1466,23 +1475,26 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
-    // hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
-    //--------
+#ifdef USE_JIT
     struct {
       double dtH;
-    } gpuMain1_args;
-    gpuMain1_args.dtH = dtH;
-    size_t gpuMain1_args_size = sizeof(gpuMain1_args);
-    void* gpuMain1_args_wrapper[] = { HIP_LAUNCH_PARAM_BUFFER_POINTER, &gpuMain1_args,
-    				      HIP_LAUNCH_PARAM_BUFFER_SIZE, &gpuMain1_args_size,
-    				      HIP_LAUNCH_PARAM_END };
-    jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpuMain1_args_wrapper);
-    //--------
+    } gpu_args;
+    gpu_args.dtH = dtH;
+    size_t gpu_args_size = sizeof(gpu_args);
+    void* gpu_args_wrapper[] = { HIP_LAUNCH_PARAM_BUFFER_POINTER, &gpu_args,
+    				 HIP_LAUNCH_PARAM_BUFFER_SIZE, &gpu_args_size,
+    				 HIP_LAUNCH_PARAM_END };
+#endif
 
-    
+#ifdef USE_JIT
+    jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
+    jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
+#else
+    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    meshCheckBadSides();
+#endif
 
+    meshCheckBadSides();
     bool doLocalReduceToPointInGpuMain3 = true;
 
 #ifdef USE_MPI

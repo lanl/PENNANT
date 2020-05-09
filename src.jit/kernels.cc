@@ -105,15 +105,16 @@ extern "C" {
 				   const double2* __restrict__ px,
 				   const double2* __restrict__ zx,
 				   double* __restrict__ sarea,
-				   double* __restrict__ svol)
+				   double* __restrict__ svol,
+				   int* numsbad)
   {
-    const double third = 1. / 3.;
+    constexpr double third = 1. / 3.;
     double sa = 0.5 * cross(px[p2] - px[p1],  zx[z] - px[p1]);
     double sv = third * sa * (px[p1].x + px[p2].x + zx[z].x);
     sarea[s] = sa;
     svol[s] = sv;
     
-    // if (sv <= 0.) atomicAdd(&numsbad, 1); // TODO: deal with numsbad
+    if (sv <= 0.) atomicAdd(numsbad, 1);
   }
 
 
@@ -172,7 +173,7 @@ extern "C" {
     constexpr double pgamma = ${pgamma};
     constexpr double pssmin = ${pssmin};
   
-    const double gm1 = pgamma - 1.;
+    constexpr double gm1 = pgamma - 1.;
     const double ss2 = fmax(pssmin * pssmin, 1.e-99);
 
     double rx = zr[z];
@@ -500,6 +501,7 @@ extern "C" {
     const int* const schslast = ${schslast};
     const int* const znump = ${znump};
 
+    int* const numsbad = ${numsbad};
     const double* const smf = ${smf};
     const double* const ze = ${ze};
     const double* const zm = ${zm};
@@ -524,7 +526,6 @@ extern "C" {
     double2* const ssurf = ${ssurf};
     double2* const zxp = ${zxp};
 
-
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
     const int s = schsfirst[sch] + s0;
@@ -536,7 +537,7 @@ extern "C" {
 
     const int s4 = mapss4[s];
     const int s04 = s4 - schsfirst[sch];
-
+    
     __shared__ int dss3[CHUNK_SIZE];
     __shared__ int dss4[CHUNK_SIZE];
     __shared__ double ctemp[CHUNK_SIZE];
@@ -557,8 +558,7 @@ extern "C" {
     meshCalcCharLen_jit(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
-
-    calcSideVols_jit(s, z, p1, p2, pxp, zxp, sareap, svolp);
+    calcSideVols_jit(s, z, p1, p2, pxp, zxp, sareap, svolp, numsbad);
     calcZoneVols_jit(s, s0, z, sareap, svolp, zareap, zvolp);
 
     // 2. compute corner masses

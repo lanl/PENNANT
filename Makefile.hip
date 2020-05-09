@@ -30,6 +30,7 @@ CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include
 CPPFLAGS += -I$(PAJAMADIR) -Wno-c++17-extensions
 CPPFLAGS += -Wall -Werror
 CPPFLAGS += -Wno-unused-command-line-argument
+CPPFLAGS += -DUSE_JIT
 
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
