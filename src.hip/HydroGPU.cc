@@ -15,7 +15,6 @@
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
-#include <tuple>
 #include <hip/hip_runtime.h>
 #include <thrust/copy.h>
 #include <thrust/sequence.h>
@@ -31,6 +30,7 @@
 #include "Vec2.hh"
 
 #include "pajama.h"
+#include <memory>
 
 using namespace std;
 
@@ -135,6 +135,8 @@ double *pmaswt_proxy_buffer_H, *pmaswt_slave_buffer_H;  // pointers used to allo
 double2 *pf_proxy_buffer_H, *pf_slave_buffer_H;         // we can't do MPI transfers from/to device memory
 #endif // USE_GPU_AWARE_MPI
 #endif // USE_MPI
+
+std::unique_ptr<Pajama> jit;
 
 int checkCudaError(const hipError_t err, const char* cmd)
 {
@@ -1290,6 +1292,16 @@ void hydroInit(
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
 
+    replacement_t replacements {
+      { "${nump}", jit_string(numpH) },
+      { "${px}", jit_string(pxD) },
+      { "${px0}", jit_string(px0D) },
+      { "${pu}", jit_string(puD) },
+      { "${pu0}", jit_string(pu0D) },
+      { "${pxp}", jit_string(pxpD) }
+    };
+    jit = std::unique_ptr<Pajama>(new Pajama("src.jit/kernels.cc", replacements));
+    jit->load_kernel("gpuMain1_jit");
 }
 
 #ifdef USE_MPI
@@ -1407,8 +1419,20 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
-    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    // hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    //--------
+    struct {
+      double dtH;
+    } gpuMain1_args;
+    gpuMain1_args.dtH = dtH;
+    size_t gpuMain1_args_size = sizeof(gpuMain1_args);
+    void* gpuMain1_args_wrapper[] = { HIP_LAUNCH_PARAM_BUFFER_POINTER, &gpuMain1_args,
+    				      HIP_LAUNCH_PARAM_BUFFER_SIZE, &gpuMain1_args_size,
+    				      HIP_LAUNCH_PARAM_END };
+    jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpuMain1_args_wrapper);
+    //--------
 
+    
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     meshCheckBadSides();
 
