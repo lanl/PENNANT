@@ -350,7 +350,7 @@ __device__ void qcsSetCornerDiv(
     double minelen = 2.0 * min(de1, de2);
     ccos[s] = (minelen < 1.e-12 ? 0. : dot(v1, v2) / (de1 * de2));
 
-    // compute 2d cartesian volume of corner
+        // compute 2d cartesian volume of corner
     double cvolume = 0.5 * cross(xp2m0, xp3m1);
     careap[s] = cvolume;
 
@@ -1286,22 +1286,69 @@ void hydroInit(
     int gridSize = (numsH+CHUNK_SIZE-1) / CHUNK_SIZE;
     int chunkSize = CHUNK_SIZE;
     hipLaunchKernelGGL((gpuInvMap), dim3(gridSize), dim3(chunkSize), 0, 0, mapspkeyD, mapspvalD,
-            mappsfirstD, mapssnextD);
+		       mappsfirstD, mapssnextD);
 
     int zero = 0;
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
+      { "${careap}", jit_string(careapD) },
+      { "${ccos}", jit_string(ccosD) },
+      { "${cdiv}", jit_string(cdivD) },
+      { "${cdu}", jit_string(cduD) },
+      { "${cevol}", jit_string(cevolD) },
+      { "${cftot}", jit_string(cftotD) },
+      { "${cmaswt}", jit_string(cmaswtD) },
+      { "${cqe}", jit_string(cqeD) },
+      { "${cw}", jit_string(cwD) },
+      { "${mapsp1}", jit_string(mapsp1D) },
+      { "${mapsp2}", jit_string(mapsp2D) },
+      { "${mapss4}", jit_string(mapss4D) },
+      { "${mapsz}", jit_string(mapszD) },
       { "${nump}", jit_string(numpH) },
-      { "${px}", jit_string(pxD) },
-      { "${px0}", jit_string(px0D) },
-      { "${pu}", jit_string(puD) },
+      { "${pgamma}", jit_string(pgammaH) },
+      { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
-      { "${pxp}", jit_string(pxpD) }
+      { "${pu}", jit_string(puD) },
+      { "${px0}", jit_string(px0D) },
+      { "${pxp}", jit_string(pxpD) },
+      { "${px}", jit_string(pxD) },
+      { "${q1}", jit_string(q1H) },
+      { "${q2}", jit_string(q2H) },
+      { "${qgamma}", jit_string(qgammaH) },
+      { "${sareap}", jit_string(sareap) },
+      { "${schsfirst}", jit_string(schsfirstD) },
+      { "${schslast}", jit_string(schslastD) },
+      { "${sfp}", jit_string(sfpD) },
+      { "${sfq}", jit_string(sfqD) },
+      { "${sft}", jit_string(sftD) },
+      { "${smf}", jit_string(smfD) },
+      { "${ssurf}", jit_string(ssurfD) },
+      { "${svolp}", jit_string(svolp) },
+      { "${talfa}", jit_string(talfaH) },
+      { "${tssmin}", jit_string(tssminH) },
+      { "${zareap}", jit_string(zareap) },
+      { "${zdl}", jit_string(zdlD) },
+      { "${zdu}", jit_string(zduD) },
+      { "${ze}", jit_string(zeD) },
+      { "${zm}", jit_string(zmD) },
+      { "${znump}", jit_string(znumpD) },
+      { "${zp}", jit_string(zpD) },
+      { "${zrp}", jit_string(zrpD) },
+      { "${zr}", jit_string(zrD) },
+      { "${zss}", jit_string(zssD) },
+      { "${zuc}", jit_string(zucD) },
+      { "${zvol0}", jit_string(zvol0D) },
+      { "${zvolp}", jit_string(zvolp) },
+      { "${zvol}", jit_string(zvolD) },
+      { "${zwrate}", jit_string(zwrateD) },
+      { "${zxp}", jit_string(zxpD) }
+      //{ "${}", jit_string() },
     };
     jit = std::unique_ptr<Pajama>(new Pajama("src.jit/kernels.cc", replacements));
     jit->load_kernel("gpuMain1_jit");
+    jit->load_kernel("gpuMain2_jit");
 }
 
 #ifdef USE_MPI
