@@ -49,12 +49,30 @@ ifeq ($(MPI),OpenMPI)
 	LDFLAGS += $(shell mpicc.openmpi --showme:link)
 endif
 
+# ------------------------------------------------------------
+# Are we compiling with/without MPI/JIT? Compiler flags can be hard
+# to spot, so we shot the build configuration before and after building
+
+BUILDCONF_MSG := "| Build configuration: "
+
 ifeq ($(findstring -DUSE_MPI,${CXXFLAGS}),-DUSE_MPI)
-MPI_MSG="*** using MPI ***"
+BUILDCONF_MSG += "| with MPI "
 else
-MPI_MSG="*** NOT using MPI ***"
+BUILDCONF_MSG += "| without MPI "
 endif
 
+ifeq ($(findstring -DUSE_JIT,${CXXFLAGS}),-DUSE_JIT)
+BUILDCONF_MSG += "| with JIT "
+else
+BUILDCONF_MSG += "| without JIT "
+endif
+
+BUILDCONF_MSG += "|"
+
+define showconfig
+	@echo ${BUILDCONF_MSG}
+endef
+# ------------------------------------------------------------
 all : showconf $(BINARY)
 	$(showconfig)
 
@@ -90,10 +108,6 @@ $(BUILDDIR)/%.d : $(PAJAMADIR)/%.cpp
 
 define maketargetdir
 	-@mkdir -p $(dir $@) > /dev/null 2>&1
-endef
-
-define showconfig
-	@echo ${MPI_MSG}
 endef
 
 clean :
