@@ -29,7 +29,9 @@
 #include "Memory.hh"
 #include "Vec2.hh"
 
+#ifdef USE_JIT
 #include "pajama.h"
+#endif
 
 using namespace std;
 
@@ -136,7 +138,9 @@ double2 *pf_proxy_buffer_H, *pf_slave_buffer_H;         // we can't do MPI trans
 #endif // USE_GPU_AWARE_MPI
 #endif // USE_MPI
 
+#ifdef USE_JIT
 std::unique_ptr<Pajama> jit;
+#endif
 
 int checkCudaError(const hipError_t err, const char* cmd)
 {
@@ -1296,7 +1300,11 @@ void hydroInit(
 		       mappsfirstD, mapssnextD);
 
     int zero = 0;
+#ifndef USE_JIT
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
+#endif
+
+#ifdef USE_JIT
     CHKERR(hipMemcpy(numsbadD, &zero, sizeof(int), hipMemcpyHostToDevice));
 
     replacement_t replacements {
@@ -1358,6 +1366,7 @@ void hydroInit(
     jit = std::unique_ptr<Pajama>(new Pajama("src.jit/kernels.cc", replacements));
     jit->load_kernel("gpuMain1_jit");
     jit->load_kernel("gpuMain2_jit");
+#endif // USE_JIT
 }
 
 #ifdef USE_MPI
