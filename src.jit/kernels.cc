@@ -491,7 +491,9 @@ extern "C" {
   }
 
 
-  __global__ void gpuMain2_jit(double dt)
+  __global__ void
+  __launch_bounds__(CHUNK_SIZE)
+  gpuMain2_jit(double dt)
   {
     const int* const mapsp1 = ${mapsp1};
     const int* const mapsp2 = ${mapsp2};
