@@ -121,4 +121,4 @@ clean :
 	rm -f $(BINARY) $(OBJS)
 
 cleanall :
-	rm rf $(BUILDDIR)
+	rm -rf $(BUILDDIR)
