@@ -33,6 +33,16 @@
 #include "pajama.h"
 #endif
 
+// stuff used while developing zone-based version of gpuMain2. TODO: remove when done.
+
+double *zvol_zbD, *zvol_cpD;
+__constant__ double *zvol_zb, *zvol_cp;
+
+double *zvol0_zbD, *zvol0_cpD;
+__constant__ double *zvol0_zb, *zvol0_cp;
+
+// end of stuff used while developing zone-based version of gpuMain2. TODO: remove when done.
+
 using namespace std;
 
 
@@ -838,6 +848,10 @@ __global__ void gpuMain2_zb(){
   // iterate over the zones of the mesh
   auto z = blockIdx.x * blockDim.x + threadIdx.x;
   if (z >= numz){ return; }
+  
+  // save off zone variable values from previous cycle
+  zvol0_zb[z] = zvol_zb[z];
+
 }
 
 
@@ -869,6 +883,7 @@ __global__ void gpuMain2()
 
     // save off zone variable values from previous cycle
     zvol0[z] = zvol[z];
+    zvol0_cp[z] = zvol0[z]; // checkpoint
 
     // 1a. compute new mesh geometry
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
@@ -1295,6 +1310,23 @@ void hydroInit(
     CHKERR(hipMemcpy(zetotD, zetotH, numzH*sizeof(double), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(zwrateD, zwrateH, numzH*sizeof(double), hipMemcpyHostToDevice));
 
+    // initialize temporary data structures used in the implementation of zone-based version
+    // of gpuMain2. TODO: remove when done.
+
+    CHKERR(hipMalloc(&zvol_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol_zb), &zvol_zbD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zvol_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol_cp), &zvol_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zvol0_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0_zb), &zvol0_zbD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zvol0_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0_cp), &zvol0_cpD, sizeof(void*)));
+	
+    // end of initialization of temporary data structures.
+    
     thrust::device_ptr<int> mapsp1T(mapsp1D);
     thrust::device_ptr<int> mapspkeyT(mapspkeyD);
     thrust::device_ptr<int> mapspvalT(mapspvalD);
@@ -1483,8 +1515,64 @@ void globalReduceToPoints() {
 // temporary functions, used to validate correctness while developing a zone-base
 // version of gpuMain2. TODO: remove when done.
 
-void prepare_zb_mirror_data(){};
-void validate_zb_mirror_data(){};
+
+template<typename T>
+__global__ void copy_kernel(T* target, T* source, int size){
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid >= size) return;
+  target[tid] = source[tid];
+}
+
+template<typename T>
+__global__ void zap_kernel(T* target, int size){
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid >= size) return;
+  target[tid] = T();
+}
+
+void prepare_zb_mirror_data(){
+  int grid_zb = (numz_zb + CHUNK_SIZE -1) / CHUNK_SIZE;
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_zbD, zvolD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
+
+  // zap all the checkpoint arrays
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
+};
+
+template<typename T>
+__global__ void compare_kernel(const T* const a, const T* const b, int size, int* found_difference){
+  // precondition: found_difference is initialized to 0 by the caller
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if(a[tid] != b[tid]) *found_difference = 1;
+}
+
+template<typename T>
+void compare_data(const T* const actual, const T* const expected, int size,
+		  int* const found_difference_d, int cycle, const char* name){
+ int grid = (size + CHUNK_SIZE -1) / CHUNK_SIZE;
+ hipLaunchKernelGGL(compare_kernel<T>, grid, CHUNK_SIZE, 0, 0,
+		    actual, expected, size, found_difference_d);
+ int found_difference;
+ CHKERR(hipMemcpy(&found_difference, found_difference_d, sizeof(int), hipMemcpyDeviceToHost));
+ if(found_difference){
+   printf("found difference for %s in cycle %d\n", name, cycle);
+   exit(1);
+ }
+}
+
+void validate_zb_mirror_data(){
+  static int cycle = 1; // Pennant counts cycles starting from 1
+  int found_difference = 0;
+  int* found_difference_d;
+  CHKERR(hipMalloc(&found_difference_d, sizeof(int)));
+  CHKERR(hipMemcpy(found_difference_d, &found_difference, sizeof(int), hipMemcpyHostToDevice));
+
+  compare_data<double>(zvol0_zbD, zvol0_cpD, numz_zb, found_difference_d, cycle, "zvol0_zb");
+ 
+  CHKERR(hipFree(found_difference_d));
+  ++cycle;
+};
 
 // --- end of temporary functions.
 
@@ -1516,13 +1604,15 @@ void hydroDoCycle(
 
 #ifdef USE_JIT
     jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
+    prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
     jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
 #else
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
-    prepare_zb_mirror_data();
+    // TODO: remove after finishing zone-based version of gpuMain2
     hipLaunchKernelGGL((gpuMain2_zb), dim3(grid_zb), dim3(chunkSize), 0, 0);
     validate_zb_mirror_data();
 
