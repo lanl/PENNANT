@@ -1509,7 +1509,7 @@ void hydroDoCycle(
 #ifdef USE_MPI
     if(Parallel::numpe > 1){
       // local reduction to points needs to be done either way, but if numpe == 1, then
-      // we can do in in gpuMain3, which saves a kernel call
+      // we can do it in gpuMain3, which saves a kernel call
       doLocalReduceToPointInGpuMain3 = false;
       hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
       globalReduceToPoints();
