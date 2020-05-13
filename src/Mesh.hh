@@ -54,6 +54,7 @@ public:
     int* mapsc1;       // maps: side -> corners 1 and 2
     int* mapsc2;
     int* mapsz;        // map: side -> zone
+    int* mapzs;        // map: zone -> first side
     int* mapse;        // map: side -> edge
     int* mapss3;       // map: side -> previous side
     int* mapss4;       // map: side -> next side

@@ -61,13 +61,6 @@ void Mesh::init() {
     // read mesh from gmv file
     vector<double2> nodepos;
     vector<int> cellstart, cellsize, cellnodes;
-/*    vector<int> masterpes, mastercounts, slavepoints;
-    vector<int> slavepes, slavecounts, masterpoints;
-    gmesh->generate(nodepos, cellstart, cellsize, cellnodes,
-            masterpes, mastercounts, slavepoints,
-            slavepes, slavecounts, masterpoints);
-*/
-
     vector<int> slavemstrpes, slavemstrcounts, slavepoints;
     vector<int> masterslvpes, masterslvcounts, masterpoints;
     gmesh->generate(nodepos, cellstart, cellsize, cellnodes,
@@ -85,6 +78,9 @@ void Mesh::init() {
     // copy cell sizes to mesh
     znump = Memory::alloc<int>(numz);
     copy(cellsize.begin(), cellsize.end(), znump);
+
+    mapzs  = Memory::alloc<int>(numz);
+    copy(cellstart.begin(), cellstart.end(), mapzs);
 
     // populate maps:
     // use the cell* arrays to populate the side maps

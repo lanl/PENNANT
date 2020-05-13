@@ -41,6 +41,9 @@ __constant__ double *zvol_zb, *zvol_cp;
 double *zvol0_zbD, *zvol0_cpD;
 __constant__ double *zvol0_zb, *zvol0_cp;
 
+double2 *zxp_zbD, *zxp_cpD;
+__constant__ double2 *zxp_zb, *zxp_cp;
+
 // end of stuff used while developing zone-based version of gpuMain2. TODO: remove when done.
 
 using namespace std;
@@ -77,6 +80,7 @@ __constant__ const int* schslast;
 __constant__ const int* mapsp1;
 __constant__ const int* mapsp2;
 __constant__ const int* mapsz;
+__constant__ const int* mapzs;
 __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
@@ -109,7 +113,7 @@ int numschH, numpchH, numzchH;
 int* numsbadD;
 int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
-int *mapsp1D, *mapsp2D, *mapszD, *mapss4D, *znumpD;
+int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 double2 *pxD, *pxpD, *px0D, *zxD, *zxpD, *puD, *pu0D, *papD,
@@ -177,6 +181,20 @@ __device__ void advPosHalf(
 }
 
 
+inline __device__ void calcZoneCtrs_zb(int z, double2* px, double2* zx){
+  // TODO: optimize by using shared memory
+  auto s_first = mapzs[z];
+  auto s_last = s_first + znump[z];
+  double2 zxtot = {0., 0.};
+  for(auto s = s_first; s != s_last; ++s){
+    auto p1 = mapsp1[s];
+    if (mapsz[s] != z){ printf("*"); }
+    zxtot += px[p1];
+  }
+  zx[z] = zxtot / znump[z];
+}
+
+
 __device__ void calcZoneCtrs(
         const int s,
         const int s0,
@@ -197,7 +215,6 @@ __device__ void calcZoneCtrs(
         zct += 1.;
     }
     zx[z] = zxtot / zct;
-
 }
 
 
@@ -851,7 +868,9 @@ __global__ void gpuMain2_zb(){
   
   // save off zone variable values from previous cycle
   zvol0_zb[z] = zvol_zb[z];
+  calcZoneCtrs_zb(z, pxp, zxp_zb);
 
+  // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
 
 
@@ -887,6 +906,7 @@ __global__ void gpuMain2()
 
     // 1a. compute new mesh geometry
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
+    zxp_cp[z] = zxp[z]; // checkpoint
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
@@ -1134,6 +1154,7 @@ void hydroInit(
         const int* mapsp1H,
         const int* mapsp2H,
         const int* mapszH,
+        const int* mapzsH,
         const int* mapss4H,
         const int* mapseH,
         const int* znumpH) {
@@ -1178,6 +1199,7 @@ void hydroInit(
     CHKERR(hipMalloc(&mapsp1D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mapsp2D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mapszD, numsH*sizeof(int)));
+    CHKERR(hipMalloc(&mapzsD, numzH*sizeof(int)));
     CHKERR(hipMalloc(&mapss4D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&znumpD, numzH*sizeof(int)));
 
@@ -1239,6 +1261,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp1), &mapsp1D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp2), &mapsp2D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsz), &mapszD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapzs), &mapzsD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapss4), &mapss4D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mappsfirst), &mappsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapssnext), &mapssnextD, sizeof(void*)));
@@ -1297,6 +1320,7 @@ void hydroInit(
     CHKERR(hipMemcpy(mapsp1D, mapsp1H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapsp2D, mapsp2H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapszD, mapszH, numsH*sizeof(int), hipMemcpyHostToDevice));
+    CHKERR(hipMemcpy(mapzsD, mapzsH, numzH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapss4D, mapss4H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(znumpD, znumpH, numzH*sizeof(int), hipMemcpyHostToDevice));
 
@@ -1315,16 +1339,19 @@ void hydroInit(
 
     CHKERR(hipMalloc(&zvol_zbD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol_zb), &zvol_zbD, sizeof(void*)));
-
     CHKERR(hipMalloc(&zvol_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol_cp), &zvol_cpD, sizeof(void*)));
 
     CHKERR(hipMalloc(&zvol0_zbD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0_zb), &zvol0_zbD, sizeof(void*)));
-
     CHKERR(hipMalloc(&zvol0_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0_cp), &zvol0_cpD, sizeof(void*)));
-	
+
+    CHKERR(hipMalloc(&zxp_zbD, numzH*sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_zb), &zxp_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zxp_cpD, numzH*sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_cp), &zxp_cpD, sizeof(void*)));
+    
     // end of initialization of temporary data structures.
     
     thrust::device_ptr<int> mapsp1T(mapsp1D);
@@ -1534,25 +1561,56 @@ void prepare_zb_mirror_data(){
   int grid_zb = (numz_zb + CHUNK_SIZE -1) / CHUNK_SIZE;
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_zbD, zvolD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
 
   // zap all the checkpoint arrays
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
 };
 
-template<typename T>
-__global__ void compare_kernel(const T* const a, const T* const b, int size, int* found_difference){
-  // precondition: found_difference is initialized to 0 by the caller
-  int tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if(a[tid] != b[tid]) *found_difference = 1;
+inline __device__ void compare_equal(int tid, double expected, double actual, double eps,
+				     int* found_difference, bool print){
+  auto diff = actual - expected;
+  if(fabs(diff) > eps) {
+    *found_difference = 1;
+    if(print){
+      printf("tid = %d, expected = %g, actual = %g, diff = %g\n",
+	     tid, expected, actual, diff);
+    }
+  }
 }
 
-template<typename T>
-void compare_data(const T* const actual, const T* const expected, int size,
-		  int* const found_difference_d, int cycle, const char* name){
+inline __device__ void compare_equal(int tid, double2 expected, double2 actual, double eps,
+				     int* found_difference, bool print){
+  auto diff = actual - expected;
+  if(fabs(diff.x) > eps or fabs(diff.y) > eps) {
+    *found_difference = 1;
+    if(print){
+      printf("tid = %d, expected = (%g, %g), actual = (%g, %g), diff = (%g, %g)\n",
+	     tid, expected.x, expected.y, actual.x, actual.y,
+	     diff.x, diff.y);
+    }
+  }
+}
+
+template<typename T, typename E>
+__global__ void compare_kernel(const T* const expected, const T* const actual,
+			       int size, E eps, int* found_difference){
+  // precondition: found_difference is initialized to 0 by the caller
+  bool print = true;
+  int tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if(tid >= size) return;
+  compare_equal(tid, expected[tid], actual[tid], eps, found_difference, print);
+
+}
+
+template<typename T, typename E>
+void compare_data(const T* const expected, const T* const actual, int size,
+		  int* const found_difference_d, E eps, int cycle, const char* name){
  int grid = (size + CHUNK_SIZE -1) / CHUNK_SIZE;
  hipLaunchKernelGGL(compare_kernel<T>, grid, CHUNK_SIZE, 0, 0,
-		    actual, expected, size, found_difference_d);
+		    expected, actual, size, eps, found_difference_d);
  int found_difference;
  CHKERR(hipMemcpy(&found_difference, found_difference_d, sizeof(int), hipMemcpyDeviceToHost));
  if(found_difference){
@@ -1568,7 +1626,8 @@ void validate_zb_mirror_data(){
   CHKERR(hipMalloc(&found_difference_d, sizeof(int)));
   CHKERR(hipMemcpy(found_difference_d, &found_difference, sizeof(int), hipMemcpyHostToDevice));
 
-  compare_data<double>(zvol0_zbD, zvol0_cpD, numz_zb, found_difference_d, cycle, "zvol0_zb");
+  compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
+  compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;

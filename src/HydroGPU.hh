@@ -47,6 +47,7 @@ void hydroInit(
         const int* mapsp1H,
         const int* mapsp2H,
         const int* mapszH,
+        const int* mapzsH,
         const int* mapss4H,
         const int* mapseH,
         const int* znumpH);
