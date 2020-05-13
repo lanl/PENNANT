@@ -37,6 +37,7 @@ using namespace std;
 
 
 const int CHUNK_SIZE = 64;
+int numz_zb; // temporary global used for developing zone-base version of gpuMain2. TODO: remove.
 
 #ifdef USE_MPI
 __constant__ int numslv;
@@ -833,6 +834,12 @@ __global__ void gpuMain1()
 
 }
 
+__global__ void gpuMain2_zb(){
+  // iterate over the zones of the mesh
+  auto z = blockIdx.x * blockDim.x + threadIdx.x;
+  if (z >= numz){ return; }
+}
+
 
 __global__ void gpuMain2()
 {
@@ -1118,6 +1125,8 @@ void hydroInit(
 
     printf("Running Hydro on device...\n");
 
+    numz_zb = numzH;
+    
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
             schsfirstH, schslastH, schzfirstH, schzlastH);
     numpchH = (numpH+CHUNK_SIZE-1) / CHUNK_SIZE;
@@ -1471,6 +1480,14 @@ void globalReduceToPoints() {
 }
 #endif
 
+// temporary functions, used to validate correctness while developing a zone-base
+// version of gpuMain2. TODO: remove when done.
+
+void prepare_zb_mirror_data(){};
+void validate_zb_mirror_data(){};
+
+// --- end of temporary functions.
+
 void hydroDoCycle(
         const double dtH,
         double& dtnextH,
@@ -1484,6 +1501,8 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
+    int grid_zb = (numz_zb + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    
 #ifdef USE_JIT
     struct {
       double dtH;
@@ -1502,6 +1521,10 @@ void hydroDoCycle(
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
+
+    prepare_zb_mirror_data();
+    hipLaunchKernelGGL((gpuMain2_zb), dim3(grid_zb), dim3(chunkSize), 0, 0);
+    validate_zb_mirror_data();
 
     meshCheckBadSides();
     bool doLocalReduceToPointInGpuMain3 = true;
