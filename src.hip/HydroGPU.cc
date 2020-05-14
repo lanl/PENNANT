@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
+#include <limits>
 #include <hip/hip_runtime.h>
 #include <thrust/copy.h>
 #include <thrust/sequence.h>
@@ -271,6 +272,23 @@ inline void __device__ meshCalcCharLen_zb(int z,
 					  const double2* __restrict__ px,
 					  const double2* __restrict__ zx,
 					  double* __restrict__ zdl){
+  auto s_first = mapzs[z];
+  auto s_last = s_first + znump[z];
+  auto zxz = zx[z];
+  double sdlmin = std::numeric_limits<double>::max();
+  for(auto s = s_first; s != s_last; ++s){
+    auto p1 = mapsp1[s];
+    auto p2 = mapsp2[s];
+    auto pxp1 = px[p1];
+    auto pxp2 = px[p2];
+    double double_area = cross(pxp2 - pxp1, zxz - pxp1);
+    double base = length(pxp2 - pxp1);
+    double sdl = double_area / base; // TODO: can we simplify this computation?
+    sdlmin = min(sdlmin, sdl);
+  }
+  double fac = znump[z] == 3 ? 1.5 : 2.0;
+  sdlmin *= fac;
+  zdl[z] = sdlmin;
 }
 
 
@@ -1646,7 +1664,7 @@ void validate_zb_mirror_data(){
 
   compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
-  // compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
+  compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
