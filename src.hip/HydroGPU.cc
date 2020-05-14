@@ -276,16 +276,20 @@ inline void __device__ meshCalcCharLen_zb(int z,
   auto s_last = s_first + znump[z];
   auto zxz = zx[z];
   double sdlmin = std::numeric_limits<double>::max();
+  // TODO: consider the optimization from commit 20654d
   for(auto s = s_first; s != s_last; ++s){
     auto p1 = mapsp1[s];
     auto p2 = mapsp2[s];
     auto pxp1 = px[p1];
     auto pxp2 = px[p2];
+    // original code computes area by multiplying by 0.5.
     double double_area = cross(pxp2 - pxp1, zxz - pxp1);
     double base = length(pxp2 - pxp1);
     double sdl = double_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
   }
+  // orgininal code has fac values of 3.0 and 4.0, respectively. We compensate here
+  // for computing the parallelogram area instead of the triangle area.
   double fac = znump[z] == 3 ? 1.5 : 2.0;
   sdlmin *= fac;
   zdl[z] = sdlmin;
