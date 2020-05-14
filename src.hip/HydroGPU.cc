@@ -899,25 +899,36 @@ __global__ void gpuMain1()
 
 }
 
+
+// no side-based version of this function
+inline void __device__ calcSsurf_zb(int z,
+				    const int* __restrict__ znump,
+				    const double2* __restrict__ px,
+				    const double2* __restrict__ zx,
+				    double2* __restrict__ ssurf){
+  auto s_first = mapzs[z];
+  auto s_last = s_first + znump[z];
+  for(auto s = s_first; s != s_last; ++s){
+    auto p1 = mapsp1[s];
+    auto p2 = mapsp2[s];
+    ssurf_zb[s] = rotateCCW(0.5 * (px[p1] + px[p2]) - zx[z]);
+  }
+}
+
+
 __global__ void gpuMain2_zb(){
   // iterate over the zones of the mesh
   auto z = blockIdx.x * blockDim.x + threadIdx.x;
   if (z >= numz){ return; }
-  
+
   // save off zone variable values from previous cycle
   zvol0_zb[z] = zvol[z];
 
   calcZoneCtrs_zb(z, pxp, zxp_zb);
   meshCalcCharLen_zb(z, znump, pxp, zxp_zb, zdl_zb);
 
-  auto s_first = mapzs[z];
-  auto s_last = s_first + znump[z];
-  for(auto s = s_first; s != s_last; ++s){
-    auto p1 = mapsp1[s];
-    auto p2 = mapsp2[s];
-    ssurf_zb[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
-  }
-  
+  calcSsurf_zb(z, znump, pxp, zxp_zb, ssurf_zb);
+
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
 
@@ -1695,7 +1706,8 @@ void validate_zb_mirror_data(){
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb", print);
   // zdl differences are caused by propagating zxp differences
   compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zdl_zb", print);
-  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 0.0, cycle, "ssurf_zb", print);
+  // ssurf differences are caused by propagating zxp differences
+  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "ssurf_zb", print);
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
