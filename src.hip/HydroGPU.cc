@@ -272,11 +272,11 @@ __device__ void calcZoneVols(
 }
 
 
-inline void __device__ meshCalcCharLen_zb(int z,
-					  const int* __restrict__ znump,
-					  const double2* __restrict__ px,
-					  const double2* __restrict__ zx,
-					  double* __restrict__ zdl){
+inline void __device__ meshCalcCharLen_ssurf_zb(int z,
+						const int* __restrict__ znump,
+						const double2* __restrict__ px,
+						const double2* __restrict__ zx,
+						double* __restrict__ zdl){
   auto s_first = mapzs[z];
   auto s_last = s_first + znump[z];
   auto zxz = zx[z];
@@ -292,6 +292,7 @@ inline void __device__ meshCalcCharLen_zb(int z,
     double base = length(pxp2 - pxp1);
     double sdl = double_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
+    ssurf_zb[s] = rotateCCW(0.5 * (pxp1 + pxp2) - zxz); // fused computation of ssurf
   }
   // orgininal code has fac values of 3.0 and 4.0, respectively. We compensate here
   // for computing the parallelogram area instead of the triangle area.
@@ -900,22 +901,6 @@ __global__ void gpuMain1()
 }
 
 
-// no side-based version of this function
-inline void __device__ calcSsurf_zb(int z,
-				    const int* __restrict__ znump,
-				    const double2* __restrict__ px,
-				    const double2* __restrict__ zx,
-				    double2* __restrict__ ssurf){
-  auto s_first = mapzs[z];
-  auto s_last = s_first + znump[z];
-  for(auto s = s_first; s != s_last; ++s){
-    auto p1 = mapsp1[s];
-    auto p2 = mapsp2[s];
-    ssurf_zb[s] = rotateCCW(0.5 * (px[p1] + px[p2]) - zx[z]);
-  }
-}
-
-
 __global__ void gpuMain2_zb(){
   // iterate over the zones of the mesh
   auto z = blockIdx.x * blockDim.x + threadIdx.x;
@@ -925,9 +910,7 @@ __global__ void gpuMain2_zb(){
   zvol0_zb[z] = zvol[z];
 
   calcZoneCtrs_zb(z, pxp, zxp_zb);
-  meshCalcCharLen_zb(z, znump, pxp, zxp_zb, zdl_zb);
-
-  calcSsurf_zb(z, znump, pxp, zxp_zb, ssurf_zb);
+  meshCalcCharLen_ssurf_zb(z, znump, pxp, zxp_zb, zdl_zb);
 
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
