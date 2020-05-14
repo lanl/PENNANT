@@ -906,8 +906,9 @@ __global__ void gpuMain2_zb(){
   
   // save off zone variable values from previous cycle
   zvol0_zb[z] = zvol[z];
+
   calcZoneCtrs_zb(z, pxp, zxp_zb);
-  meshCalcCharLen_zb(z, znump, pxp, zxp, zdl_zb);
+  meshCalcCharLen_zb(z, znump, pxp, zxp_zb, zdl_zb);
 
   auto s_first = mapzs[z];
   auto s_last = s_first + znump[z];
