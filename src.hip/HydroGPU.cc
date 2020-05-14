@@ -41,6 +41,9 @@ __constant__ double *zvol_zb, *zvol_cp;
 double *zvol0_zbD, *zvol0_cpD;
 __constant__ double *zvol0_zb, *zvol0_cp;
 
+double *zdl_zbD, *zdl_cpD;
+__constant__ double *zdl_zb, *zdl_cp;
+
 double2 *zxp_zbD, *zxp_cpD;
 __constant__ double2 *zxp_zb, *zxp_cp;
 
@@ -181,7 +184,9 @@ __device__ void advPosHalf(
 }
 
 
-inline __device__ void calcZoneCtrs_zb(int z, double2* px, double2* zx){
+inline __device__ void calcZoneCtrs_zb(int z,
+				       const double2* __restrict__ px,
+				       double2*__restrict__  zx){
   // TODO: optimize by using shared memory
   auto s_first = mapzs[z];
   auto s_last = s_first + znump[z];
@@ -258,6 +263,14 @@ __device__ void calcZoneVols(
     }
     zarea[z] = zatot;
     zvol[z] = zvtot;
+}
+
+
+inline void __device__ meshCalcCharLen_zb(int z,
+					  const int* __restrict__ znump,
+					  const double2* __restrict__ px,
+					  const double2* __restrict__ zx,
+					  double* __restrict__ zdl){
 }
 
 
@@ -865,8 +878,9 @@ __global__ void gpuMain2_zb(){
   if (z >= numz){ return; }
   
   // save off zone variable values from previous cycle
-  zvol0_zb[z] = zvol_zb[z];
+  zvol0_zb[z] = zvol[z];
   calcZoneCtrs_zb(z, pxp, zxp_zb);
+  meshCalcCharLen_zb(z, znump, pxp, zxp, zdl_zb);
 
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
@@ -906,6 +920,7 @@ __global__ void gpuMain2()
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
     zxp_cp[z] = zxp[z]; // checkpoint
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
+    zdl_cp[z] = zdl[z]; // checkpoint
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
 
@@ -1343,6 +1358,11 @@ void hydroInit(
     CHKERR(hipMalloc(&zvol0_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0_cp), &zvol0_cpD, sizeof(void*)));
 
+    CHKERR(hipMalloc(&zdl_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl_zb), &zdl_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zdl_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl_cp), &zdl_cpD, sizeof(void*)));
+
     CHKERR(hipMalloc(&zxp_zbD, numzH*sizeof(double2)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_zb), &zxp_zbD, sizeof(void*)));
     CHKERR(hipMalloc(&zxp_cpD, numzH*sizeof(double2)));
@@ -1555,14 +1575,16 @@ __global__ void zap_kernel(T* target, int size){
 
 void prepare_zb_mirror_data(){
   int grid_zb = (numz_zb + CHUNK_SIZE -1) / CHUNK_SIZE;
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_zbD, zvolD, numz_zb);
+  // hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_zbD, zvolD, numz_zb); // not modifying zvol yet
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
 
   // zap all the checkpoint arrays
-  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb);
+  // hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb); // not modifying zvol yet
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_cpD, numz_zb);
 };
 
 inline __device__ void compare_equal(int tid, double expected, double actual, double eps,
@@ -1624,6 +1646,7 @@ void validate_zb_mirror_data(){
 
   compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
+  // compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
