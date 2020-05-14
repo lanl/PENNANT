@@ -1660,9 +1660,8 @@ inline __device__ void compare_equal(int tid, double2 expected, double2 actual, 
 
 template<typename T, typename E>
 __global__ void compare_kernel(const T* const expected, const T* const actual,
-			       int size, E eps, int* found_difference){
+			       int size, E eps, int* found_difference, bool print){
   // precondition: found_difference is initialized to 0 by the caller
-  bool print = false;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if(tid >= size) return;
   compare_equal(tid, expected[tid], actual[tid], eps, found_difference, print);
@@ -1671,10 +1670,10 @@ __global__ void compare_kernel(const T* const expected, const T* const actual,
 
 template<typename T, typename E>
 void compare_data(const T* const expected, const T* const actual, int size,
-		  int* const found_difference_d, E eps, int cycle, const char* name){
+		  int* const found_difference_d, E eps, int cycle, const char* name, bool print){
  int grid = (size + CHUNK_SIZE -1) / CHUNK_SIZE;
  hipLaunchKernelGGL(compare_kernel<T>, grid, CHUNK_SIZE, 0, 0,
-		    expected, actual, size, eps, found_difference_d);
+		    expected, actual, size, eps, found_difference_d, print);
  int found_difference;
  CHKERR(hipMemcpy(&found_difference, found_difference_d, sizeof(int), hipMemcpyDeviceToHost));
  if(found_difference){
@@ -1684,16 +1683,19 @@ void compare_data(const T* const expected, const T* const actual, int size,
 }
 
 void validate_zb_mirror_data(){
+  bool print = true; // false: only report errors exist; true: print the difference between expected and actual 
   static int cycle = 1; // Pennant counts cycles starting from 1
   int found_difference = 0;
   int* found_difference_d;
   CHKERR(hipMalloc(&found_difference_d, sizeof(int)));
   CHKERR(hipMemcpy(found_difference_d, &found_difference, sizeof(int), hipMemcpyHostToDevice));
 
-  compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
-  compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
-  compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
-  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 0.0, cycle, "ssurf_zb");
+  compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb", print);
+  // zxp differences probably due to computation reordering
+  compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb", print);
+  // zdl differences are caused by propagating zxp differences
+  compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zdl_zb", print);
+  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 0.0, cycle, "ssurf_zb", print);
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
