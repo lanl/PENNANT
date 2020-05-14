@@ -276,26 +276,16 @@ inline void __device__ meshCalcCharLen_zb(int z,
   auto s_last = s_first + znump[z];
   auto zxz = zx[z];
   double sdlmin = std::numeric_limits<double>::max();
-  // Loop over consecutive sides of zone, and do computations involving the
-  // points of the sides. Since p2 of the current side is p1 of the next side,
-  // we can reuse some data. This makes the two lines before the loop look a
-  // bit funny.
-  // This optimization saves 10% of the cycles spent in this function, but the results
-  // are slightly differen (~1.e-15), probably due to the compiler reordering operations.
-  auto p2 = mapsp2[s_first];
-  auto pxp2 = px[p2];
   for(auto s = s_first; s != s_last; ++s){
-    auto pxp1 = pxp2;
-    p2 = mapsp2[s];
-    pxp2 = px[p2];
-    // original code computes area by multiplying by 0.5.
-    double double_area = cross(pxp2 - pxp1, zxz - pxp1); 
+    auto p1 = mapsp1[s];
+    auto p2 = mapsp2[s];
+    auto pxp1 = px[p1];
+    auto pxp2 = px[p2];
+    double double_area = cross(pxp2 - pxp1, zxz - pxp1);
     double base = length(pxp2 - pxp1);
     double sdl = double_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
   }
-  // orgininal code has fac values of 3.0 and 4.0, respectively. We compensate here
-  // for computing the parallelogram area instead of the triangle area.
   double fac = znump[z] == 3 ? 1.5 : 2.0;
   sdlmin *= fac;
   zdl[z] = sdlmin;
@@ -1674,7 +1664,7 @@ void validate_zb_mirror_data(){
 
   compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
-  compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zdl_zb");
+  compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
