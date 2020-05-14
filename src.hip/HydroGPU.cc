@@ -85,7 +85,7 @@ __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
 
-__constant__ double2 *px, *pxp, *px0;
+__constant__ double2 *px, *pxp;
 __constant__ double2 *zx, *zxp;
 __constant__ double2 *pu, *pu0;
 __constant__ double2* pap;
@@ -116,7 +116,7 @@ int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
-double2 *pxD, *pxpD, *px0D, *zxD, *zxpD, *puD, *pu0D, *papD,
+double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
     *ssurfD, *sfpD, *sftD, *sfqD, *cftotD, *pfD, *zucD, *cqeD;
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
@@ -171,12 +171,12 @@ int checkCudaError(const hipError_t err, const char* cmd)
 
 __device__ void advPosHalf(
         const int p,
-        const double2* __restrict__ px0,
+        const double2* __restrict__ px,
         const double2* __restrict__ pu0,
         const double dt,
         double2* __restrict__ pxp) {
 
-    pxp[p] = px0[p] + pu0[p] * dt;
+    pxp[p] = px[p] + pu0[p] * dt;
 
 }
 
@@ -655,7 +655,6 @@ __device__ void calcAccel(
 
 __device__ void advPosFull(
         const int p,
-        const double2* __restrict__ px0,
         const double2* __restrict__ pu0,
         const double2* __restrict__ pa,
         const double dt,
@@ -663,7 +662,7 @@ __device__ void advPosFull(
         double2* __restrict__ pu) {
 
     pu[p] = pu0[p] + pa[p] * dt;
-    px[p] = px0[p] + 0.5 * (pu[p] + pu0[p]) * dt;
+    px[p] = px[p] + 0.5 * (pu[p] + pu0[p]) * dt;
 
 }
 
@@ -852,12 +851,11 @@ __global__ void gpuMain1()
     double dth = 0.5 * dt;
 
     // save off point variable values from previous cycle
-    px0[p] = px[p];
     pu0[p] = pu[p];
 
     // ===== Predictor step =====
     // 1. advance mesh to center of time step
-    advPosHalf(p, px0, pu0, dth, pxp);
+    advPosHalf(p, px, pu0, dth, pxp);
 
 }
 
@@ -987,7 +985,7 @@ __global__ void gpuMain3(bool doLocalReduceToPoints)
 
     // ===== Corrector step =====
     // 6. advance mesh to end of time step
-    advPosFull(p, px0, pu0, pap, dt, px, pu);
+    advPosFull(p, pu0, pap, dt, px, pu);
 
 }
 
@@ -1205,7 +1203,6 @@ void hydroInit(
 
     CHKERR(hipMalloc(&pxD, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&pxpD, numpH*sizeof(double2)));
-    CHKERR(hipMalloc(&px0D, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&zxD, numzH*sizeof(double2)));
     CHKERR(hipMalloc(&zxpD, numzH*sizeof(double2)));
     CHKERR(hipMalloc(&puD, numpH*sizeof(double2)));
@@ -1269,7 +1266,6 @@ void hydroInit(
 
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(px), &pxD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pxp), &pxpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(px0), &px0D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zx), &zxD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp), &zxpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu), &puD, sizeof(void*)));
@@ -1396,7 +1392,7 @@ void hydroInit(
       { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
       { "${pu}", jit_string(puD) },
-      { "${px0}", jit_string(px0D) },
+      //      { "${px0}", jit_string(px0D) }, // px0 has been removed. TODO: remove from JIT code too.
       { "${pxp}", jit_string(pxpD) },
       { "${px}", jit_string(pxD) },
       { "${q1}", jit_string(q1H) },
