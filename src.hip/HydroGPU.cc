@@ -48,6 +48,10 @@ __constant__ double *zdl_zb, *zdl_cp;
 double2 *zxp_zbD, *zxp_cpD;
 __constant__ double2 *zxp_zb, *zxp_cp;
 
+
+double2 *ssurf_zbD, *ssurf_cpD;
+__constant__ double2 *ssurf_zb, *ssurf_cp;
+
 // end of stuff used while developing zone-based version of gpuMain2. TODO: remove when done.
 
 using namespace std;
@@ -55,6 +59,7 @@ using namespace std;
 
 const int CHUNK_SIZE = 64;
 int numz_zb; // temporary global used for developing zone-base version of gpuMain2. TODO: remove.
+int nums_zb; // temporary global used for developing zone-base version of gpuMain2. TODO: remove.
 
 #ifdef USE_MPI
 __constant__ int numslv;
@@ -904,6 +909,14 @@ __global__ void gpuMain2_zb(){
   calcZoneCtrs_zb(z, pxp, zxp_zb);
   meshCalcCharLen_zb(z, znump, pxp, zxp, zdl_zb);
 
+  auto s_first = mapzs[z];
+  auto s_last = s_first + znump[z];
+  for(auto s = s_first; s != s_last; ++s){
+    auto p1 = mapsp1[s];
+    auto p2 = mapsp2[s];
+    ssurf_zb[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
+  }
+  
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
 
@@ -945,6 +958,7 @@ __global__ void gpuMain2()
     zdl_cp[z] = zdl[z]; // checkpoint
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
+    ssurf_cp[s] = ssurf[s]; // checkpoint
 
     calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
@@ -1196,7 +1210,9 @@ void hydroInit(
 
     printf("Running Hydro on device...\n");
 
+    // temporary globals used while developing zone-based kernels. TODO: remove
     numz_zb = numzH;
+    nums_zb = numsH;
     
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
             schsfirstH, schslastH, schzfirstH, schzlastH);
@@ -1389,6 +1405,11 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_zb), &zxp_zbD, sizeof(void*)));
     CHKERR(hipMalloc(&zxp_cpD, numzH*sizeof(double2)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_cp), &zxp_cpD, sizeof(void*)));
+    
+    CHKERR(hipMalloc(&ssurf_zbD, numsH*sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ssurf_zb), &ssurf_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&ssurf_cpD, numsH*sizeof(double2)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ssurf_cp), &ssurf_cpD, sizeof(void*)));
     
     // end of initialization of temporary data structures.
     
@@ -1601,12 +1622,14 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_zbD, zxpD, nums_zb);
 
   // zap all the checkpoint arrays
   // hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb); // not modifying zvol yet
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_cpD, nums_zb);
 };
 
 inline __device__ void compare_equal(int tid, double expected, double actual, double eps,
@@ -1638,7 +1661,7 @@ template<typename T, typename E>
 __global__ void compare_kernel(const T* const expected, const T* const actual,
 			       int size, E eps, int* found_difference){
   // precondition: found_difference is initialized to 0 by the caller
-  bool print = true;
+  bool print = false;
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if(tid >= size) return;
   compare_equal(tid, expected[tid], actual[tid], eps, found_difference, print);
@@ -1669,6 +1692,7 @@ void validate_zb_mirror_data(){
   compare_data<double>(zvol0_cpD, zvol0_zbD, numz_zb, found_difference_d, 0.0, cycle, "zvol0_zb");
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb");
   compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 0.0, cycle, "zdl_zb");
+  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 0.0, cycle, "ssurf_zb");
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
