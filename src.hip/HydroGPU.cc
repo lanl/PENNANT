@@ -48,6 +48,17 @@ __constant__ double *zdl_zb, *zdl_cp;
 double2 *zxp_zbD, *zxp_cpD;
 __constant__ double2 *zxp_zb, *zxp_cp;
 
+double *sareap_zbD, *sareap_cpD;
+__constant__ double *sareap_zb, *sareap_cp;
+
+double *svolp_zbD, *svolp_cpD;
+__constant__ double *svolp_zb, *svolp_cp;
+
+double *zareap_zbD, *zareap_cpD;
+__constant__ double *zareap_zb, *zareap_cp;
+
+double *zvolp_zbD, *zvolp_cpD;
+__constant__ double *zvolp_zb, *zvolp_cp;
 
 double2 *ssurf_zbD, *ssurf_cpD;
 __constant__ double2 *ssurf_zb, *ssurf_cp;
@@ -272,36 +283,60 @@ __device__ void calcZoneVols(
 }
 
 
-inline void __device__ meshCalcCharLen_ssurf_zb(int z,
-						const int* __restrict__ znump,
-						const double2* __restrict__ px,
-						const double2* __restrict__ zx,
-						double* __restrict__ zdl,
-						double2* __restrict__ ssurf){
+// This function combines the calculations of the folling device
+// functions:
+// - meshCalcCharLen
+// - computation of ssurf in gpuMain2
+// - calcSideVols
+// - calcZoneVols
+inline void __device__ fusedZoneSideUpdates_zb(int z,
+					       const int* __restrict__ znump,
+					       const double2* __restrict__ px,
+					       const double2* __restrict__ zx,
+					       double* __restrict__ zdl,
+					       double2* __restrict__ ssurf, 
+					       double* __restrict__ sarea,
+					       double* __restrict__ svol,
+					       double* __restrict__ zarea,
+					       double* __restrict__ zvol){
   auto s_first = mapzs[z];
   auto s_last = s_first + znump[z];
   auto zxz = zx[z];
   double sdlmin = std::numeric_limits<double>::max();
+  constexpr double third = 1. / 3.;
+  double summed_side_area = 0.;
+  double summed_side_volume = 0.;
   // TODO: consider the optimization from commit 20654d
   for(auto s = s_first; s != s_last; ++s){
-    //-- computation of zdl values -----
+    // computation of zdl values -----
     auto p1 = mapsp1[s];
     auto p2 = mapsp2[s];
     auto pxp1 = px[p1];
     auto pxp2 = px[p2];
-    // original code computes area by multiplying by 0.5.
-    double double_area = cross(pxp2 - pxp1, zxz - pxp1);
+    double side_area = 0.5 * cross(pxp2 - pxp1, zxz - pxp1);
     double base = length(pxp2 - pxp1);
-    double sdl = double_area / base; // TODO: can we simplify this computation?
+    double sdl = side_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
-    // -- fused computation of ssurf values ----
+    // fused computation of ssurf values ----
     ssurf[s] = rotateCCW(0.5 * (pxp1 + pxp2) - zxz);
+    // fused: store side area
+    sarea[s] = side_area;
+    // fused: update summed_side_area for compuation of zone area
+    summed_side_area += side_area;
+    // fused: compute and store side volume
+    double side_volume = third * side_area * (pxp1.x + pxp2.x + zxz.x);
+    svol[s] = side_volume;
+    // fused: update summed_side_volume for computation of zone volume
+    summed_side_volume += side_volume;
   }
-  // orgininal code has fac values of 3.0 and 4.0, respectively. We compensate here
-  // for computing the parallelogram area instead of the triangle area.
-  double fac = znump[z] == 3 ? 1.5 : 2.0;
+  // finalization of computation of zdl values
+  double fac = znump[z] == 3 ? 3.0 : 4.0;
   sdlmin *= fac;
   zdl[z] = sdlmin;
+  // fused: store zone area
+  zarea[z] = summed_side_area;
+  // fused: store zone volume
+  zvol[z] = summed_side_volume;
 }
 
 
@@ -913,7 +948,8 @@ __global__ void gpuMain2_zb(){
   zvol0_zb[z] = zvol[z];
 
   calcZoneCtrs_zb(z, pxp, zxp_zb);
-  meshCalcCharLen_ssurf_zb(z, znump, pxp, zxp_zb, zdl_zb, ssurf_zb);
+  fusedZoneSideUpdates_zb(z, znump, pxp, zxp_zb, zdl_zb, ssurf_zb,
+			  sareap_zb, svolp_zb, zareap_zb, zvolp_zb);
 
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
@@ -959,7 +995,11 @@ __global__ void gpuMain2()
     ssurf_cp[s] = ssurf[s]; // checkpoint
 
     calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
+    sareap_cp[s] = sareap[s]; // checkpoint
+    svolp_cp[s] = svolp[s]; // checkpoint
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
+    zareap_cp[z] = zareap[z]; // checkpoint
+    zvolp_cp[z] = zvolp[z]; // checkpoint
 
     // 2. compute corner masses
     hydroCalcRho(z, zm, zvolp, zrp);
@@ -1399,6 +1439,26 @@ void hydroInit(
     CHKERR(hipMalloc(&zdl_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl_cp), &zdl_cpD, sizeof(void*)));
 
+    CHKERR(hipMalloc(&zvolp_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp_zb), &zvolp_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zvolp_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp_cp), &zvolp_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zareap_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zareap_zb), &zareap_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zareap_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zareap_cp), &zareap_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&svolp_zbD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(svolp_zb), &svolp_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&svolp_cpD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(svolp_cp), &svolp_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&sareap_zbD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sareap_zb), &sareap_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&sareap_cpD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sareap_cp), &sareap_cpD, sizeof(void*)));
+
     CHKERR(hipMalloc(&zxp_zbD, numzH*sizeof(double2)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zxp_zb), &zxp_zbD, sizeof(void*)));
     CHKERR(hipMalloc(&zxp_cpD, numzH*sizeof(double2)));
@@ -1620,6 +1680,10 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_zbD, zdlD, nums_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, sareap_zbD, zdlD, nums_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_zbD, zxpD, nums_zb);
 
   // zap all the checkpoint arrays
@@ -1627,6 +1691,10 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_cpD, nums_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, sareap_cpD, nums_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_cpD, nums_zb);
 };
 
@@ -1692,6 +1760,10 @@ void validate_zb_mirror_data(){
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb", print);
   // zdl differences are caused by propagating zxp differences
   compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zdl_zb", print);
+  compare_data<double>(sareap_cpD, sareap_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "sareap_zb", print);
+  compare_data<double>(svolp_cpD, svolp_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "svolp_zb", print);
+  compare_data<double>(zareap_cpD, zareap_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zareap_zb", print);
+  compare_data<double>(zvolp_cpD, zvolp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zvolp_zb", print);
   // ssurf differences are caused by propagating zxp differences
   compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "ssurf_zb", print);
  
