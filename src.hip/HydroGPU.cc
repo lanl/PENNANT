@@ -45,6 +45,12 @@ __constant__ double *zvol0_zb, *zvol0_cp;
 double *zdl_zbD, *zdl_cpD;
 __constant__ double *zdl_zb, *zdl_cp;
 
+double *cmaswt_zbD, *cmaswt_cpD;
+__constant__ double *cmaswt_zb, *cmaswt_cp;
+
+double *zrp_zbD, *zrp_cpD;
+__constant__ double *zrp_zb, *zrp_cp;
+
 double2 *zxp_zbD, *zxp_cpD;
 __constant__ double2 *zxp_zb, *zxp_cp;
 
@@ -293,12 +299,16 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
 					       const int* __restrict__ znump,
 					       const double2* __restrict__ px,
 					       const double2* __restrict__ zx,
+					       const double* __restrict__ zm,
+					       const double* __restrict__ smf,
 					       double* __restrict__ zdl,
 					       double2* __restrict__ ssurf, 
 					       double* __restrict__ sarea,
 					       double* __restrict__ svol,
 					       double* __restrict__ zarea,
-					       double* __restrict__ zvol){
+					       double* __restrict__ zvol,
+					       double* __restrict__ zr,
+					       double* __restrict__ cmaswt){
   auto s_first = mapzs[z];
   auto s_last = s_first + znump[z];
   auto zxz = zx[z];
@@ -337,6 +347,17 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
   zarea[z] = summed_side_area;
   // fused: store zone volume
   zvol[z] = summed_side_volume;
+  // fused: calculate and store zone rho values
+  zr[z] = zm[z] / zvol[z];
+  // fused: calculate cmaswt values
+  auto s3 = s_last -1;
+  auto smf_s3 = smf[s3];
+  auto partial_m = 0.5 * zr[z] * zarea[z];
+  for(auto s = s_first; s != s_last; ++s){
+    auto smf_s = smf[s];
+    cmaswt[s] = partial_m * (smf_s + smf_s3);
+    smf_s3 = smf_s;
+  }
 }
 
 
@@ -948,8 +969,9 @@ __global__ void gpuMain2_zb(){
   zvol0_zb[z] = zvol[z];
 
   calcZoneCtrs_zb(z, pxp, zxp_zb);
-  fusedZoneSideUpdates_zb(z, znump, pxp, zxp_zb, zdl_zb, ssurf_zb,
-			  sareap_zb, svolp_zb, zareap_zb, zvolp_zb);
+  fusedZoneSideUpdates_zb(z, znump, pxp, zxp_zb, zm, smf, zdl_zb, ssurf_zb,
+			  sareap_zb, svolp_zb, zareap_zb, zvolp_zb,
+			  zrp_zb, cmaswt_zb);
 
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
@@ -1003,8 +1025,10 @@ __global__ void gpuMain2()
 
     // 2. compute corner masses
     hydroCalcRho(z, zm, zvolp, zrp);
+    zrp_cp[z] = zrp[z]; // checkpoint
     calcCrnrMass(s, s3, z, zrp, zareap, smf, cmaswt);
-
+    cmaswt_cp[s] = cmaswt[s]; // checkpoint
+    
     // 3. compute material state (half-advanced)
     // call this routine from only one thread per zone
     if (s3 > s) pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate,
@@ -1439,6 +1463,16 @@ void hydroInit(
     CHKERR(hipMalloc(&zdl_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl_cp), &zdl_cpD, sizeof(void*)));
 
+    CHKERR(hipMalloc(&cmaswt_zbD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt_zb), &cmaswt_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&cmaswt_cpD, numsH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt_cp), &cmaswt_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zrp_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zrp_zb), &zrp_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zrp_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zrp_cp), &zrp_cpD, sizeof(void*)));
+
     CHKERR(hipMalloc(&zvolp_zbD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp_zb), &zvolp_zbD, sizeof(void*)));
     CHKERR(hipMalloc(&zvolp_cpD, numzH*sizeof(double)));
@@ -1680,6 +1714,8 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_zbD, zdlD, nums_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_zbD, zdlD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_zbD, zdlD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_zbD, zdlD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_zbD, zdlD, nums_zb);
@@ -1691,6 +1727,8 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_cpD, nums_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_cpD, nums_zb);
@@ -1760,12 +1798,14 @@ void validate_zb_mirror_data(){
   compare_data<double2>(zxp_cpD, zxp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zxp_zb", print);
   // zdl differences are caused by propagating zxp differences
   compare_data<double>(zdl_cpD, zdl_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zdl_zb", print);
+  // ssurf differences are caused by propagating zxp differences
+  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "ssurf_zb", print);
   compare_data<double>(sareap_cpD, sareap_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "sareap_zb", print);
   compare_data<double>(svolp_cpD, svolp_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "svolp_zb", print);
   compare_data<double>(zareap_cpD, zareap_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zareap_zb", print);
   compare_data<double>(zvolp_cpD, zvolp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zvolp_zb", print);
-  // ssurf differences are caused by propagating zxp differences
-  compare_data<double2>(ssurf_cpD, ssurf_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "ssurf_zb", print);
+  compare_data<double>(zrp_cpD, zrp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zrp_zb", print);
+  compare_data<double>(cmaswt_cpD, cmaswt_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "cmaswt_zb", print);
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
