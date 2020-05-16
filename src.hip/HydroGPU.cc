@@ -1722,27 +1722,27 @@ __global__ void copy_kernel(T* target, T* source, int size){
 }
 
 template<typename T>
-__global__ void zap_kernel(T* target, int size){
+__global__ void zap_kernel(T* target, int size, T val = T()){
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid >= size) return;
-  target[tid] = T();
+  target[tid] = val;
 }
 
 void prepare_zb_mirror_data(){
   int grid_zb = (numz_zb + CHUNK_SIZE -1) / CHUNK_SIZE;
   // hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_zbD, zvolD, numz_zb); // not modifying zvol yet
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zp_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zss_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_zbD, zdlD, nums_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_zbD, zdlD, numz_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_zbD, zdlD, nums_zb);
-  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, sareap_zbD, zdlD, nums_zb);
-  hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_zbD, zxpD, nums_zb);
+  hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_zbD, nums_zb, {6.66e66, 6.66e66});
+  hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, numz_zb, {6.66e66, 6.66e66});
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zp_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zss_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_zbD, nums_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zareap_zbD, numz_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_zbD, nums_zb, 6.66e66);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, sareap_zbD, nums_zb, 6.66e66);
 
   // zap all the checkpoint arrays
   // hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol_cpD, numz_zb); // not modifying zvol yet
