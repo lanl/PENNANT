@@ -45,6 +45,12 @@ __constant__ double *zvol0_zb, *zvol0_cp;
 double *zdl_zbD, *zdl_cpD;
 __constant__ double *zdl_zb, *zdl_cp;
 
+double *zp_zbD, *zp_cpD;
+__constant__ double *zp_zb, *zp_cp;
+
+double *zss_zbD, *zss_cpD;
+__constant__ double *zss_zb, *zss_cp;
+
 double *cmaswt_zbD, *cmaswt_cpD;
 __constant__ double *cmaswt_zb, *cmaswt_cp;
 
@@ -973,6 +979,8 @@ __global__ void gpuMain2_zb(){
 			  sareap_zb, svolp_zb, zareap_zb, zvolp_zb,
 			  zrp_zb, cmaswt_zb);
 
+  pgasCalcStateAtHalf(z, zr, zvolp_zb, zvol0_zb, ze, zwrate, zm, dt, zp_zb, zss_zb);
+
   // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
 }
 
@@ -1034,6 +1042,8 @@ __global__ void gpuMain2()
     if (s3 > s) pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate,
             zm, dt, zp, zss);
     __syncthreads();
+    zp_cp[z] = zp[z]; // checkpoint
+    zss_cp[z] = zss[z]; // checkpoint
 
     // 4. compute forces
     pgasCalcForce(s, z, zp, ssurf, sfp);
@@ -1463,6 +1473,16 @@ void hydroInit(
     CHKERR(hipMalloc(&zdl_cpD, numzH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdl_cp), &zdl_cpD, sizeof(void*)));
 
+    CHKERR(hipMalloc(&zp_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp_zb), &zp_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zp_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp_cp), &zp_cpD, sizeof(void*)));
+
+    CHKERR(hipMalloc(&zss_zbD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss_zb), &zss_zbD, sizeof(void*)));
+    CHKERR(hipMalloc(&zss_cpD, numzH*sizeof(double)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss_cp), &zss_cpD, sizeof(void*)));
+
     CHKERR(hipMalloc(&cmaswt_zbD, numsH*sizeof(double)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt_zb), &cmaswt_zbD, sizeof(void*)));
     CHKERR(hipMalloc(&cmaswt_cpD, numsH*sizeof(double)));
@@ -1714,6 +1734,8 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_zbD, zvol0D, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_zbD, zxpD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zp_zbD, zdlD, numz_zb);
+  hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zss_zbD, zdlD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_zbD, zdlD, nums_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_zbD, zdlD, numz_zb);
   hipLaunchKernelGGL(copy_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_zbD, zdlD, numz_zb);
@@ -1727,6 +1749,7 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvol0_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, zxp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zdl_cpD, numz_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, cmaswt_cpD, nums_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zrp_cpD, numz_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zvolp_cpD, numz_zb);
@@ -1734,6 +1757,7 @@ void prepare_zb_mirror_data(){
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, svolp_cpD, nums_zb);
   hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, sareap_cpD, nums_zb);
   hipLaunchKernelGGL(zap_kernel<double2>, grid_zb, CHUNK_SIZE, 0, 0, ssurf_cpD, nums_zb);
+  hipLaunchKernelGGL(zap_kernel<double>, grid_zb, CHUNK_SIZE, 0, 0, zss_cpD, numz_zb);
 };
 
 inline __device__ void compare_equal(int tid, double expected, double actual, double eps,
@@ -1806,6 +1830,8 @@ void validate_zb_mirror_data(){
   compare_data<double>(zvolp_cpD, zvolp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zvolp_zb", print);
   compare_data<double>(zrp_cpD, zrp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zrp_zb", print);
   compare_data<double>(cmaswt_cpD, cmaswt_zbD, nums_zb, found_difference_d, 1.e-12, cycle, "cmaswt_zb", print);
+  compare_data<double>(zp_cpD, zp_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zp_zb", print);
+  compare_data<double>(zss_cpD, zss_zbD, numz_zb, found_difference_d, 1.e-12, cycle, "zss_zb", print);
  
   CHKERR(hipFree(found_difference_d));
   ++cycle;
