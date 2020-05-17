@@ -1039,6 +1039,85 @@ __global__ void gpuMain2()
     qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
 
 }
+__global__ void gpuMain2a()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // save off zone variable values from previous cycle
+    zvol0[z] = zvol[z];
+
+    // 1a. compute new mesh geometry
+    calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
+    meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
+
+    ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
+
+    calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
+    calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
+
+    // 2. compute corner masses
+    hydroCalcRho(z, zm, zvolp, zrp);
+    calcCrnrMass(s, s3, z, zrp, zareap, smf, cmaswt);
+    
+    // 3. compute material state (half-advanced)
+    // call this routine from only one thread per zone
+    if (s3 > s) pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate,
+            zm, dt, zp, zss);
+}
+
+__global__ void gpuMain2b()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // 4. compute forces
+    pgasCalcForce(s, z, zp, ssurf, sfp);
+    ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+}
 
 // If we use MPI, then we need to sum corner masses and forces to points locally first,
 // then sum the values of the points across MPI ranks for points on the boundaries
@@ -1861,7 +1940,8 @@ void hydroDoCycle(
 #else
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     // prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
-    hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
     // TODO: remove after finishing zone-based version of gpuMain2
