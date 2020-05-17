@@ -301,6 +301,10 @@ __device__ void calcZoneVols(
 // - calcSideVols
 // - calcZoneVols
 inline void __device__ fusedZoneSideUpdates_zb(int z,
+					       int local_tid,
+					       int first_side_in_block,
+					       const double2* __restrict__ sh_p1x,
+					       const double2* __restrict__ sh_workspace,
 					       const int* __restrict__ znump,
 					       const double2* __restrict__ px,
 					       const double2* __restrict__ zx,
@@ -314,38 +318,48 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
 					       double* __restrict__ zvol,
 					       double* __restrict__ zr,
 					       double* __restrict__ cmaswt){
-  auto s_first = mapzs[z];
-  auto s_last = s_first + znump[z];
+  constexpr int sides_per_zone = 4;
+  auto s_global = first_side_in_block + local_tid * sides_per_zone;
+  auto s_sh_idx = local_tid * sides_per_zone;
+
   auto zxz = zx[z];
   double sdlmin = std::numeric_limits<double>::max();
   constexpr double third = 1. / 3.;
   double summed_side_area = 0.;
   double summed_side_volume = 0.;
   // TODO: consider the optimization from commit 20654d
-  for(auto s = s_first; s != s_first + 4; ++s){
+  for(int s = 0; s != sides_per_zone; ++s, ++s_global, ++s_sh_idx){
     // computation of zdl values -----
-    auto p1 = mapsp1[s];
-    auto p2 = mapsp2[s];
-    auto pxp1 = px[p1];
-    auto pxp2 = px[p2];
+    auto pxp1 = sh_p1x[s_sh_idx];
+    auto pxp2 = sh_p1x[s != sides_per_zone - 1 ? s_sh_idx + 1 : s_sh_idx - sides_per_zone + 1];
     double side_area = 0.5 * cross(pxp2 - pxp1, zxz - pxp1);
     double base = length(pxp2 - pxp1);
     double sdl = side_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
     // fused computation of ssurf values ----
-    ssurf[s] = rotateCCW(0.5 * (pxp1 + pxp2) - zxz);
-    // fused: store side area
-    sarea[s] = side_area;
+    ssurf[s_global] = rotateCCW(0.5 * (pxp1 + pxp2) - zxz);
+  }
+
+  // reset s_global and s_sh_index
+  s_global = first_side_in_block + local_tid * sides_per_zone;
+  s_sh_idx = local_tid * sides_per_zone;
+  for(int s = 0; s != sides_per_zone; ++s, ++s_global, ++s_sh_idx){
+    // computation of zdl values -----
+    auto pxp1 = sh_p1x[s_sh_idx];
+    auto pxp2 = sh_p1x[s != sides_per_zone - 1 ? s_sh_idx + 1 : s_sh_idx - sides_per_zone + 1];
+    double side_area = 0.5 * cross(pxp2 - pxp1, zxz - pxp1);
+    sarea[s_global] = side_area;
     // fused: update summed_side_area for compuation of zone area
     summed_side_area += side_area;
     // fused: compute and store side volume
     double side_volume = third * side_area * (pxp1.x + pxp2.x + zxz.x);
-    svol[s] = side_volume;
+    svol[s_global] = side_volume;
     // fused: update summed_side_volume for computation of zone volume
     summed_side_volume += side_volume;
   }
+
   // finalization of computation of zdl values
-  double fac = znump[z] == 3 ? 3.0 : 4.0;
+  constexpr double fac = sides_per_zone == 3 ? 3.0 : 4.0;
   sdlmin *= fac;
   zdl[z] = sdlmin;
   // fused: store zone area
@@ -355,12 +369,15 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
   // fused: calculate and store zone rho values
   zr[z] = zm[z] / zvol[z];
   // fused: calculate cmaswt values
-  auto s3 = s_last -1;
+
+  // reset s_global
+  s_global = first_side_in_block + local_tid * sides_per_zone;
+  auto s3 = s_global + sides_per_zone - 1;
   auto smf_s3 = smf[s3];
   auto partial_m = 0.5 * zr[z] * zarea[z];
-  for(auto s = s_first; s != s_last; ++s){
-    auto smf_s = smf[s];
-    cmaswt[s] = partial_m * (smf_s + smf_s3);
+  for(int s = 0; s != sides_per_zone; ++s, ++s_global){
+    auto smf_s = smf[s_global];
+    cmaswt[s_global] = partial_m * (smf_s + smf_s3);
     smf_s3 = smf_s;
   }
 }
@@ -984,6 +1001,7 @@ __global__ void gpuMain2a_zb(){
   // const auto last_side_in_block = first_side_in_block + no_sides_in_block;
 
   __shared__ double2 sh_p1x[sides_per_zone * CHUNK_SIZE];
+  __shared__ double2 sh_workspace[sides_per_zone * CHUNK_SIZE];
   { // load point coordinates for first point p1 of all sides in block into shared memory
     for(auto i = local_tid; i < no_sides_in_block; i += block_size){
       auto p1 = mapsp1[first_side_in_block + i];
@@ -1005,7 +1023,8 @@ __global__ void gpuMain2a_zb(){
   }
 
   if(z < last_zone_in_block){ // TODO: optimize calcZoneCtrs_zb, and handle bounds checking there.
-    fusedZoneSideUpdates_zb(z, znump, pxp, zxp, zm, smf, zdl, ssurf,
+    fusedZoneSideUpdates_zb(z, local_tid, first_side_in_block, sh_p1x, sh_workspace,
+			    znump, pxp, zxp, zm, smf, zdl, ssurf,
 			    sareap, svolp, zareap, zvolp,
 			    zrp, cmaswt);
   }
