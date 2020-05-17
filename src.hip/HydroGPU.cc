@@ -1013,37 +1013,25 @@ __global__ void gpuMain2()
 
     // save off zone variable values from previous cycle
     zvol0[z] = zvol[z];
-    zvol0_cp[z] = zvol0[z]; // checkpoint
 
     // 1a. compute new mesh geometry
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
-    zxp_cp[z] = zxp[z]; // checkpoint
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
-    zdl_cp[z] = zdl[z]; // checkpoint
 
     ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
-    ssurf_cp[s] = ssurf[s]; // checkpoint
 
     calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
-    sareap_cp[s] = sareap[s]; // checkpoint
-    svolp_cp[s] = svolp[s]; // checkpoint
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
-    zareap_cp[z] = zareap[z]; // checkpoint
-    zvolp_cp[z] = zvolp[z]; // checkpoint
 
     // 2. compute corner masses
     hydroCalcRho(z, zm, zvolp, zrp);
-    zrp_cp[z] = zrp[z]; // checkpoint
     calcCrnrMass(s, s3, z, zrp, zareap, smf, cmaswt);
-    cmaswt_cp[s] = cmaswt[s]; // checkpoint
     
     // 3. compute material state (half-advanced)
     // call this routine from only one thread per zone
     if (s3 > s) pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate,
             zm, dt, zp, zss);
     __syncthreads();
-    zp_cp[z] = zp[z]; // checkpoint
-    zss_cp[z] = zss[z]; // checkpoint
 
     // 4. compute forces
     pgasCalcForce(s, z, zp, ssurf, sfp);
@@ -1852,7 +1840,8 @@ void hydroDoCycle(
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
 
-    int grid_zb = (numz_zb + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    // TODO: remove after optimizing gpuMain2
+    // int grid_zb = (numz_zb + CHUNK_SIZE - 1) / CHUNK_SIZE;
     
 #ifdef USE_JIT
     struct {
@@ -1867,17 +1856,17 @@ void hydroDoCycle(
 
 #ifdef USE_JIT
     jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
-    prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
+    // prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
     jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
 #else
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
-    prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
+    // prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
     // TODO: remove after finishing zone-based version of gpuMain2
-    hipLaunchKernelGGL((gpuMain2_zb), dim3(grid_zb), dim3(chunkSize), 0, 0);
-    validate_zb_mirror_data();
+    // hipLaunchKernelGGL((gpuMain2_zb), dim3(grid_zb), dim3(chunkSize), 0, 0);
+    // validate_zb_mirror_data();
 
     meshCheckBadSides();
     bool doLocalReduceToPointInGpuMain3 = true;
