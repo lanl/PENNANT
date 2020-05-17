@@ -214,18 +214,17 @@ __device__ void advPosHalf(
 
 
 inline __device__ void calcZoneCtrs_zb(int z,
-				       const double2* __restrict__ px,
+				       int local_tid,
+				       const double2* __restrict__ sh_p1x,
 				       double2*__restrict__  zx){
-  // TODO: optimize by using shared memory
-  auto s_first = mapzs[z];
-  auto s_last = s_first + znump[z];
+  constexpr int sides_per_zone = 4;
   double2 zxtot = {0., 0.};
-  for(auto s = s_first; s != s_last; ++s){
-    auto p1 = mapsp1[s];
-    if (mapsz[s] != z){ printf("*"); }
-    zxtot += px[p1];
+  auto s_sh_idx = local_tid * sides_per_zone;
+  for(int s = 0; s != sides_per_zone; ++s, ++s_sh_idx){
+    zxtot += sh_p1x[s_sh_idx];
   }
-  zx[z] = zxtot / znump[z];
+  constexpr double recip = 1. / sides_per_zone;
+  zx[z] = recip * zxtot;
 }
 
 
@@ -968,18 +967,52 @@ __global__ void gpuMain1()
 
 __global__ void gpuMain2a_zb(){
   // iterate over the zones of the mesh
-  auto z = blockIdx.x * blockDim.x + threadIdx.x;
-  if (z >= numz){ return; }
+  constexpr int sides_per_zone = 4;
+  constexpr int zone_offset = 0; // first of 4-sided zones
+  constexpr int side_offset = 0; // first side of 4-sided zones
+
+  const int block_size = blockDim.x;
+  const auto global_tid = block_size * blockIdx.x + threadIdx.x;
+  const auto local_tid = threadIdx.x;
+
+  const auto first_zone_in_block = blockDim.x * blockIdx.x + zone_offset;
+  const auto last_zone_in_block = min(numz, first_zone_in_block + blockDim.x);
+  const auto no_zones_in_block = last_zone_in_block - first_zone_in_block;
+
+  const auto no_sides_in_block = no_zones_in_block * sides_per_zone;
+  const auto first_side_in_block = sides_per_zone * blockDim.x * blockIdx.x + side_offset;
+  // const auto last_side_in_block = first_side_in_block + no_sides_in_block;
+
+  __shared__ double2 sh_p1x[sides_per_zone * CHUNK_SIZE];
+  { // load point coordinates for first point p1 of all sides in block into shared memory
+    for(auto i = local_tid; i < no_sides_in_block; i += block_size){
+      auto p1 = mapsp1[first_side_in_block + i];
+      sh_p1x[i] = pxp[p1];
+    }
+    __syncthreads();
+  }
+
+  auto z = global_tid;
+  // if (z >= numz){ return; }
 
   // save off zone variable values from previous cycle
-  zvol0[z] = zvol[z];
+  if(z < last_zone_in_block){
+    zvol0[z] = zvol[z];
+  }
 
-  calcZoneCtrs_zb(z, pxp, zxp);
-  fusedZoneSideUpdates_zb(z, znump, pxp, zxp, zm, smf, zdl, ssurf,
-			  sareap, svolp, zareap, zvolp,
-			  zrp, cmaswt);
+  if(z < last_zone_in_block){ // TODO: optimize calcZoneCtrs_zb, and handle bounds checking there.
+    calcZoneCtrs_zb(z, local_tid, sh_p1x, zxp);
+  }
 
-  pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate, zm, dt, zp, zss);
+  if(z < last_zone_in_block){ // TODO: optimize calcZoneCtrs_zb, and handle bounds checking there.
+    fusedZoneSideUpdates_zb(z, znump, pxp, zxp, zm, smf, zdl, ssurf,
+			    sareap, svolp, zareap, zvolp,
+			    zrp, cmaswt);
+  }
+
+  if(z < last_zone_in_block){ // TODO: check for optimization potential
+    pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate, zm, dt, zp, zss);
+  }
 }
 
 
