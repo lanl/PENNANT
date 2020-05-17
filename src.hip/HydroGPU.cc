@@ -323,7 +323,7 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
   double summed_side_area = 0.;
   double summed_side_volume = 0.;
   // TODO: consider the optimization from commit 20654d
-  for(auto s = s_first; s != s_last; ++s){
+  for(auto s = s_first; s != s_first + 4; ++s){
     // computation of zdl values -----
     auto p1 = mapsp1[s];
     auto p2 = mapsp2[s];
@@ -951,7 +951,7 @@ __device__ void hydroCalcDt(
 
 __global__ void gpuMain1()
 {
-    const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
+  const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
     double dth = 0.5 * dt;
@@ -966,22 +966,20 @@ __global__ void gpuMain1()
 }
 
 
-__global__ void gpuMain2_zb(){
+__global__ void gpuMain2a_zb(){
   // iterate over the zones of the mesh
   auto z = blockIdx.x * blockDim.x + threadIdx.x;
   if (z >= numz){ return; }
 
   // save off zone variable values from previous cycle
-  zvol0_zb[z] = zvol[z];
+  zvol0[z] = zvol[z];
 
-  calcZoneCtrs_zb(z, pxp, zxp_zb);
-  fusedZoneSideUpdates_zb(z, znump, pxp, zxp_zb, zm, smf, zdl_zb, ssurf_zb,
-			  sareap_zb, svolp_zb, zareap_zb, zvolp_zb,
-			  zrp_zb, cmaswt_zb);
+  calcZoneCtrs_zb(z, pxp, zxp);
+  fusedZoneSideUpdates_zb(z, znump, pxp, zxp, zm, smf, zdl, ssurf,
+			  sareap, svolp, zareap, zvolp,
+			  zrp, cmaswt);
 
-  pgasCalcStateAtHalf(z, zr, zvolp_zb, zvol0_zb, ze, zwrate, zm, dt, zp_zb, zss_zb);
-
-  // if(z==0){ printf("end of gpuMain2_zb, with numz = %d\n", numz); }
+  pgasCalcStateAtHalf(z, zr, zvolp, zvol0, ze, zwrate, zm, dt, zp, zss);
 }
 
 
@@ -1117,6 +1115,151 @@ __global__ void gpuMain2b()
     pgasCalcForce(s, z, zp, ssurf, sfp);
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
     qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+}
+
+__global__ void gpuMain2b12()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int z  = mapsz[s];
+
+    // 4. compute forces
+    pgasCalcForce(s, z, zp, ssurf, sfp);
+    ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
+}
+
+__global__ void gpuMain2b3()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // 4. compute forces
+    // inlined version of:
+    // qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+        // [1] Find the right, left, top, bottom  edges to use for the
+    //     limiters
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [2] Compute corner divergence and related quantities
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2);
+
+    // [3] Find the limiters Psi(c)
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [4] Compute the Q vector (corner based)
+    qcsSetQCnForce(s, s3, z, p1, p2);
+
+    // [5] Compute the Q forces
+    qcsSetForce(s, s4, p1, p2);
+
+    ctemp2[s0] = sfp[s] + sft[s] + sfq[s];
+    __syncthreads();
+    cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
+
+    // [6] Set velocity difference to use to compute timestep
+    qcsSetVelDiff(s, s0, p1, p2, z, dss4, ctemp);
+}
+
+
+__global__ void gpuMain2b3a()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // 4. compute forces
+    // inlined version of:
+    // qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+        // [1] Find the right, left, top, bottom  edges to use for the
+    //     limiters
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [2] Compute corner divergence and related quantities
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2);
+}
+
+
+__global__ void gpuMain2b3b()
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // [4] Compute the Q vector (corner based)
+    qcsSetQCnForce(s, s3, z, p1, p2);
+
+    // [5] Compute the Q forces
+    qcsSetForce(s, s4, p1, p2);
+
+    ctemp2[s0] = sfp[s] + sft[s] + sfq[s];
+    __syncthreads();
+    cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
+
+    // [6] Set velocity difference to use to compute timestep
+    qcsSetVelDiff(s, s0, p1, p2, z, dss4, ctemp);
 }
 
 // If we use MPI, then we need to sum corner masses and forces to points locally first,
@@ -1941,7 +2084,9 @@ void hydroDoCycle(
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     // prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
     hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b12), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b3a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b3b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
     // TODO: remove after finishing zone-based version of gpuMain2
