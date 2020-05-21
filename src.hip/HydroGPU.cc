@@ -1887,7 +1887,8 @@ void hydroDoCycle(
 #else
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     // prepare_zb_mirror_data(); // TODO: remove after finishing zone-based version of gpuMain2
-    hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+
+    hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 
     // hipLaunchKernelGGL((gpuMain2b12), dim3(gridSizeS), dim3(chunkSize), 0, 0);
