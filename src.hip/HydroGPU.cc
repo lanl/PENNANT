@@ -1710,7 +1710,6 @@ void hydroInit(
       { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
       { "${pu}", jit_string(puD) },
-      //      { "${px0}", jit_string(px0D) }, // px0 has been removed. TODO: remove from JIT code too.
       { "${pxp}", jit_string(pxpD) },
       { "${px}", jit_string(pxD) },
       { "${q1}", jit_string(q1H) },
