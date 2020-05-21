@@ -23,7 +23,7 @@ CPPFLAGS += -Wno-unused-command-line-argument
 # hipcc flags:
 CXX := /opt/rocm/bin/hipcc
 CXXFLAGS_DEBUG := -g
-CXXFLAGS_OPT := -O3
+CXXFLAGS_OPT := -O3 -g
 
 # JIT support for GPU kernels
 ifdef JIT
