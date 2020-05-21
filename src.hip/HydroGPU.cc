@@ -291,8 +291,6 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
     double base = length(pxp2 - pxp1);
     double sdl = side_area / base; // TODO: can we simplify this computation?
     sdlmin = min(sdlmin, sdl);
-    // fused computation of ssurf values ----
-    ssurf[s_global] = rotateCCW(0.5 * (pxp1 + pxp2) - zxz);
   }
 
   // reset s_global and s_sh_index
@@ -1116,6 +1114,10 @@ __global__ void gpuMain2b()
 
     __syncthreads();
 
+    auto pxp1 = pxp[p1];
+    auto pxp2 = pxp[p2];
+    ssurf[s] = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
+    
     const int s3 = s + dss3[s0];
 
     // 4. compute forces
