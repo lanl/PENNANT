@@ -86,7 +86,7 @@ __constant__ double *sareap, *svolp, *zareap, *zvolp;
 __constant__ double *sarea, *svol, *zarea, *zvol, *zvol0;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
-__constant__ double2 *sfp, *sfq, *cftot, *pf;
+__constant__ double2 *sfpq, *cftot, *pf;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -99,7 +99,7 @@ int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
-    *sfpD, *sfqD, *cftotD, *pfD, *cqeD;
+  *sfpqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
@@ -366,13 +366,13 @@ __device__ void hydroCalcRho(const int z,
 }
 
 
-__device__ void pgasCalcForce(
+inline __device__ void pgasCalcForce(
         const int s,
         const int z,
         const double* __restrict__ zp,
         double2 ssurf,
-        double2* __restrict__ sf) {
-    sf[s] = -zp[z] * ssurf;
+        double2& sfp) {
+    sfp = -zp[z] * ssurf;
 }
 
 
@@ -525,7 +525,8 @@ __device__ void qcsSetForce(
         const int s4,
         const int p1,
         const int p2,
-	double careap) {
+	double careap,
+	double2& sfq) {
 
     // [5.1] Preparation of extra variables
     double csin2 = 1. - ccos[s] * ccos[s];
@@ -538,9 +539,9 @@ __device__ void qcsSetForce(
     const double2 x2 = pxp[p2];
     // Edge length for c1, c2 contribution to s
     double elen = length(x1 - x2);
-    sfq[s] = (cw[s] * (cqe[2*s+1] + ccos[s] * cqe[2*s]) +
-             cw[s4] * (cqe[2*s4] + ccos[s4] * cqe[2*s4+1]))
-            / elen;
+    sfq = (cw[s] * (cqe[2*s+1] + ccos[s] * cqe[2*s]) +
+	   cw[s4] * (cqe[2*s4] + ccos[s4] * cqe[2*s4+1]))
+      / elen;
 }
 
 
@@ -585,7 +586,8 @@ __device__ void qcsCalcForce(
 	int dss4[CHUNK_SIZE],
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
-	double2 sft) {
+	double2 sft,
+	double2 sfp) {
     // [1] Find the right, left, top, bottom  edges to use for the
     //     limiters
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -604,9 +606,11 @@ __device__ void qcsCalcForce(
     qcsSetQCnForce(s, s3, z, p1, p2, cdiv, cdu, cevol);
 
     // [5] Compute the Q forces
-    qcsSetForce(s, s4, p1, p2, careap);
+    double2 sfq = { 0., 0. };
+    qcsSetForce(s, s4, p1, p2, careap, sfq);
+    sfpq[s] = sfp + sfq;
 
-    ctemp2[s0] = sfp[s] + sft + sfq[s];
+    ctemp2[s0] = sfp + sfq + sft;
     __syncthreads();
     cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
 
@@ -755,7 +759,6 @@ __device__ void hydroCalcWork(
         const int p1,
         const int p2,
         const double2* __restrict__ sf,
-        const double2* __restrict__ sf2,
         const double2* __restrict__ pu0,
         const double2* __restrict__ pu,
         const double2* __restrict__ px,
@@ -770,8 +773,8 @@ __device__ void hydroCalcWork(
     // where force is the force of the element on the node
     // and vavg is the average velocity of the node over the time period
 
-    double sd1 = dot( (sf[s] + sf2[s]), (pu0[p1] + pu[p1]));
-    double sd2 = dot(-(sf[s] + sf2[s]), (pu0[p2] + pu[p2]));
+    double sd1 = dot( sf[s], (pu0[p1] + pu[p1]));
+    double sd2 = dot(-sf[s], (pu0[p2] + pu[p2]));
     double dwork = -0.5 * dt * (sd1 * px[p1].x + sd2 * px[p2].x);
 
     ctemp[s0] = dwork;
@@ -1042,10 +1045,11 @@ __global__ void gpuMain2()
     __syncthreads();
 
     // 4. compute forces
+    double2 sfp = {0., 0.};
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
 __global__ void gpuMain2a()
@@ -1125,10 +1129,11 @@ __global__ void gpuMain2b()
     const int s3 = s + dss3[s0];
 
     // 4. compute forces
+    double2 sfp = {0., 0.};
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
@@ -1225,7 +1230,7 @@ __global__ void gpuMain4()
     calcZoneVols(s, s0, z, sarea, svol, zarea, zvol);
 
     // 7. compute work
-    hydroCalcWork(s, s0, s3, z, p1, p2, sfp, sfq, pu0, pu, pxp, dt,
+    hydroCalcWork(s, s0, s3, z, p1, p2, sfpq, pu0, pu, pxp, dt,
 		  zw, zetot, dss4, ctemp);
 
 }
@@ -1433,8 +1438,7 @@ void hydroInit(
     CHKERR(hipMalloc(&zvolpD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&cmaswtD, numsH*sizeof(double)));
     CHKERR(hipMalloc(&pmaswtD, numpH*sizeof(double)));
-    CHKERR(hipMalloc(&sfpD, numsH*sizeof(double2)));
-    CHKERR(hipMalloc(&sfqD, numsH*sizeof(double2)));
+    CHKERR(hipMalloc(&sfpqD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&cftotD, numcH*sizeof(double2)));
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
@@ -1488,8 +1492,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp), &zvolpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt), &cmaswtD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pmaswt), &pmaswtD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfp), &sfpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfq), &sfqD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfpq), &sfpqD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
@@ -1563,8 +1566,7 @@ void hydroInit(
       { "${sareap}", jit_string(sareapD) },
       { "${schsfirst}", jit_string(schsfirstD) },
       { "${schslast}", jit_string(schslastD) },
-      { "${sfp}", jit_string(sfpD) },
-      { "${sfq}", jit_string(sfqD) },
+      { "${sfpq}", jit_string(sfpqD) },
       { "${smf}", jit_string(smfD) },
       { "${svolp}", jit_string(svolpD) },
       { "${talfa}", jit_string(talfaH) },
