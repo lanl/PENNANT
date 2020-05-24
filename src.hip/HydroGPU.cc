@@ -86,7 +86,7 @@ __constant__ double *sareap, *svolp, *zareap, *zvolp;
 __constant__ double *sarea, *svol, *zarea, *zvol, *zvol0;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
-__constant__ double2 *sfp, *sft, *sfq, *cftot, *pf;
+__constant__ double2 *sfp, *sfq, *cftot, *pf;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -99,7 +99,7 @@ int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
-    *sfpD, *sftD, *sfqD, *cftotD, *pfD, *cqeD;
+    *sfpD, *sfqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
@@ -385,13 +385,13 @@ __device__ void ttsCalcForce(
         const double* __restrict__ sarea,
         const double* __restrict__ smf,
         double2 ssurf,
-        double2* __restrict__ sf) {
+        double2& sft) {
     double svfacinv = zarea[z] / sarea[s];
     double srho = zr[z] * smf[s] * svfacinv;
     double sstmp = max(zss[z], tssmin);
     sstmp = talfa * sstmp * sstmp;
     double sdp = sstmp * (srho - zr[z]);
-    sf[s] = -sdp * ssurf;
+    sft = -sdp * ssurf;
 }
 
 
@@ -584,7 +584,8 @@ __device__ void qcsCalcForce(
 	int dss3[CHUNK_SIZE],
 	int dss4[CHUNK_SIZE],
 	double ctemp[CHUNK_SIZE],
-	double2 ctemp2[CHUNK_SIZE]) {
+	double2 ctemp2[CHUNK_SIZE],
+	double2 sft) {
     // [1] Find the right, left, top, bottom  edges to use for the
     //     limiters
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -605,7 +606,7 @@ __device__ void qcsCalcForce(
     // [5] Compute the Q forces
     qcsSetForce(s, s4, p1, p2, careap);
 
-    ctemp2[s0] = sfp[s] + sft[s] + sfq[s];
+    ctemp2[s0] = sfp[s] + sft + sfq[s];
     __syncthreads();
     cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
 
@@ -1042,8 +1043,9 @@ __global__ void gpuMain2()
 
     // 4. compute forces
     pgasCalcForce(s, z, zp, ssurf, sfp);
+    double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft);
 
 }
 __global__ void gpuMain2a()
@@ -1124,8 +1126,9 @@ __global__ void gpuMain2b()
 
     // 4. compute forces
     pgasCalcForce(s, z, zp, ssurf, sfp);
+    double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft);
 }
 
 
@@ -1431,7 +1434,6 @@ void hydroInit(
     CHKERR(hipMalloc(&cmaswtD, numsH*sizeof(double)));
     CHKERR(hipMalloc(&pmaswtD, numpH*sizeof(double)));
     CHKERR(hipMalloc(&sfpD, numsH*sizeof(double2)));
-    CHKERR(hipMalloc(&sftD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&sfqD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&cftotD, numcH*sizeof(double2)));
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
@@ -1487,7 +1489,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt), &cmaswtD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pmaswt), &pmaswtD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfp), &sfpD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sft), &sftD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfq), &sfqD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
@@ -1564,7 +1565,6 @@ void hydroInit(
       { "${schslast}", jit_string(schslastD) },
       { "${sfp}", jit_string(sfpD) },
       { "${sfq}", jit_string(sfqD) },
-      { "${sft}", jit_string(sftD) },
       { "${smf}", jit_string(smfD) },
       { "${svolp}", jit_string(svolpD) },
       { "${talfa}", jit_string(talfaH) },
