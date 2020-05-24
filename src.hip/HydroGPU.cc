@@ -89,7 +89,6 @@ __constant__ double *cmaswt, *pmaswt;
 __constant__ double2 *sfp, *sft, *sfq, *cftot, *pf;
 __constant__ double* cevol;
 __constant__ double* cdu;
-__constant__ double* cdiv;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -108,7 +107,7 @@ double *zmD, *zrD, *zrpD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
     *zpD, *zssD, *smfD, *sareapD, *svolpD, *zareapD, *zvolpD;
 double *cmaswtD, *pmaswtD;
-double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
+double *cevolD, *cduD, *crmuD, *ccosD, *cwD;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
@@ -412,7 +411,8 @@ __device__ void qcsSetCornerDiv(
         const int p2,
 	int dss4[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
-	double& careap) {
+	double& careap,
+	double& cdiv) {
 
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pu[p1];
@@ -460,14 +460,14 @@ __device__ void qcsSetCornerDiv(
     careap = cvolume;
 
     // compute velocity divergence of corner
-    cdiv[s] = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) /
-            (2.0 * cvolume);
+    cdiv = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) /
+      (2.0 * cvolume);
 
     // compute delta velocity
     double dv1 = length2(up2m0 - up3m1);
     double dv2 = length2(up2m0 + up3m1);
     double du = sqrt(max(dv1, dv2));
-    cdu[s]   = (cdiv[s] < 0.0 ? du   : 0.);
+    cdu[s]   = (cdiv < 0.0 ? du   : 0.);
 
     // compute evolution factor
     double2 dxx1 = 0.5 * (xp2m0 - xp3m1);
@@ -482,7 +482,7 @@ __device__ void qcsSetCornerDiv(
     double r = num / den;
     double evol = sqrt(4.0 * cvolume * r);
     evol = min(evol, 2.0 * minelen);
-    cevol[s] = (cdiv[s] < 0.0 ? evol : 0.);
+    cevol[s] = (cdiv < 0.0 ? evol : 0.);
 }
 
 
@@ -492,7 +492,8 @@ __device__ void qcsSetQCnForce(
         const int s3,
         const int z,
         const int p1,
-        const int p2) {
+        const int p2,
+	double cdiv) {
 
     const double gammap1 = qgamma + 1.0;
 
@@ -503,7 +504,7 @@ __device__ void qcsSetQCnForce(
     double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
     // Compute rmu for each corner
     double rmu = zkur * zrp[z] * cevol[s];
-    rmu = (cdiv[s] > 0. ? 0. : rmu);
+    rmu = (cdiv > 0. ? 0. : rmu);
 
     // [4.2] Compute the cqe for each corner
     const int p0 = mapsp1[s3];
@@ -588,13 +589,14 @@ __device__ void qcsCalcForce(
 
     // [2] Compute corner divergence and related quantities
     double careap = 0.;
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap);
+    double cdiv = 0.;
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap, cdiv);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
 
     // [4] Compute the Q vector (corner based)
-    qcsSetQCnForce(s, s3, z, p1, p2);
+    qcsSetQCnForce(s, s3, z, p1, p2, cdiv);
 
     // [5] Compute the Q forces
     qcsSetForce(s, s4, p1, p2, careap);
@@ -1431,7 +1433,6 @@ void hydroInit(
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&cevolD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cduD, numcH*sizeof(double)));
-    CHKERR(hipMalloc(&cdivD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cqeD, 2*numcH*sizeof(double2)));
     CHKERR(hipMalloc(&ccosD, numcH*sizeof(double)));
@@ -1490,7 +1491,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cevol), &cevolD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdu), &cduD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdiv), &cdivD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
@@ -1540,7 +1540,6 @@ void hydroInit(
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
       { "${ccos}", jit_string(ccosD) },
-      { "${cdiv}", jit_string(cdivD) },
       { "${cdu}", jit_string(cduD) },
       { "${cevol}", jit_string(cevolD) },
       { "${cftot}", jit_string(cftotD) },
