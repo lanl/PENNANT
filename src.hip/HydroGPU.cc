@@ -90,7 +90,6 @@ __constant__ double2 *sfp, *sft, *sfq, *cftot, *pf;
 __constant__ double* cevol;
 __constant__ double* cdu;
 __constant__ double* cdiv;
-__constant__ double2* zuc;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -103,7 +102,7 @@ int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
-    *sfpD, *sftD, *sfqD, *cftotD, *pfD, *zucD, *cqeD;
+    *sfpD, *sftD, *sfqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
@@ -424,7 +423,7 @@ __device__ void qcsSetCornerDiv(
         zutot += ctemp2[sn];
         zct += 1.;
     }
-    zuc[z] = zutot / zct;
+    auto zuc = zutot / zct;
 
     // [2] Divergence at the corner
     // Associated zone, corner, point
@@ -433,7 +432,7 @@ __device__ void qcsSetCornerDiv(
     double2 xp0 = pxp[p1];
     double2 up1 = 0.5 * (pu[p1] + pu[p2]);
     double2 xp1 = 0.5 * (pxp[p1] + pxp[p2]);
-    double2 up2 = zuc[z];
+    double2 up2 = zuc;
     double2 xp2 = zxp[z];
     double2 up3 = 0.5 * (pu[p0] + pu[p1]);
     double2 xp3 = 0.5 * (pxp[p0] + pxp[p1]);
@@ -1432,7 +1431,6 @@ void hydroInit(
     CHKERR(hipMalloc(&cevolD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cduD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cdivD, numcH*sizeof(double)));
-    CHKERR(hipMalloc(&zucD, numzH*sizeof(double2)));
     CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cqeD, 2*numcH*sizeof(double2)));
     CHKERR(hipMalloc(&ccosD, numcH*sizeof(double)));
@@ -1493,7 +1491,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cevol), &cevolD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdu), &cduD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cdiv), &cdivD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zuc), &zucD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
@@ -1586,7 +1583,6 @@ void hydroInit(
       { "${zrp}", jit_string(zrpD) },
       { "${zr}", jit_string(zrD) },
       { "${zss}", jit_string(zssD) },
-      { "${zuc}", jit_string(zucD) },
       { "${zvol0}", jit_string(zvol0D) },
       { "${zvolp}", jit_string(zvolpD) },
       { "${zvol}", jit_string(zvolD) },
