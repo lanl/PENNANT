@@ -87,7 +87,6 @@ __constant__ double *sarea, *svol, *zarea, *zvol, *zvol0;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
 __constant__ double2 *sfp, *sft, *sfq, *cftot, *pf;
-__constant__ double* cevol;
 __constant__ double2* cqe;
 __constant__ double* ccos;
 __constant__ double* cw;
@@ -106,7 +105,7 @@ double *zmD, *zrD, *zrpD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
     *zpD, *zssD, *smfD, *sareapD, *svolpD, *zareapD, *zvolpD;
 double *cmaswtD, *pmaswtD;
-double *cevolD, *crmuD, *ccosD, *cwD;
+double *crmuD, *ccosD, *cwD;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
@@ -412,7 +411,8 @@ __device__ void qcsSetCornerDiv(
 	double2 ctemp2[CHUNK_SIZE],
 	double& careap,
 	double& cdiv,
-	double& cdu) {
+	double& cdu,
+	double& cevol) {
 
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pu[p1];
@@ -482,7 +482,7 @@ __device__ void qcsSetCornerDiv(
     double r = num / den;
     double evol = sqrt(4.0 * cvolume * r);
     evol = min(evol, 2.0 * minelen);
-    cevol[s] = (cdiv < 0.0 ? evol : 0.);
+    cevol = (cdiv < 0.0 ? evol : 0.);
 }
 
 
@@ -494,7 +494,8 @@ __device__ void qcsSetQCnForce(
         const int p1,
         const int p2,
 	double cdiv,
-	double cdu) {
+	double cdu,
+	double cevol) {
 
     const double gammap1 = qgamma + 1.0;
 
@@ -504,7 +505,7 @@ __device__ void qcsSetQCnForce(
     double ztmp1 = q1 * zss[z];
     double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
     // Compute rmu for each corner
-    double rmu = zkur * zrp[z] * cevol[s];
+    double rmu = zkur * zrp[z] * cevol;
     rmu = (cdiv > 0. ? 0. : rmu);
 
     // [4.2] Compute the cqe for each corner
@@ -592,13 +593,14 @@ __device__ void qcsCalcForce(
     double careap = 0.;
     double cdiv = 0.;
     double cdu = 0.;
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap, cdiv, cdu);
+    double cevol = 0;
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap, cdiv, cdu, cevol);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
 
     // [4] Compute the Q vector (corner based)
-    qcsSetQCnForce(s, s3, z, p1, p2, cdiv, cdu);
+    qcsSetQCnForce(s, s3, z, p1, p2, cdiv, cdu, cevol);
 
     // [5] Compute the Q forces
     qcsSetForce(s, s4, p1, p2, careap);
@@ -1433,7 +1435,6 @@ void hydroInit(
     CHKERR(hipMalloc(&sfqD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&cftotD, numcH*sizeof(double2)));
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
-    CHKERR(hipMalloc(&cevolD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cqeD, 2*numcH*sizeof(double2)));
     CHKERR(hipMalloc(&ccosD, numcH*sizeof(double)));
@@ -1490,7 +1491,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfq), &sfqD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cevol), &cevolD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
@@ -1540,7 +1540,6 @@ void hydroInit(
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
       { "${ccos}", jit_string(ccosD) },
-      { "${cevol}", jit_string(cevolD) },
       { "${cftot}", jit_string(cftotD) },
       { "${cmaswt}", jit_string(cmaswtD) },
       { "${cqe}", jit_string(cqeD) },
