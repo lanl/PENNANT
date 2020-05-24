@@ -82,7 +82,7 @@ __constant__ double *ze, *zetot;
 __constant__ double *zw, *zwrate;
 __constant__ double *zp, *zss;
 __constant__ const double* smf;
-__constant__ double *careap, *sareap, *svolp, *zareap, *zvolp;
+__constant__ double *sareap, *svolp, *zareap, *zvolp;
 __constant__ double *sarea, *svol, *zarea, *zvol, *zvol0;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
@@ -106,7 +106,7 @@ double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
-    *zpD, *zssD, *smfD, *careapD, *sareapD, *svolpD, *zareapD, *zvolpD;
+    *zpD, *zssD, *smfD, *sareapD, *svolpD, *zareapD, *zvolpD;
 double *cmaswtD, *pmaswtD;
 double *cevolD, *cduD, *cdivD, *crmuD, *ccosD, *cwD;
 
@@ -411,7 +411,8 @@ __device__ void qcsSetCornerDiv(
         const int p1,
         const int p2,
 	int dss4[CHUNK_SIZE],
-	double2 ctemp2[CHUNK_SIZE]) {
+	double2 ctemp2[CHUNK_SIZE],
+	double& careap) {
 
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pu[p1];
@@ -456,7 +457,7 @@ __device__ void qcsSetCornerDiv(
 
         // compute 2d cartesian volume of corner
     double cvolume = 0.5 * cross(xp2m0, xp3m1);
-    careap[s] = cvolume;
+    careap = cvolume;
 
     // compute velocity divergence of corner
     cdiv[s] = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) /
@@ -482,7 +483,6 @@ __device__ void qcsSetCornerDiv(
     double evol = sqrt(4.0 * cvolume * r);
     evol = min(evol, 2.0 * minelen);
     cevol[s] = (cdiv[s] < 0.0 ? evol : 0.);
-
 }
 
 
@@ -521,11 +521,12 @@ __device__ void qcsSetForce(
         const int s,
         const int s4,
         const int p1,
-        const int p2) {
+        const int p2,
+	double careap) {
 
     // [5.1] Preparation of extra variables
     double csin2 = 1. - ccos[s] * ccos[s];
-    cw[s]   = ((csin2 < 1.e-4) ? 0. : careap[s] / csin2);
+    cw[s]   = ((csin2 < 1.e-4) ? 0. : careap / csin2);
     ccos[s] = ((csin2 < 1.e-4) ? 0. : ccos[s]);
     __syncthreads();
 
@@ -586,7 +587,8 @@ __device__ void qcsCalcForce(
     // *** NOT IMPLEMENTED IN PENNANT ***
 
     // [2] Compute corner divergence and related quantities
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2);
+    double careap = 0.;
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -595,7 +597,7 @@ __device__ void qcsCalcForce(
     qcsSetQCnForce(s, s3, z, p1, p2);
 
     // [5] Compute the Q forces
-    qcsSetForce(s, s4, p1, p2);
+    qcsSetForce(s, s4, p1, p2, careap);
 
     ctemp2[s0] = sfp[s] + sft[s] + sfq[s];
     __syncthreads();
@@ -1416,7 +1418,6 @@ void hydroInit(
     CHKERR(hipMalloc(&zpD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zssD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&smfD, numsH*sizeof(double)));
-    CHKERR(hipMalloc(&careapD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&sareapD, numsH*sizeof(double)));
     CHKERR(hipMalloc(&svolpD, numsH*sizeof(double)));
     CHKERR(hipMalloc(&zareapD, numzH*sizeof(double)));
@@ -1476,7 +1477,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp), &zpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss), &zssD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(smf), &smfD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(careap), &careapD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sareap), &sareapD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(svolp), &svolpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zareap), &zareapD, sizeof(void*)));
@@ -1539,7 +1539,6 @@ void hydroInit(
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
-      { "${careap}", jit_string(careapD) },
       { "${ccos}", jit_string(ccosD) },
       { "${cdiv}", jit_string(cdivD) },
       { "${cdu}", jit_string(cduD) },
