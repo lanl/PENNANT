@@ -76,7 +76,6 @@ __constant__ double2 *px, *pxp;
 __constant__ double2 *zx, *zxp;
 __constant__ double2 *pu, *pu0;
 __constant__ double2* pap;
-__constant__ double2* ssurf;
 __constant__ const double* zm;
 __constant__ double *zr, *zrp;
 __constant__ double *ze, *zetot;
@@ -104,7 +103,7 @@ int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
-    *ssurfD, *sfpD, *sftD, *sfqD, *cftotD, *pfD, *zucD, *cqeD;
+    *sfpD, *sftD, *sfqD, *cftotD, *pfD, *zucD, *cqeD;
 double *zmD, *zrD, *zrpD,
     *sareaD, *svolD, *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
@@ -252,7 +251,6 @@ __device__ void calcZoneVols(
 // This function combines the calculations of the folling device
 // functions:
 // - meshCalcCharLen
-// - computation of ssurf in gpuMain2
 // - calcSideVols
 // - calcZoneVols
 inline void __device__ fusedZoneSideUpdates_zb(int z,
@@ -266,7 +264,6 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
 					       const double* __restrict__ zm,
 					       const double* __restrict__ smf,
 					       double* __restrict__ zdl,
-					       double2* __restrict__ ssurf, 
 					       double* __restrict__ sarea,
 					       double* __restrict__ svol,
 					       double* __restrict__ zarea,
@@ -377,9 +374,9 @@ __device__ void pgasCalcForce(
         const int s,
         const int z,
         const double* __restrict__ zp,
-        const double2* __restrict__ ssurf,
+        double2 ssurf,
         double2* __restrict__ sf) {
-    sf[s] = -zp[z] * ssurf[s];
+    sf[s] = -zp[z] * ssurf;
 }
 
 
@@ -391,14 +388,14 @@ __device__ void ttsCalcForce(
         const double* __restrict__ zss,
         const double* __restrict__ sarea,
         const double* __restrict__ smf,
-        const double2* __restrict__ ssurf,
+        double2 ssurf,
         double2* __restrict__ sf) {
     double svfacinv = zarea[z] / sarea[s];
     double srho = zr[z] * smf[s] * svfacinv;
     double sstmp = max(zss[z], tssmin);
     sstmp = talfa * sstmp * sstmp;
     double sdp = sstmp * (srho - zr[z]);
-    sf[s] = -sdp * ssurf[s];
+    sf[s] = -sdp * ssurf;
 }
 
 
@@ -977,7 +974,7 @@ __global__ void gpuMain2a_zb(){
 
   if(z < last_zone_in_block){ // TODO: optimize calcZoneCtrs_zb, and handle bounds checking there.
     fusedZoneSideUpdates_zb(z, local_tid, first_side_in_block, sh_p1x, sh_workspace,
-			    znump, pxp, zxp, zm, smf, zdl, ssurf,
+			    znump, pxp, zxp, zm, smf, zdl,
 			    sareap, svolp, zareap, zvolp,
 			    zrp, cmaswt);
   }
@@ -1021,7 +1018,7 @@ __global__ void gpuMain2()
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
-    ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
+    auto ssurf = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
 
     calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
@@ -1075,8 +1072,6 @@ __global__ void gpuMain2a()
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
-    ssurf[s] = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
-
     calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
 
@@ -1116,7 +1111,7 @@ __global__ void gpuMain2b()
 
     auto pxp1 = pxp[p1];
     auto pxp2 = pxp[p2];
-    ssurf[s] = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
+    auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
     
     const int s3 = s + dss3[s0];
 
@@ -1404,7 +1399,6 @@ void hydroInit(
     CHKERR(hipMalloc(&puD, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&pu0D, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&papD, numpH*sizeof(double2)));
-    CHKERR(hipMalloc(&ssurfD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&zmD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zrD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zrpD, numzH*sizeof(double)));
@@ -1467,7 +1461,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu), &puD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu0), &pu0D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pap), &papD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ssurf), &ssurfD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zm), &zmD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zr), &zrD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zrp), &zrpD, sizeof(void*)));
@@ -1580,7 +1573,6 @@ void hydroInit(
       { "${sfq}", jit_string(sfqD) },
       { "${sft}", jit_string(sftD) },
       { "${smf}", jit_string(smfD) },
-      { "${ssurf}", jit_string(ssurfD) },
       { "${svolp}", jit_string(svolpD) },
       { "${talfa}", jit_string(talfaH) },
       { "${tssmin}", jit_string(tssminH) },
