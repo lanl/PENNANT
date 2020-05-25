@@ -489,15 +489,13 @@ __device__ void qcsSetCornerDiv(
 // Routine number [4]  in the full algorithm CS2DQforce(...)
 __device__ void qcsSetQCnForce(
         const int s,
-	const int s0,
         const int s3,
         const int z,
         const int p1,
         const int p2,
 	double cdiv,
 	double cdu,
-	double cevol,
-	double2 sh_cqe[2 * CHUNK_SIZE]) {
+	double cevol) {
 
     const double gammap1 = qgamma + 1.0;
 
@@ -516,22 +514,19 @@ __device__ void qcsSetQCnForce(
     const double elen2 = length(pxp[p2] - pxp[p1]);
     // Compute: cqe(1,2,3)=edge 1, y component (2nd), 3rd corner
     //          cqe(2,1,3)=edge 2, x component (1st)
-    sh_cqe[2 * s0]     = rmu * (pu[p1] - pu[p0]) / elen1;
-    sh_cqe[2 * s0 + 1] = rmu * (pu[p2] - pu[p1]) / elen2;
+    cqe[2 * s]     = rmu * (pu[p1] - pu[p0]) / elen1;
+    cqe[2 * s + 1] = rmu * (pu[p2] - pu[p1]) / elen2;
 }
 
 
 // Routine number [5]  in the full algorithm CS2DQforce(...)
 __device__ void qcsSetForce(
         const int s,
-        const int s0,
         const int s4,
-        const int s04,
         const int p1,
         const int p2,
 	double careap,
-	double2& sfq,
-	double2 sh_cqe[2 * CHUNK_SIZE]) {
+	double2& sfq) {
 
     // [5.1] Preparation of extra variables
     double csin2 = 1. - ccos[s] * ccos[s];
@@ -544,8 +539,8 @@ __device__ void qcsSetForce(
     const double2 x2 = pxp[p2];
     // Edge length for c1, c2 contribution to s
     double elen = length(x1 - x2);
-    sfq = (cw[s] * (sh_cqe[2*s0+1] + ccos[s] * sh_cqe[2*s0]) +
-	   cw[s4] * (sh_cqe[2*s04] + ccos[s4] * sh_cqe[2*s04+1]))
+    sfq = (cw[s] * (cqe[2*s+1] + ccos[s] * cqe[2*s]) +
+	   cw[s4] * (cqe[2*s4] + ccos[s4] * cqe[2*s4+1]))
       / elen;
 }
 
@@ -584,7 +579,6 @@ __device__ void qcsCalcForce(
         const int s0,
         const int s3,
         const int s4,
-        const int s04,
         const int z,
         const int p1,
         const int p2,
@@ -592,7 +586,6 @@ __device__ void qcsCalcForce(
 	int dss4[CHUNK_SIZE],
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
-	double2 sh_cqe[2 * CHUNK_SIZE],
 	double2 sft,
 	double2 sfp) {
     // [1] Find the right, left, top, bottom  edges to use for the
@@ -610,11 +603,11 @@ __device__ void qcsCalcForce(
     // *** NOT IMPLEMENTED IN PENNANT ***
 
     // [4] Compute the Q vector (corner based)
-    qcsSetQCnForce(s, s0, s3, z, p1, p2, cdiv, cdu, cevol, sh_cqe);
+    qcsSetQCnForce(s, s3, z, p1, p2, cdiv, cdu, cevol);
 
     // [5] Compute the Q forces
     double2 sfq = { 0., 0. };
-    qcsSetForce(s, s0, s4, s04, p1, p2, careap, sfq, sh_cqe);
+    qcsSetForce(s, s4, p1, p2, careap, sfq);
     sfpq[s] = sfp + sfq;
 
     ctemp2[s0] = sfp + sfq + sft;
@@ -1021,7 +1014,6 @@ __global__ void gpuMain2()
     __shared__ int dss4[CHUNK_SIZE];
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
-    __shared__ double2 sh_cqe[2 * CHUNK_SIZE];
     
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
@@ -1057,7 +1049,7 @@ __global__ void gpuMain2()
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sh_cqe, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
 __global__ void gpuMain2a()
@@ -1124,7 +1116,6 @@ __global__ void gpuMain2b()
     __shared__ int dss4[CHUNK_SIZE];
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
-    __shared__ double2 sh_cqe[2 * CHUNK_SIZE];
     
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
@@ -1142,7 +1133,7 @@ __global__ void gpuMain2b()
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sh_cqe, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
