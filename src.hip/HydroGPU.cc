@@ -955,7 +955,7 @@ __global__ void gpuMain2a_zb(){
 
   const int block_size = blockDim.x;
   const auto global_tid = block_size * blockIdx.x + threadIdx.x;
-  const auto local_tid = threadIdx.x;
+  const int local_tid = threadIdx.x;
 
   const auto first_zone_in_block = blockDim.x * blockIdx.x + zone_offset;
   const auto last_zone_in_block = min(numz, first_zone_in_block + blockDim.x);
