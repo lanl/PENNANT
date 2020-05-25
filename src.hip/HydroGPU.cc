@@ -88,7 +88,6 @@ __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
 __constant__ double2 *sfpq, *cftot, *pf;
 __constant__ double2* cqe;
-__constant__ double* ccos;
 __constant__ double* cw;
 
 int numschH, numpchH, numzchH;
@@ -105,7 +104,7 @@ double *zmD, *zrD, *zrpD,
     *zeD, *zetot0D, *zetotD, *zwD, *zwrateD,
     *zpD, *zssD, *smfD, *sareapD, *svolpD, *zareapD, *zvolpD;
 double *cmaswtD, *pmaswtD;
-double *crmuD, *ccosD, *cwD;
+double *crmuD, *cwD;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
@@ -408,6 +407,7 @@ __device__ void qcsSetCornerDiv(
         const int p1,
         const int p2,
 	int dss4[CHUNK_SIZE],
+	double sh_ccos[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
 	double& careap,
 	double& cdiv,
@@ -453,7 +453,7 @@ __device__ void qcsSetCornerDiv(
     double de1 = length(v1);
     double de2 = length(v2);
     double minelen = 2.0 * min(de1, de2);
-    ccos[s] = (minelen < 1.e-12 ? 0. : dot(v1, v2) / (de1 * de2));
+    sh_ccos[s0] = (minelen < 1.e-12 ? 0. : dot(v1, v2) / (de1 * de2));
 
         // compute 2d cartesian volume of corner
     double cvolume = 0.5 * cross(xp2m0, xp3m1);
@@ -522,16 +522,19 @@ __device__ void qcsSetQCnForce(
 // Routine number [5]  in the full algorithm CS2DQforce(...)
 __device__ void qcsSetForce(
         const int s,
+        const int s0,
         const int s4,
+        const int s04,
         const int p1,
         const int p2,
 	double careap,
-	double2& sfq) {
+	double2& sfq,
+	double sh_ccos[CHUNK_SIZE]) {
 
     // [5.1] Preparation of extra variables
-    double csin2 = 1. - ccos[s] * ccos[s];
+    double csin2 = 1. - sh_ccos[s0] * sh_ccos[s0];
     cw[s]   = ((csin2 < 1.e-4) ? 0. : careap / csin2);
-    ccos[s] = ((csin2 < 1.e-4) ? 0. : ccos[s]);
+    sh_ccos[s0] = ((csin2 < 1.e-4) ? 0. : sh_ccos[s0]);
     __syncthreads();
 
     // [5.2] Set-Up the forces on corners
@@ -539,8 +542,8 @@ __device__ void qcsSetForce(
     const double2 x2 = pxp[p2];
     // Edge length for c1, c2 contribution to s
     double elen = length(x1 - x2);
-    sfq = (cw[s] * (cqe[2*s+1] + ccos[s] * cqe[2*s]) +
-	   cw[s4] * (cqe[2*s4] + ccos[s4] * cqe[2*s4+1]))
+    sfq = (cw[s] * (cqe[2*s+1] + sh_ccos[s0] * cqe[2*s]) +
+	   cw[s4] * (cqe[2*s4] + sh_ccos[s04] * cqe[2*s4+1]))
       / elen;
 }
 
@@ -579,6 +582,7 @@ __device__ void qcsCalcForce(
         const int s0,
         const int s3,
         const int s4,
+	const int s04,
         const int z,
         const int p1,
         const int p2,
@@ -597,7 +601,7 @@ __device__ void qcsCalcForce(
     double cdiv = 0.;
     double cdu = 0.;
     double cevol = 0;
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp2, careap, cdiv, cdu, cevol);
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -607,7 +611,7 @@ __device__ void qcsCalcForce(
 
     // [5] Compute the Q forces
     double2 sfq = { 0., 0. };
-    qcsSetForce(s, s4, p1, p2, careap, sfq);
+    qcsSetForce(s, s0, s4, s04, p1, p2, careap, sfq, ctemp);
     sfpq[s] = sfp + sfq;
 
     ctemp2[s0] = sfp + sfq + sft;
@@ -1049,7 +1053,7 @@ __global__ void gpuMain2()
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
 __global__ void gpuMain2a()
@@ -1133,7 +1137,7 @@ __global__ void gpuMain2b()
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
@@ -1443,7 +1447,6 @@ void hydroInit(
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cqeD, 2*numcH*sizeof(double2)));
-    CHKERR(hipMalloc(&ccosD, numcH*sizeof(double)));
     CHKERR(hipMalloc(&cwD, numcH*sizeof(double)));
 
     CHKERR(hipMalloc(&mapspkeyD, numsH*sizeof(int)));
@@ -1496,7 +1499,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ccos), &ccosD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
 
     CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
@@ -1543,7 +1545,6 @@ void hydroInit(
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
-      { "${ccos}", jit_string(ccosD) },
       { "${cftot}", jit_string(cftotD) },
       { "${cmaswt}", jit_string(cmaswtD) },
       { "${cqe}", jit_string(cqeD) },
