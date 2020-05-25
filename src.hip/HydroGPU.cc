@@ -1730,6 +1730,9 @@ void hydroDoCycle(
 #else
     hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
 
+    // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+
+    // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
