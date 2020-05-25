@@ -485,9 +485,128 @@ __device__ void qcsSetCornerDiv(
     cevol = (cdiv < 0.0 ? evol : 0.);
 }
 
+template<int sides_per_zone>
+__device__ void qcsSetCornerDiv_fixed_zone_size(
+        const int s,
+        const int s0,
+        const int s3,
+        const int z,
+        const int p1,
+        const int p2,
+	int dss4[CHUNK_SIZE],
+	double sh_ccos[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE],
+	double& careap,
+	double& cdiv,
+	double& cdu,
+	double& cevol) {
+
+    // [1] Compute a zone-centered velocity
+    ctemp2[s0] = pu[p1];
+    __syncthreads();
+
+    double2 zutot = ctemp2[s0];
+    double zct = 1.;
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zutot += ctemp2[sn];
+        zct += 1.;
+    }
+    auto zuc = zutot / zct;
+
+    // [2] Divergence at the corner
+    // Associated zone, corner, point
+    const int p0 = mapsp1[s3];
+    double2 up0 = pu[p1];
+    double2 xp0 = pxp[p1];
+    double2 up1 = 0.5 * (pu[p1] + pu[p2]);
+    double2 xp1 = 0.5 * (pxp[p1] + pxp[p2]);
+    double2 up2 = zuc;
+    double2 xp2 = zxp[z];
+    double2 up3 = 0.5 * (pu[p0] + pu[p1]);
+    double2 xp3 = 0.5 * (pxp[p0] + pxp[p1]);
+
+    // position, velocity diffs along diagonals
+    double2 up2m0 = up2 - up0;
+    double2 xp2m0 = xp2 - xp0;
+    double2 up3m1 = up3 - up1;
+    double2 xp3m1 = xp3 - xp1;
+
+    // average corner-centered velocity
+    double2 duav = 0.25 * (up0 + up1 + up2 + up3);
+
+    // compute cosine angle
+    double2 v1 = xp1 - xp0;
+    double2 v2 = xp3 - xp0;
+    double de1 = length(v1);
+    double de2 = length(v2);
+    double minelen = 2.0 * min(de1, de2);
+    sh_ccos[s0] = (minelen < 1.e-12 ? 0. : dot(v1, v2) / (de1 * de2));
+
+        // compute 2d cartesian volume of corner
+    double cvolume = 0.5 * cross(xp2m0, xp3m1);
+    careap = cvolume;
+
+    // compute velocity divergence of corner
+    cdiv = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) /
+      (2.0 * cvolume);
+
+    // compute delta velocity
+    double dv1 = length2(up2m0 - up3m1);
+    double dv2 = length2(up2m0 + up3m1);
+    double du = sqrt(max(dv1, dv2));
+    cdu = (cdiv < 0.0 ? du   : 0.);
+
+    // compute evolution factor
+    double2 dxx1 = 0.5 * (xp2m0 - xp3m1);
+    double2 dxx2 = 0.5 * (xp2m0 + xp3m1);
+    double dx1 = length(dxx1);
+    double dx2 = length(dxx2);
+
+    double test1 = abs(dot(dxx1, duav) * dx2);
+    double test2 = abs(dot(dxx2, duav) * dx1);
+    double num = (test1 > test2 ? dx1 : dx2);
+    double den = (test1 > test2 ? dx2 : dx1);
+    double r = num / den;
+    double evol = sqrt(4.0 * cvolume * r);
+    evol = min(evol, 2.0 * minelen);
+    cevol = (cdiv < 0.0 ? evol : 0.);
+}
+
 
 // Routine number [4]  in the full algorithm CS2DQforce(...)
 __device__ void qcsSetQCnForce(
+        const int s,
+        const int s3,
+        const int z,
+        const int p1,
+        const int p2,
+	double cdiv,
+	double cdu,
+	double cevol) {
+
+    const double gammap1 = qgamma + 1.0;
+
+    // [4.1] Compute the rmu (real Kurapatenko viscous scalar)
+    // Kurapatenko form of the viscosity
+    double ztmp2 = q2 * 0.25 * gammap1 * cdu;
+    double ztmp1 = q1 * zss[z];
+    double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
+    // Compute rmu for each corner
+    double rmu = zkur * zrp[z] * cevol;
+    rmu = (cdiv > 0. ? 0. : rmu);
+
+    // [4.2] Compute the cqe for each corner
+    const int p0 = mapsp1[s3];
+    const double elen1 = length(pxp[p1] - pxp[p0]);
+    const double elen2 = length(pxp[p2] - pxp[p1]);
+    // Compute: cqe(1,2,3)=edge 1, y component (2nd), 3rd corner
+    //          cqe(2,1,3)=edge 2, x component (1st)
+    cqe[2 * s]     = rmu * (pu[p1] - pu[p0]) / elen1;
+    cqe[2 * s + 1] = rmu * (pu[p2] - pu[p1]) / elen2;
+}
+
+template<int sides_per_zone>
+__device__ void qcsSetQCnForce_fixed_zone_size(
         const int s,
         const int s3,
         const int z,
@@ -548,8 +667,66 @@ __device__ void qcsSetForce(
 }
 
 
+template<int sides_per_zone>
+__device__ void qcsSetForce_fixed_zone_size(
+        const int s,
+        const int s0,
+        const int s4,
+        const int s04,
+        const int p1,
+        const int p2,
+	double careap,
+	double2& sfq,
+	double sh_ccos[CHUNK_SIZE]) {
+
+    // [5.1] Preparation of extra variables
+    double csin2 = 1. - sh_ccos[s0] * sh_ccos[s0];
+    cw[s]   = ((csin2 < 1.e-4) ? 0. : careap / csin2);
+    sh_ccos[s0] = ((csin2 < 1.e-4) ? 0. : sh_ccos[s0]);
+    __syncthreads();
+
+    // [5.2] Set-Up the forces on corners
+    const double2 x1 = pxp[p1];
+    const double2 x2 = pxp[p2];
+    // Edge length for c1, c2 contribution to s
+    double elen = length(x1 - x2);
+    sfq = (cw[s] * (cqe[2*s+1] + sh_ccos[s0] * cqe[2*s]) +
+	   cw[s4] * (cqe[2*s4] + sh_ccos[s04] * cqe[2*s4+1]))
+      / elen;
+}
+
+
 // Routine number [6]  in the full algorithm
 __device__ void qcsSetVelDiff(
+        const int s,
+        const int s0,
+        const int p1,
+        const int p2,
+        const int z,
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE] ) {
+
+    double2 dx = pxp[p2] - pxp[p1];
+    double2 du = pu[p2] - pu[p1];
+    double lenx = length(dx);
+    double dux = dot(du, dx);
+    dux = (lenx > 0. ? abs(dux) / lenx : 0.);
+
+    ctemp[s0] = dux;
+    __syncthreads();
+
+    double ztmp = ctemp[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        ztmp = max(ztmp, ctemp[sn]);
+    }
+    __syncthreads();
+
+    zdu[z] = q1 * zss[z] + 2. * q2 * ztmp;
+}
+
+
+template<int sides_per_zone>
+__device__ void qcsSetVelDiff_fixed_zone_size(
         const int s,
         const int s0,
         const int p1,
@@ -621,6 +798,54 @@ __device__ void qcsCalcForce(
     // [6] Set velocity difference to use to compute timestep
     qcsSetVelDiff(s, s0, p1, p2, z, dss4, ctemp);
 
+}
+
+
+template<int sides_per_zone>
+__device__ void qcsCalcForce_fixed_zone_size(
+        const int s,
+        const int s0,
+        const int s3,
+        const int s4,
+	const int s04,
+        const int z,
+        const int p1,
+        const int p2,
+	int dss3[CHUNK_SIZE],
+	int dss4[CHUNK_SIZE],
+	double ctemp[CHUNK_SIZE],
+	double2 ctemp2[CHUNK_SIZE],
+	double2 sft,
+	double2 sfp) {
+    // [1] Find the right, left, top, bottom  edges to use for the
+    //     limiters
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [2] Compute corner divergence and related quantities
+    double careap = 0.;
+    double cdiv = 0.;
+    double cdu = 0.;
+    double cevol = 0;
+    qcsSetCornerDiv_fixed_zone_size<sides_per_zone>
+      (s, s0, s3, z, p1, p2,dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
+
+    // [3] Find the limiters Psi(c)
+    // *** NOT IMPLEMENTED IN PENNANT ***
+
+    // [4] Compute the Q vector (corner based)
+    qcsSetQCnForce_fixed_zone_size<sides_per_zone>(s, s3, z, p1, p2, cdiv, cdu, cevol);
+
+    // [5] Compute the Q forces
+    double2 sfq = { 0., 0. };
+    qcsSetForce_fixed_zone_size<sides_per_zone>(s, s0, s4, s04, p1, p2, careap, sfq, ctemp);
+    sfpq[s] = sfp + sfq;
+
+    ctemp2[s0] = sfp + sfq + sft;
+    __syncthreads();
+    cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
+
+    // [6] Set velocity difference to use to compute timestep
+    qcsSetVelDiff_fixed_zone_size<sides_per_zone>(s, s0, p1, p2, z, dss4, ctemp);
 }
 
 
@@ -1138,6 +1363,54 @@ __global__ void gpuMain2b()
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
     qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+}
+
+
+template<int sides_per_zone>
+__global__ void gpuMain2b_fixed_zone_size()
+{
+  constexpr int zone_offset = 0; // first of 4-sided zones
+  constexpr int side_offset = 0; // first side of 4-sided zones
+  
+  const int block_size = blockDim.x;
+  const int global_tid = block_size * blockIdx.x + threadIdx.x;
+  const int local_tid = threadIdx.x;
+
+  const int s = global_tid + side_offset;
+  if (s >= nums){ return; }
+  const int s0 = local_tid;
+  const auto s4 = (s0 + 1) % sides_per_zone ? s + 1 : s - sides_per_zone + 1;
+  const auto s3 = s0 % sides_per_zone ? s - 1 : s + sides_per_zone - 1;
+
+  const int d_local_global = s - s0;
+  const int s04 = s4 - d_local_global;
+
+  const auto z = (global_tid / sides_per_zone) + zone_offset;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    auto pxp1 = pxp[p1];
+    auto pxp2 = pxp[p2];
+    auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
+
+    // 4. compute forces
+    double2 sfp = {0., 0.};
+    pgasCalcForce(s, z, zp, ssurf, sfp);
+    double2 sft = { 0., 0.};
+    ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
+    qcsCalcForce_fixed_zone_size<sides_per_zone>
+      (s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
@@ -1735,7 +2008,8 @@ void hydroDoCycle(
 
     // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
-    hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    // hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
     meshCheckBadSides();
