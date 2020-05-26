@@ -506,12 +506,10 @@ __device__ void qcsSetCornerDiv_fixed_zone_size(
     __syncthreads();
 
     double2 zutot = ctemp2[s0];
-    double zct = 1.;
     for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
         zutot += ctemp2[sn];
-        zct += 1.;
     }
-    auto zuc = zutot / zct;
+    auto zuc = zutot / sides_per_zone;
 
     // [2] Divergence at the corner
     // Associated zone, corner, point
