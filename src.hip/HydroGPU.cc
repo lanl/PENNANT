@@ -2006,8 +2006,8 @@ void hydroDoCycle(
 
     // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
     hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
-    // hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
 #endif
 
     meshCheckBadSides();
