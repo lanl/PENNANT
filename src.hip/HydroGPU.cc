@@ -59,7 +59,6 @@ __constant__ double2 vfixx, vfixy;
 __constant__ int numbcx, numbcy;
 __constant__ double bcx[2], bcy[2];
 
-__constant__ int numsbad;
 __constant__ double dtnext;
 __constant__ int idtnext;
 
@@ -92,7 +91,7 @@ __constant__ double2* cqe;
 __constant__ double* cw;
 
 int numschH, numpchH, numzchH;
-int* numsbadD;
+int* numsbad_pinned;
 int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
@@ -209,7 +208,8 @@ __device__ void calcSideVols(
     const double2* __restrict__ px,
     const double2* __restrict__ zx,
     double* __restrict__ sarea,
-    double* __restrict__ svol)
+    double* __restrict__ svol,
+    int* __restrict__ numsbad_pinned)
 {
     const double third = 1. / 3.;
     double sa = 0.5 * cross(px[p2] - px[p1],  zx[z] - px[p1]);
@@ -217,7 +217,7 @@ __device__ void calcSideVols(
     sarea[s] = sa;
     svol[s] = sv;
     
-    if (sv <= 0.) atomicAdd(&numsbad, 1);
+    if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
 }
 
 
@@ -265,7 +265,8 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
 					       double* __restrict__ zarea,
 					       double* __restrict__ zvol,
 					       double* __restrict__ zr,
-					       double* __restrict__ cmaswt){
+					       double* __restrict__ cmaswt,
+					       int* __restrict__ numsbad_pinned){
   constexpr int sides_per_zone = 4;
   auto s_global = first_side_in_block + local_tid * sides_per_zone;
   auto s_sh_idx = local_tid * sides_per_zone;
@@ -299,6 +300,7 @@ inline void __device__ fusedZoneSideUpdates_zb(int z,
     summed_side_area += side_area;
     // fused: compute and store side volume
     double side_volume = third * side_area * (pxp1.x + pxp2.x + zxz.x);
+    if (side_volume <= 0.) { atomicAdd(numsbad_pinned, 1); }
     svol[s_global] = side_volume;
     // fused: update summed_side_volume for computation of zone volume
     summed_side_volume += side_volume;
@@ -1171,7 +1173,7 @@ __global__ void gpuMain1()
 }
 
 
-__global__ void gpuMain2a_zb(){
+__global__ void gpuMain2a_zb(int* numsbad_pinned){
   // iterate over the zones of the mesh
   constexpr int sides_per_zone = 4;
   constexpr int zone_offset = 0; // first of 4-sided zones
@@ -1215,7 +1217,7 @@ __global__ void gpuMain2a_zb(){
     fusedZoneSideUpdates_zb(z, local_tid, first_side_in_block, sh_p1x, sh_workspace,
 			    znump, pxp, zxp, zm, smf, zdl,
 			    sareap, svolp, zareap, zvolp,
-			    zrp, cmaswt);
+			    zrp, cmaswt, numsbad_pinned);
   }
 
   if(z < last_zone_in_block){ // TODO: check for optimization potential
@@ -1224,7 +1226,7 @@ __global__ void gpuMain2a_zb(){
 }
 
 
-__global__ void gpuMain2()
+__global__ void gpuMain2(int* numsbad_pinned)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1259,7 +1261,7 @@ __global__ void gpuMain2()
 
     auto ssurf = rotateCCW(0.5 * (pxp[p1] + pxp[p2]) - zxp[z]);
 
-    calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
+    calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp, numsbad_pinned);
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
 
     // 2. compute corner masses
@@ -1280,7 +1282,7 @@ __global__ void gpuMain2()
     qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
-__global__ void gpuMain2a()
+__global__ void gpuMain2a(int* numsbad_pinned)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1313,7 +1315,7 @@ __global__ void gpuMain2a()
     calcZoneCtrs(s, s0, z, p1, pxp, zxp, dss4, ctemp2);
     meshCalcCharLen(s, s0, s3, z, p1, p2, znump, pxp, zxp, zdl, dss4, ctemp);
 
-    calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp);
+    calcSideVols(s, z, p1, p2, pxp, zxp, sareap, svolp, numsbad_pinned);
     calcZoneVols(s, s0, z, sareap, svolp, zareap, zvolp);
 
     // 2. compute corner masses
@@ -1474,7 +1476,7 @@ __global__ void gpuMain3(bool doLocalReduceToPoints)
 }
 
 
-__global__ void gpuMain4()
+__global__ void gpuMain4(int* numsbad_pinned)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1502,7 +1504,7 @@ __global__ void gpuMain4()
 
     // 6a. compute new mesh geometry
     calcZoneCtrs(s, s0, z, p1, px, zx, dss4, ctemp2);
-    calcSideVols(s, z, p1, p2, px, zx, sarea, svol);
+    calcSideVols(s, z, p1, p2, px, zx, sarea, svol, numsbad_pinned);
     calcZoneVols(s, s0, z, sarea, svol, zarea, zvol);
 
     // 7. compute work
@@ -1538,16 +1540,8 @@ __global__ void gpuMain5()
 
 
 void meshCheckBadSides() {
-
-    int numsbadH;
-#ifdef USE_JIT
-    CHKERR(hipMemcpy(&numsbadH, numsbadD, sizeof(int), hipMemcpyDeviceToHost));
-#else
-    CHKERR(hipMemcpyFromSymbol(&numsbadH, HIP_SYMBOL(numsbad), sizeof(int)));
-#endif
-    // if there were negative side volumes, error exit
-    if (numsbadH > 0) {
-        cerr << "Error: " << numsbadH << " negative side volumes" << endl;
+    if (*numsbad_pinned > 0) {
+        cerr << "Error: " << *numsbad_pinned << " negative side volumes" << endl;
         cerr << "Exiting..." << endl;
         exit(1);
     }
@@ -1671,7 +1665,8 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(bcy), bcyH, numbcyH*sizeof(double)));
 
     
-    CHKERR(hipMalloc(&numsbadD, sizeof(int)));
+    CHKERR(hipHostMalloc(&numsbad_pinned, sizeof(int),hipHostMallocCoherent));
+    *numsbad_pinned = 0;
     CHKERR(hipMalloc(&schsfirstD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schslastD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schzfirstD, numschH*sizeof(int)));
@@ -1806,14 +1801,7 @@ void hydroInit(
     int chunkSize = CHUNK_SIZE;
     hipLaunchKernelGGL((gpuInvMap), dim3(gridSize), dim3(chunkSize), 0, 0, mapspkeyD, mapspvalD,
 		       mappsfirstD, mapssnextD);
-
-    int zero = 0;
-#ifndef USE_JIT
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(numsbad), &zero, sizeof(int)));
-#endif
-
 #ifdef USE_JIT
-    CHKERR(hipMemcpy(numsbadD, &zero, sizeof(int), hipMemcpyHostToDevice));
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
@@ -1826,7 +1814,6 @@ void hydroInit(
       { "${mapss4}", jit_string(mapss4D) },
       { "${mapsz}", jit_string(mapszD) },
       { "${nump}", jit_string(numpH) },
-      { "${numsbad}", jit_string(numsbadD) },
       { "${pgamma}", jit_string(pgammaH) },
       { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
@@ -2029,17 +2016,17 @@ void hydroDoCycle(
 
     {
       // DEVICE_TIMER("Kernels", "gpuMain2", 0);
-      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
     }
 
     {
       // DEVICE_TIMER("Kernels", "gpuMain2a", 0);
-      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
     }
 
     {
       DEVICE_TIMER("Kernels", "gpuMain2a_zb", 0);
-      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
+      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0, numsbad_pinned);
     }
 
     {
@@ -2085,11 +2072,11 @@ void hydroDoCycle(
 
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);
-      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
     }
     
     {
-      DEVICE_TIMER("Kernels", "gpuMain4", 0);
+      DEVICE_TIMER("Kernels", "gpuMain5", 0);
       hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
     }
 
