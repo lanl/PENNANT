@@ -50,7 +50,6 @@ __constant__ int* mapslvp;
 __constant__ int nump;
 __constant__ int numz;
 __constant__ int nums;
-__constant__ double dt;
 __constant__ double pgamma, pssmin;
 __constant__ double talfa, tssmin;
 __constant__ double qgamma, q1, q2;
@@ -1150,13 +1149,13 @@ __device__ void hydroCalcDt(
     double dtz;
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
-    hydroCalcDtVolume(z, zvol, zvol0, dt, dtz, idtz);
+    hydroCalcDtVolume(z, zvol, zvol0, dtlast, dtz, idtz);
     hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2);
 
 }
 
 
-__global__ void gpuMain1()
+__global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -1173,7 +1172,7 @@ __global__ void gpuMain1()
 }
 
 
-__global__ void gpuMain2a_zb(int* numsbad_pinned){
+__global__ void gpuMain2a_zb(int* numsbad_pinned, double dt){
   // iterate over the zones of the mesh
   constexpr int sides_per_zone = 4;
   constexpr int zone_offset = 0; // first of 4-sided zones
@@ -1226,7 +1225,7 @@ __global__ void gpuMain2a_zb(int* numsbad_pinned){
 }
 
 
-__global__ void gpuMain2(int* numsbad_pinned)
+__global__ void gpuMain2(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1282,7 +1281,7 @@ __global__ void gpuMain2(int* numsbad_pinned)
     qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
-__global__ void gpuMain2a(int* numsbad_pinned)
+__global__ void gpuMain2a(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1328,7 +1327,7 @@ __global__ void gpuMain2a(int* numsbad_pinned)
             zm, dt, zp, zss);
 }
 
-__global__ void gpuMain2b()
+__global__ void gpuMain2b(double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1368,7 +1367,7 @@ __global__ void gpuMain2b()
 
 
 template<int sides_per_zone>
-__global__ void gpuMain2b_fixed_zone_size()
+__global__ void gpuMain2b_fixed_zone_size(double dt)
 {
   constexpr int zone_offset = 0; // first of 4-sided zones
   constexpr int side_offset = 0; // first side of 4-sided zones
@@ -1450,7 +1449,7 @@ __global__ void localReduceToPoints()
 }
 #endif
 
-__global__ void gpuMain3(bool doLocalReduceToPoints)
+__global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -1476,7 +1475,7 @@ __global__ void gpuMain3(bool doLocalReduceToPoints)
 }
 
 
-__global__ void gpuMain4(int* numsbad_pinned)
+__global__ void gpuMain4(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1514,7 +1513,7 @@ __global__ void gpuMain4(int* numsbad_pinned)
 }
 
 
-__global__ void gpuMain5()
+__global__ void gpuMain5(double dt)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (z >= numz) return;
@@ -1970,15 +1969,10 @@ void globalReduceToPoints() {
 
 
 void hydroDoCycle(
-        const double dtH,
+        const double dt,
         double& dtnextH,
         int& idtnextH) {
     int gridSizeS, gridSizeP, gridSizeZ, chunkSize;
-
-    {
-      HOST_TIMER("Other", "hipMemcpyToSymbol");
-      CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dt), &dtH, sizeof(double)));
-    }
 
     gridSizeS = numschH;
     gridSizeP = numpchH;
@@ -1990,9 +1984,9 @@ void hydroDoCycle(
     
 #ifdef USE_JIT
     struct {
-      double dtH;
+      double dt;
     } gpu_args;
-    gpu_args.dtH = dtH;
+    gpu_args.dt = dt;
     size_t gpu_args_size = sizeof(gpu_args);
     void* gpu_args_wrapper[] = { HIP_LAUNCH_PARAM_BUFFER_POINTER, &gpu_args,
     				 HIP_LAUNCH_PARAM_BUFFER_SIZE, &gpu_args_size,
@@ -2011,32 +2005,32 @@ void hydroDoCycle(
 #else
     {
       DEVICE_TIMER("Kernels", "gpuMain1", 0);
-      hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+      hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
     }
 
     {
-      // DEVICE_TIMER("Kernels", "gpuMain2", 0);
-      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
+      // DEVICE_TIMER("Kernels", "gpuMain2", 0, dt);
+      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
-      // DEVICE_TIMER("Kernels", "gpuMain2a", 0);
-      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
+      // DEVICE_TIMER("Kernels", "gpuMain2a", 0, dt);
+      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
       DEVICE_TIMER("Kernels", "gpuMain2a_zb", 0);
-      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0, numsbad_pinned);
+      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
       DEVICE_TIMER("Kernels", "gpuMain2b", 0);
-      hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+      hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0, dt);
     }
 
     {
       DEVICE_TIMER("Kernels", "gpuMain2b_fixed_zone_size<4", 0);
-      // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+      // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0, dt);
     }
 #endif
 
@@ -2061,7 +2055,7 @@ void hydroDoCycle(
     {
       DEVICE_TIMER("Kernels", "gpuMain3", 0);
       hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
-			 doLocalReduceToPointInGpuMain3);
+			 dt, doLocalReduceToPointInGpuMain3);
     }
 
     double bigval = 1.e99;
@@ -2072,12 +2066,12 @@ void hydroDoCycle(
 
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);
-      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned);
+      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
     
     {
       DEVICE_TIMER("Kernels", "gpuMain5", 0);
-      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
+      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dt);
     }
 
     {
