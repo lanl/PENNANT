@@ -58,9 +58,6 @@ __constant__ double2 vfixx, vfixy;
 __constant__ int numbcx, numbcy;
 __constant__ double bcx[2], bcy[2];
 
-__constant__ double dtnext;
-__constant__ int idtnext;
-
 __constant__ const int* schsfirst;
 __constant__ const int* schslast;
 __constant__ const int* mapsp1;
@@ -104,6 +101,13 @@ double *zmD, *zrD, *zrpD,
     *zpD, *zssD, *smfD, *sareapD, *svolpD, *zareapD, *zvolpD;
 double *cmaswtD, *pmaswtD;
 double *crmuD, *cwD;
+
+struct double_int {
+  double d;
+  int i;
+};
+  
+double_int *dtnext_D, *dtnext_H;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
@@ -1105,7 +1109,8 @@ __device__ void hydroFindMinDt(
         const double dtz,
         const int idtz,
 	double ctemp[CHUNK_SIZE],
-	double2 ctemp2[CHUNK_SIZE]) {
+	double2 ctemp2[CHUNK_SIZE],
+	double_int* dtnext) {
 
     int* ctempi = (int*) ctemp2;
 
@@ -1124,11 +1129,11 @@ __device__ void hydroFindMinDt(
         __syncthreads();
         half = len >> 1;
     }
-    if (z0 == 0 && ctemp[0] < dtnext) {
-        atomicMin(&dtnext, ctemp[0]);
+    if (z0 == 0 && ctemp[0] < dtnext->d) {
+      atomicMin(&(dtnext->d), ctemp[0]);
         // This line isn't 100% thread-safe, but since it is only for
         // a debugging aid, I'm not going to worry about it.
-        if (dtnext == ctemp[0]) idtnext = ctempi[0];
+        if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
     }
 }
 
@@ -1144,13 +1149,14 @@ __device__ void hydroCalcDt(
         const double* __restrict__ zvol0,
         const double dtlast,
 	double ctemp[CHUNK_SIZE],
-	double2 ctemp2[CHUNK_SIZE]) {
+	double2 ctemp2[CHUNK_SIZE],
+	double_int* dtnext) {
 
     double dtz;
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
     hydroCalcDtVolume(z, zvol, zvol0, dtlast, dtz, idtz);
-    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2);
+    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext);
 
 }
 
@@ -1471,11 +1477,10 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
     // ===== Corrector step =====
     // 6. advance mesh to end of time step
     advPosFull(p, pu0, pap, dt, px, pu);
-
 }
 
 
-__global__ void gpuMain4(int* numsbad_pinned, double dt)
+__global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -1510,10 +1515,14 @@ __global__ void gpuMain4(int* numsbad_pinned, double dt)
     hydroCalcWork(s, s0, s3, z, p1, p2, sfpq, pu0, pu, pxp, dt,
 		  zw, zetot, dss4, ctemp);
 
+    // reset dtnext prior to finding the minimum over all sides in the next kernel
+    if(blockIdx.x == 0 and threadIdx.x == 0){
+      dtnext->d = 1.e99;
+    }
 }
 
 
-__global__ void gpuMain5(double dt)
+__global__ void gpuMain5(double_int* dtnext, double dt)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (z >= numz) return;
@@ -1533,7 +1542,7 @@ __global__ void gpuMain5(double dt)
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
-		ctemp, ctemp2);
+		ctemp, ctemp2, dtnext);
 
 }
 
@@ -1666,6 +1675,9 @@ void hydroInit(
     
     CHKERR(hipHostMalloc(&numsbad_pinned, sizeof(int),hipHostMallocCoherent));
     *numsbad_pinned = 0;
+    CHKERR(hipHostMalloc(&dtnext_H, sizeof(double_int),hipHostMallocNonCoherent));
+    CHKERR(hipMalloc(&dtnext_D, sizeof(double_int)));
+
     CHKERR(hipMalloc(&schsfirstD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schslastD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schzfirstD, numschH*sizeof(int)));
@@ -2029,7 +2041,7 @@ void hydroDoCycle(
     }
 
     {
-      DEVICE_TIMER("Kernels", "gpuMain2b_fixed_zone_size<4", 0);
+      // DEVICE_TIMER("Kernels", "gpuMain2b_fixed_zone_size<4", 0);
       // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0, dt);
     }
 #endif
@@ -2058,20 +2070,14 @@ void hydroDoCycle(
 			 dt, doLocalReduceToPointInGpuMain3);
     }
 
-    double bigval = 1.e99;
-    {
-      HOST_TIMER("Other", "hipMemcpyToSymbol");
-      CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dtnext), &bigval, sizeof(double)));
-    }
-
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);
-      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt);
     }
     
     {
       DEVICE_TIMER("Kernels", "gpuMain5", 0);
-      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dt);
+      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt);
     }
 
     {
@@ -2080,9 +2086,10 @@ void hydroDoCycle(
     }
 
     {
-      HOST_TIMER("Other", "hipMemcpyFromSymbol");
-      CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
-      CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
+      HOST_TIMER("Other", "hipMemcpy H2D");
+      CHKERR(hipMemcpy(dtnext_H, dtnext_D, sizeof(double_int), hipMemcpyDeviceToHost));
+      dtnextH = dtnext_H->d;
+      idtnextH = dtnext_H->i;
     }
 }
 
