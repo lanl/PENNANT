@@ -29,6 +29,8 @@
 #include "Mesh.hh"
 #include "Hydro.hh"
 
+#include "scoped_timers.h"
+
 using namespace std;
 
 
@@ -108,15 +110,20 @@ void Driver::run() {
         cycle += 1;
 
         // get timestep
-        calcGlobalDt_opt();
+	{
+	  HOST_TIMER("Other", "calcGlobalDt_opt");
+	  calcGlobalDt_opt();
+	}
 
         // begin hydro cycle
         hydro->doCycle(dt);
 
         time += dt;
 
-        if (mype == 0 &&
-                (cycle == 1 || cycle % dtreport == 0)) {
+	{
+	  HOST_TIMER("Other", "Periodic report printing");
+	  if (mype == 0 &&
+	      (cycle == 1 || cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
             double tcurr = scurr.tv_sec + scurr.tv_usec * 1.e-6;
@@ -130,11 +137,15 @@ void Driver::run() {
             cout << "dt limiter: " << msgdt << endl;
 
             tlast = tcurr;
-        } // if mype...
+	  } // if mype...
+	}
 
     } // while cycle...
 
-	hydro->getData();   
+    {
+      HOST_TIMER("Other", "hydro->getData()");
+      hydro->getData();
+    }
     if (mype == 0) {
 
         // get stopping timestamp
@@ -155,6 +166,8 @@ void Driver::run() {
         cout << "************************************" << endl;
         cout << "hydro cycle run time= " << setw(14) << runtime << endl;
         cout << "************************************" << endl;
+
+	TIMER_REPORT();
     } // if mype
 
     // do energy check

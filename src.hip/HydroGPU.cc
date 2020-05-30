@@ -21,6 +21,7 @@
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
+#include "scoped_timers.h"
 
 #ifdef USE_MPI
 #include "Parallel.hh"
@@ -1879,8 +1880,11 @@ __global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffe
 void copySlavePointDataToMPIBuffers(){
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
-  hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel, blocks, blocksize, 0, 0,
-		     pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  {
+    DEVICE_TIMER("MPI device overhead", "copySlavePointDataToMPIBuffers_kernel", 0);
+    hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel, blocks, blocksize, 0, 0,
+		       pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  }
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost));
   CHKERR(hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost));
@@ -1904,8 +1908,11 @@ void copyMPIBuffersToSlavePointData(){
 #endif
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
-  hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel, blocks, blocksize, 0, 0,
-		     pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  {
+    DEVICE_TIMER("MPI device overhead", "copyMPIBuffersToSlavePointData_kernel", 0);
+    hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel, blocks, blocksize, 0, 0,
+		       pmaswt_slave_buffer_D, pf_slave_buffer_D);
+  }
 }
 
 
@@ -1940,10 +1947,16 @@ void reduceToMasterPointsAndProxies(){
 
   constexpr int blocksize = 256;
   const int blocks = (numprxH + blocksize - 1) / blocksize;
-  hipLaunchKernelGGL(reduceToMasterPoints, blocks, blocksize, 0, 0,
-		     pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
-  hipLaunchKernelGGL(copyPointValuesToProxies, blocks, blocksize, 0, 0,
-		     pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  {
+    DEVICE_TIMER("Kernels", "reduceToMasterPoints", 0);
+    hipLaunchKernelGGL(reduceToMasterPoints, blocks, blocksize, 0, 0,
+		       pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  }
+  {
+    DEVICE_TIMER("MPI device overhead", "copyPointValuesToProxies", 0);
+    hipLaunchKernelGGL(copyPointValuesToProxies, blocks, blocksize, 0, 0,
+		       pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
+  }
 
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numprxH * sizeof(double), hipMemcpyDeviceToHost));
@@ -1975,7 +1988,10 @@ void hydroDoCycle(
         int& idtnextH) {
     int gridSizeS, gridSizeP, gridSizeZ, chunkSize;
 
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dt), &dtH, sizeof(double)));
+    {
+      HOST_TIMER("Other", "hipMemcpyToSymbol");
+      CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dt), &dtH, sizeof(double)));
+    }
 
     gridSizeS = numschH;
     gridSizeP = numpchH;
@@ -1997,20 +2013,50 @@ void hydroDoCycle(
 #endif
 
 #ifdef USE_JIT
-    jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
-    jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
+    {
+      DEVICE_TIMER("Kernels", "gpuMain1_jit", 0);
+      jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
+    }
+    {
+      DEVICE_TIMER("Kernels", "gpuMain2_jit", 0);
+      jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
+    }
 #else
-    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    {
+      DEVICE_TIMER("Kernels", "gpuMain1", 0);
+      hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+    }
 
-    // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    {
+      // DEVICE_TIMER("Kernels", "gpuMain2", 0);
+      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    }
 
-    // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
-    hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
-    // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    {
+      // DEVICE_TIMER("Kernels", "gpuMain2a", 0);
+      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    }
+
+    {
+      DEVICE_TIMER("Kernels", "gpuMain2a_zb", 0);
+      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
+    }
+
+    {
+      DEVICE_TIMER("Kernels", "gpuMain2b", 0);
+      hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    }
+
+    {
+      DEVICE_TIMER("Kernels", "gpuMain2b_fixed_zone_size<4", 0);
+      // hipLaunchKernelGGL((gpuMain2b_fixed_zone_size<4>), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    }
 #endif
 
-    meshCheckBadSides();
+    {
+      HOST_TIMER("Other", "meshCheckBadSides");
+      meshCheckBadSides();
+    }
     bool doLocalReduceToPointInGpuMain3 = true;
 
 #ifdef USE_MPI
@@ -2018,24 +2064,45 @@ void hydroDoCycle(
       // local reduction to points needs to be done either way, but if numpe == 1, then
       // we can do it in gpuMain3, which saves a kernel call
       doLocalReduceToPointInGpuMain3 = false;
-      hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+      {
+	DEVICE_TIMER("Kernels", "localReduceToPoints", 0);
+	hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
+      }
       globalReduceToPoints();
     }
 #endif
-
-    hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
-		       doLocalReduceToPointInGpuMain3);
+    {
+      DEVICE_TIMER("Kernels", "gpuMain3", 0);
+      hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
+			 doLocalReduceToPointInGpuMain3);
+    }
 
     double bigval = 1.e99;
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dtnext), &bigval, sizeof(double)));
+    {
+      HOST_TIMER("Other", "hipMemcpyToSymbol");
+      CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(dtnext), &bigval, sizeof(double)));
+    }
 
-    hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    {
+      DEVICE_TIMER("Kernels", "gpuMain4", 0);
+      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0);
+    }
+    
+    {
+      DEVICE_TIMER("Kernels", "gpuMain4", 0);
+      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
+    }
 
-    hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0);
-    meshCheckBadSides();
+    {
+      HOST_TIMER("Other", "meshCheckBadSides");
+      meshCheckBadSides();
+    }
 
-    CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
-    CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
+    {
+      HOST_TIMER("Other", "hipMemcpyFromSymbol");
+      CHKERR(hipMemcpyFromSymbol(&dtnextH, HIP_SYMBOL(dtnext), sizeof(double)));
+      CHKERR(hipMemcpyFromSymbol(&idtnextH, HIP_SYMBOL(idtnext), sizeof(int)));
+    }
 }
 
 

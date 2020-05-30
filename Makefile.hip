@@ -4,6 +4,8 @@ PRODUCT := pennant
 # MPI := OpenMPI
 # uncomment the line below, or set an environment variable JIT to any value, to compile with JIT support
 # JIT = 1
+# uncomment the line below, or set an environment variable TIMERS to any value, to compile with Timers support
+# TIMERS = 1
 
 SRCDIR := src.hip
 THRUSTDIR := /opt/rocm/rocthrust
@@ -24,6 +26,23 @@ CPPFLAGS += -Wno-unused-command-line-argument
 CXX := /opt/rocm/bin/hipcc
 CXXFLAGS_DEBUG := -g
 CXXFLAGS_OPT := -O3 -g
+
+# Timer support
+TIMERSDIR := timers
+CPPFLAGS += -I$(TIMERSDIR)
+ifdef TIMERS
+    TM_HDRS := $(wildcard $(TIMERSDIR)/*.h)
+    TM_SRCS := $(wildcard $(TIMERSDIR)/*.cpp)
+    TM_OBJS := $(TM_SRCS:$(TIMERSDIR)/%.cpp=$(BUILDDIR)/%.o)
+    TM_DEPS := $(TM_SRCS:$(TIMERSDIR)/%.cpp=$(BUILDDIR)/%.d)
+
+    HDRS += $(TM_HDRS)
+    SRCS += $(TM_SRCS)
+    OBJS += $(TM_OBJS)
+    DEPS += $(TM_DEPS)
+
+    CPPFLAGS += -DUSE_TIMERS
+endif
 
 # JIT support for GPU kernels
 ifdef JIT
@@ -73,6 +92,12 @@ else
 BUILDCONF_MSG += "| without JIT"
 endif
 
+ifeq ($(findstring -DUSE_TIMERS,${CXXFLAGS}),-DUSE_TIMERS)
+BUILDCONF_MSG += "| with Timers"
+else
+BUILDCONF_MSG += "| without Timers"
+endif
+
 BUILDCONF_MSG += "|"
 
 define showconfig
@@ -102,12 +127,22 @@ $(BUILDDIR)/%.o : $(PAJAMADIR)/%.cpp
 	$(maketargetdir)
 	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
 
+$(BUILDDIR)/%.o : $(TIMERSDIR)/%.cpp
+	@echo compiling $<
+	$(maketargetdir)
+	$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -c -o $@ $<
+
 $(BUILDDIR)/%.d : $(SRCDIR)/%.cc
 	@echo making depends for $<
 	$(maketargetdir)
 	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
 
 $(BUILDDIR)/%.d : $(PAJAMADIR)/%.cpp
+	@echo making depends for $<
+	$(maketargetdir)
+	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@
+
+$(BUILDDIR)/%.d : $(TIMERSDIR)/%.cpp
 	@echo making depends for $<
 	$(maketargetdir)
 	@$(CXX) $(CXXFLAGS) $(CXXINCLUDES) -M $< | sed "1s![^ \t]\+\.o!$(@:.d=.o) $@!" >$@

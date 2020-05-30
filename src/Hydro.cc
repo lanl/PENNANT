@@ -33,6 +33,8 @@
 #include "HydroBC.hh"
 #include "HydroGPU.hh"
 
+#include "scoped_timers.h"
+
 using namespace std;
 
 
@@ -187,6 +189,7 @@ void Hydro::doCycle(
     int idtrec;
 
     hydroDoCycle(dt, dtrec, idtrec);
+    HOST_TIMER("Other", "Hydro::doCycle after hydroDoCycle");
     int z = idtrec >> 1;
     bool dtfromvol = idtrec & 1;
     ostringstream oss;

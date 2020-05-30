@@ -3,3 +3,4 @@ build/**
 build_hip/**
 pajama/**
 src.jit/*.pj.*
+timers/**
