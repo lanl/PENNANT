@@ -1643,7 +1643,13 @@ void hydroInit(
         const int* mapseH,
         const int* znumpH) {
 
-    printf("Running Hydro on device...\n");
+#ifdef USE_MPI
+  using Parallel::mype;
+#else
+  int mype = 0;
+#endif
+
+    if(mype == 0){ printf("Running Hydro on device...\n"); }
 
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
             schsfirstH, schslastH, schzfirstH, schzlastH);

@@ -156,6 +156,7 @@ void Driver::run() {
         // write end message
         cout << endl;
         cout << "Run complete" << endl;
+	cout << "Zones: " << mesh->gnumz << endl;
         cout << scientific << setprecision(6);
         cout << "cycle = " << setw(6) << cycle
              << ",         cstop = " << setw(6) << cstop << endl;
@@ -163,9 +164,10 @@ void Driver::run() {
              << ", tstop = " << setw(14) << tstop << endl;
 
         cout << endl;
-        cout << "************************************" << endl;
-        cout << "hydro cycle run time= " << setw(14) << runtime << endl;
-        cout << "************************************" << endl;
+        cout << "*************************************" << endl;
+        cout << "hydro cycle run time = " << setw(14) << runtime << endl;
+	cout << "FOM =                  " << setw(14) << (double) mesh->gnumz * cycle / runtime << endl;
+        cout << "*************************************" << endl;
 
 	TIMER_REPORT();
     } // if mype

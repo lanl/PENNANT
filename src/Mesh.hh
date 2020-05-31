@@ -45,6 +45,7 @@ public:
     int nump, nume, numz, nums, numc;
                                    // number of points, edges, zones,
                                    // sides, corners, resp.
+    int gnumz;         // global number of zones, summed over all MPI ranks. Used in FOM computation
     int* mapcz;        // map: corner -> zone
     int* mapcp;        // map: corner -> point
     int* mapep1;       // maps: edge -> points 1 and 2
