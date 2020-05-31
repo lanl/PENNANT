@@ -356,12 +356,12 @@ void Mesh::writeStats() {
     if (Parallel::mype > 0) return;
 
     cout << "--- Mesh Information ---" << endl;
-    cout << "Points:  " << nump << endl;
-    cout << "Zones:  "  << numz << endl;
-    cout << "Sides:  "  << nums << endl;
-    cout << "Edges:  "  << nume << endl;
-    cout << "Side chunks:  " << numsch << endl;
-    cout << "Point chunks:  " << numpch << endl;
+    cout << "Points:  " << gnump << endl;
+    cout << "Zones:  "  << gnumz << endl;
+    cout << "Sides:  "  << gnums << endl;
+    cout << "Edges:  "  << gnume << endl;
+    cout << "Side chunks:  " << gnumsch << endl;
+    cout << "Point chunks:  " << gnumpch << endl;
     cout << "Chunk size:  " << chunksize << endl;
     cout << "------------------------" << endl;
 
