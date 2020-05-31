@@ -63,7 +63,7 @@ __constant__ const int* schslast;
 __constant__ const int* mapsp1;
 __constant__ const int* mapsp2;
 __constant__ const int* mapsz;
-__constant__ const int* mapzs;
+// __constant__ const int* mapzs; currently not used, may be revived
 __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
@@ -1743,7 +1743,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp1), &mapsp1D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp2), &mapsp2D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsz), &mapszD, sizeof(void*)));
-    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapzs), &mapzsD, sizeof(void*)));
+    // CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapzs), &mapzsD, sizeof(void*))); // currently not used, may be revived
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapss4), &mapss4D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mappsfirst), &mappsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapssnext), &mapssnextD, sizeof(void*)));
