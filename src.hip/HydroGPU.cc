@@ -2027,18 +2027,18 @@ void hydroDoCycle(
     }
 
     {
-      // DEVICE_TIMER("Kernels", "gpuMain2", 0, dt);
+      // DEVICE_TIMER("Kernels", "gpuMain2", 0);
       // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
-      // DEVICE_TIMER("Kernels", "gpuMain2a", 0, dt);
-      // hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+      DEVICE_TIMER("Kernels", "gpuMain2a", 0);
+      hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
-      DEVICE_TIMER("Kernels", "gpuMain2a_zb", 0);
-      hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+      // DEVICE_TIMER("Kernels", "gpuMain2a_zb", 0);
+      // hipLaunchKernelGGL((gpuMain2a_zb), dim3(gridSizeZ), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
