@@ -30,7 +30,7 @@ namespace Parallel {
     extern int mype;            // PE number for my rank
                                 // (0 if not using MPI)
 
-    void init();                // initialize MPI
+    void init(int argc, char** argv);                // initialize MPI
     void final();               // finalize MPI
 
     void globalMinLoc(double& x, int& xpe);

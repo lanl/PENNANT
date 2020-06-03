@@ -33,9 +33,9 @@ int mype = 0;
 #endif
 
 
-void init() {
+void init(int argc, char** argv) {
 #ifdef USE_MPI
-    MPI_Init(0, 0);
+    MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numpe);
     MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 #endif

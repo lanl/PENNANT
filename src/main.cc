@@ -21,9 +21,9 @@
 using namespace std;
 
 
-int main(const int argc, const char** argv)
+int main(const int argc, char** argv)
 {
-    Parallel::init();
+    Parallel::init(argc, argv);
 
     if (argc != 2) {
         if (Parallel::mype == 0)
