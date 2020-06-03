@@ -17,8 +17,7 @@
 #include "Memory.hh"
 #include "HydroMPI.hh"
 
-// TODO: check if the two functions below try to send from device buffers, or if they use host buffers
-// In the former case, figure out if that requires a specific MPI stack and/or UCX support
+// TODO: wrap static heap objects in a unique_ptr with a custom deleter
 
 void parallelGather(const int numslvpe, const int nummstrpe,
 		    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1, 
@@ -32,8 +31,8 @@ void parallelGather(const int numslvpe, const int nummstrpe,
     const int tagmpi = 100;
     // Post receives for incoming messages from slaves.
     // Store results in proxy buffer.
-    MPI_Request* request = Memory::alloc<MPI_Request>(numslvpe);
-    MPI_Request* request1 = Memory::alloc<MPI_Request>(numslvpe);
+    static MPI_Request* request = Memory::alloc<MPI_Request>(numslvpe);
+    static MPI_Request* request1 = Memory::alloc<MPI_Request>(numslvpe);
     //printf("%d: numslvpe=%d nummstrpe=%d\n",mype, numslvpe,nummstrpe);
     for (int slvpe = 0; slvpe < numslvpe; ++slvpe) {
         int pe = mapslvpepe[slvpe];
@@ -58,15 +57,15 @@ void parallelGather(const int numslvpe, const int nummstrpe,
     }
 
     // Wait for all receives to complete.
-    MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
-    MPI_Status* status1 = Memory::alloc<MPI_Status>(numslvpe);
+    static MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
+    static MPI_Status* status1 = Memory::alloc<MPI_Status>(numslvpe);
     MPI_Waitall(numslvpe, &request[0], &status[0]);
     MPI_Waitall(numslvpe, &request1[0], &status1[0]);
 
-    Memory::free(request);
-    Memory::free(status);
-    Memory::free(request1);
-    Memory::free(status1);
+    // Memory::free(request);
+    // Memory::free(status);
+    // Memory::free(request1);
+    // Memory::free(status1);
 }
 
 
@@ -79,8 +78,8 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
     using Parallel::mype;
     // Post receives for incoming messages from masters.
     // Store results in slave buffer.
-    MPI_Request* request = Memory::alloc<MPI_Request>(nummstrpe);
-    MPI_Request* request1 = Memory::alloc<MPI_Request>(nummstrpe);
+    static MPI_Request* request = Memory::alloc<MPI_Request>(nummstrpe);
+    static MPI_Request* request1 = Memory::alloc<MPI_Request>(nummstrpe);
     for (int mstrpe = 0; mstrpe < nummstrpe; ++mstrpe) {
         int pe = mapmstrpepe[mstrpe];
         int nslv = mstrpenumslv[mstrpe];
@@ -105,16 +104,16 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
     }
 
     // Wait for all receives to complete.
-    MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
-    MPI_Status* status1 = Memory::alloc<MPI_Status>(nummstrpe);
+    static MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
+    static MPI_Status* status1 = Memory::alloc<MPI_Status>(nummstrpe);
     MPI_Waitall(nummstrpe, &request[0], &status[0]);
     MPI_Waitall(nummstrpe, &request1[0], &status1[0]);
 
     // Store slave data from buffer back to points.
-    Memory::free(request);
-    Memory::free(status);
-    Memory::free(request1);
-    Memory::free(status1);
+    // Memory::free(request);
+    // Memory::free(status);
+    // Memory::free(request1);
+    // Memory::free(status1);
 }
 
 #endif // USE_MPI
