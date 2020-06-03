@@ -1892,6 +1892,8 @@ void copySlavePointDataToMPIBuffers(){
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost));
   CHKERR(hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost));
+#else
+  hipDeviceSynchronize();
 #endif
 }
 
@@ -1965,6 +1967,8 @@ void reduceToMasterPointsAndProxies(){
 #ifndef USE_GPU_AWARE_MPI
   CHKERR(hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numprxH * sizeof(double), hipMemcpyDeviceToHost));
   CHKERR(hipMemcpy(pf_proxy_buffer_H, pf_proxy_buffer_D, numprxH * sizeof(double2), hipMemcpyDeviceToHost));
+#else
+  hipDeviceSynchronize();
 #endif
 }
 
