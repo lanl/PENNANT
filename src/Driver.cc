@@ -110,10 +110,7 @@ void Driver::run() {
         cycle += 1;
 
         // get timestep
-	{
-	  HOST_TIMER("Other", "calcGlobalDt_opt");
-	  calcGlobalDt_opt();
-	}
+	calcGlobalDt_opt();
 
         // begin hydro cycle
         hydro->doCycle(dt);
@@ -212,6 +209,7 @@ void  Driver::calcGlobalDt_opt(){
      	hydro->getDtHydro(dt, msgdt);
 #ifdef USE_MPI
      	if ( numpe > 1){
+	  HOST_TIMER("MPI", "Allreduce");
         	MPI_Allreduce(MPI_IN_PLACE, &dt, 1, MPI_DOUBLE, MPI_MIN,
             		MPI_COMM_WORLD);
         }

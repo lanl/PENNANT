@@ -1974,17 +1974,23 @@ void reduceToMasterPointsAndProxies(){
 
 void globalReduceToPoints() {
   copySlavePointDataToMPIBuffers();
-  parallelGather( numslvpeD, nummstrpeD,
-		  mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-		  mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-		  pmaswt_proxy_buffer, pf_proxy_buffer,
-		  pmaswt_slave_buffer, pf_slave_buffer);
+  {
+    HOST_TIMER("MPI", "parallelGather");
+    parallelGather( numslvpeD, nummstrpeD,
+		    mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		    mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
+		    pmaswt_proxy_buffer, pf_proxy_buffer,
+		    pmaswt_slave_buffer, pf_slave_buffer);
+  }
   reduceToMasterPointsAndProxies();
-  parallelScatter( numslvpeD, nummstrpeD,
-		   mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-		   mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-		   pmaswt_proxy_buffer, pf_proxy_buffer,
-		   pmaswt_slave_buffer, pf_slave_buffer);
+  {
+    HOST_TIMER("MPI", "parallelScatter");
+      parallelScatter( numslvpeD, nummstrpeD,
+		       mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		       mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
+		       pmaswt_proxy_buffer, pf_proxy_buffer,
+		       pmaswt_slave_buffer, pf_slave_buffer);
+  }
   copyMPIBuffersToSlavePointData();
 }
 #endif
