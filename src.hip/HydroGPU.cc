@@ -67,6 +67,7 @@ __constant__ const int* mapsz;
 __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
+__constant__ int* corners_per_point;
 
 __constant__ double2 *px, *pxp;
 __constant__ double2 *zx, *zxp;
@@ -93,6 +94,7 @@ int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
+int *corners_per_pointD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
   *sfpqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
@@ -1161,6 +1163,19 @@ __device__ void hydroCalcDt(
 }
 
 
+__global__ void calcCornersPerPoint(int* corners_per_point)
+{
+  const int p = blockIdx.x * blockDim.x + threadIdx.x;
+  if (p >= nump) { return; }
+
+  int count = 0;
+  for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
+    ++count;
+  }
+  corners_per_point[p] = count;
+}
+
+
 __global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1738,6 +1753,9 @@ void hydroInit(
     CHKERR(hipMalloc(&mappsfirstD, numpH*sizeof(int)));
     CHKERR(hipMalloc(&mapssnextD, numsH*sizeof(int)));
 
+    CHKERR(hipMalloc(&corners_per_pointD, numpH*sizeof(int)));
+    
+
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schslast), &schslastD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapsp1), &mapsp1D, sizeof(void*)));
@@ -1784,6 +1802,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_per_point), &corners_per_pointD, sizeof(void*)));
 
     CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(schslastD, schslastH, numschH*sizeof(int), hipMemcpyHostToDevice));
@@ -1814,10 +1833,13 @@ void hydroInit(
     thrust::sequence(mapspvalT, mapspvalT + numsH);
     thrust::stable_sort_by_key(mapspkeyT, mapspkeyT + numsH, mapspvalT);
 
-    int gridSize = (numsH+CHUNK_SIZE-1) / CHUNK_SIZE;
+    int gridSizeS = (numsH+CHUNK_SIZE-1) / CHUNK_SIZE;
     int chunkSize = CHUNK_SIZE;
-    hipLaunchKernelGGL((gpuInvMap), dim3(gridSize), dim3(chunkSize), 0, 0, mapspkeyD, mapspvalD,
+    hipLaunchKernelGGL((gpuInvMap), dim3(gridSizeS), dim3(chunkSize), 0, 0, mapspkeyD, mapspvalD,
 		       mappsfirstD, mapssnextD);
+
+    int gridSizeP = (numpH + CHUNK_SIZE - 1) / CHUNK_SIZE;
+    hipLaunchKernelGGL(calcCornersPerPoint, dim3(gridSizeP), dim3(chunkSize), 0, 0, corners_per_pointD);
 #ifdef USE_JIT
 
     replacement_t replacements {
