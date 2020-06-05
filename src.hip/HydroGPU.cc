@@ -21,6 +21,7 @@
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
+#include <rocprim/rocprim.hpp>
 #include "scoped_timers.h"
 
 #ifdef USE_MPI
@@ -68,6 +69,7 @@ __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
 __constant__ int* corners_per_point;
+__constant__ int* first_corner_of_point;
 
 __constant__ double2 *px, *pxp;
 __constant__ double2 *zx, *zxp;
@@ -94,7 +96,7 @@ int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
-int *corners_per_pointD;
+int *corners_per_pointD, *first_corner_of_pointD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
   *sfpqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
@@ -1754,6 +1756,7 @@ void hydroInit(
     CHKERR(hipMalloc(&mapssnextD, numsH*sizeof(int)));
 
     CHKERR(hipMalloc(&corners_per_pointD, numpH*sizeof(int)));
+    CHKERR(hipMalloc(&first_corner_of_pointD, numpH*sizeof(int)));
     
 
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
@@ -1803,6 +1806,7 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_per_point), &corners_per_pointD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(first_corner_of_point), &first_corner_of_pointD, sizeof(void*)));
 
     CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(schslastD, schslastH, numschH*sizeof(int), hipMemcpyHostToDevice));
@@ -1840,6 +1844,17 @@ void hydroInit(
 
     int gridSizeP = (numpH + CHUNK_SIZE - 1) / CHUNK_SIZE;
     hipLaunchKernelGGL(calcCornersPerPoint, dim3(gridSizeP), dim3(chunkSize), 0, 0, corners_per_pointD);
+
+    size_t temp_storage_bytes;
+    void* temp_storage_ptr = nullptr;
+    // first call, with nullptr argument, gets required size of temp storage
+    rocprim::exclusive_scan(temp_storage_ptr, temp_storage_bytes,
+			    corners_per_pointD, first_corner_of_pointD, 0, numpH);
+    CHKERR(hipMalloc(&temp_storage_ptr, temp_storage_bytes));
+    // second call, with non-nullptr for temp storage, does the actual work
+    rocprim::exclusive_scan(temp_storage_ptr, temp_storage_bytes,
+			    corners_per_pointD, first_corner_of_pointD, 0, numpH);
+    CHKERR(hipFree(temp_storage_ptr));
 #ifdef USE_JIT
 
     replacement_t replacements {
