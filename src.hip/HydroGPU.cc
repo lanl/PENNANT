@@ -69,7 +69,9 @@ __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
 __constant__ int* corners_per_point;
+__constant__ int* corners_by_point;
 __constant__ int* first_corner_of_point;
+__constant__ int2* first_corner_and_corner_count;
 
 __constant__ double2 *px, *pxp;
 __constant__ double2 *zx, *zxp;
@@ -96,7 +98,8 @@ int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
-int *corners_per_pointD, *first_corner_of_pointD;
+int *corners_per_pointD, *corners_by_pointD, *first_corner_of_pointD;
+int2 *first_corner_and_corner_countD;
 double2 *pxD, *pxpD, *zxD, *zxpD, *puD, *pu0D, *papD,
   *sfpqD, *cftotD, *pfD, *cqeD;
 double *zmD, *zrD, *zrpD,
@@ -1177,6 +1180,36 @@ __global__ void calcCornersPerPoint(int* corners_per_point)
   corners_per_point[p] = count;
 }
 
+__device__ void quadratic_sort(int* array, int first, int last){
+  for(int i = first; i != last; ++i){
+    for(int j = i + 1; j != last; ++j){
+      if(array[j] < array[i]){
+	int tmp = array[j];
+	array[j] = array[i];
+	array[i] = tmp;
+      }
+    }
+  }
+}
+
+
+__global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_point,
+				    int* corners_per_point, int2* first_corner_and_corner_count)
+{
+  const int p = blockIdx.x * blockDim.x + threadIdx.x;
+  if (p >= nump) { return; }
+
+  int first = first_corner_of_point[p];
+  int c = first;
+  for(int s = mappsfirst[p]; s >= 0; s = mapssnext[s], ++c){
+    corners_by_point[c] = s;
+  }
+  // int last = first + corners_per_point[p];
+  first_corner_and_corner_count[p].x = first;
+  first_corner_and_corner_count[p].y = corners_per_point[p];
+  // quadratic_sort(corners_by_point, first, last);
+}
+
 
 __global__ void gpuMain1(double dt)
 {
@@ -1443,21 +1476,39 @@ __global__ void gpuMain2b_fixed_zone_size(double dt)
 // If we don't use MPI, then the summing of corner masses and forces to points
 // is done as the first step in gpuMain3 instead, to reduce the number of kernel
 // invocations.
-__device__ void localReduceToPoints(
-        const int p,
-        const double* __restrict__ cmaswt,
-        double* __restrict__ pmaswt,
-        const double2* __restrict__ cftot,
-        double2* __restrict__ pf)
+__device__ void localReduceToPoints(const int p,
+				    const double* __restrict__ cmaswt,
+				    double* __restrict__ pmaswt,
+				    const double2* __restrict__ cftot,
+				    double2* __restrict__ pf)
 {
-    double cmaswt_sum = 0.;
-    double2 cftot_sum = make_double2(0., 0.);
-    for (int s = mappsfirst[p]; s >= 0; s = mapssnext[s]) {
-        cmaswt_sum += cmaswt[s];
-	cftot_sum += cftot[s];
+  double cmaswt_sum = 0.;
+  double2 cftot_sum = make_double2(0., 0.);
+
+  int2 first_and_count = first_corner_and_corner_count[p];
+  int c = first_and_count.x;
+  int count = first_and_count.y;
+
+  union {
+    int4 i4;
+    int a[4];
+  } corners4;
+
+  for(; count > 0; count -=4, c += 4){
+    // load in batches of 4. Safe to do, even near the end of the array
+    // 'corners_by_point', since it has been over-allocated sufficiently,
+    // and we don't use the over-allocated values.
+    corners4.i4 = * (int4*)(corners_by_point + c);
+    int inner_count = min(count, 4);
+    for(int i = 0; i != inner_count; ++i){
+      int s = corners4.a[i];
+      cmaswt_sum += cmaswt[s];
+      cftot_sum += cftot[s];
     }
-    pmaswt[p] = cmaswt_sum;
-    pf[p] = cftot_sum;
+  }
+
+  pmaswt[p] = cmaswt_sum;
+  pf[p] = cftot_sum;
 }
 
 
@@ -1756,7 +1807,9 @@ void hydroInit(
     CHKERR(hipMalloc(&mapssnextD, numsH*sizeof(int)));
 
     CHKERR(hipMalloc(&corners_per_pointD, numpH*sizeof(int)));
+    CHKERR(hipMalloc(&corners_by_pointD, (numsH+4)*sizeof(int)));
     CHKERR(hipMalloc(&first_corner_of_pointD, numpH*sizeof(int)));
+    CHKERR(hipMalloc(&first_corner_and_corner_countD, numpH*sizeof(int2)));
     
 
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
@@ -1806,7 +1859,9 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cqe), &cqeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cw), &cwD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_per_point), &corners_per_pointD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_by_point), &corners_by_pointD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(first_corner_of_point), &first_corner_of_pointD, sizeof(void*)));
+    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(first_corner_and_corner_count), &first_corner_and_corner_countD, sizeof(void*)));
 
     CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(schslastD, schslastH, numschH*sizeof(int), hipMemcpyHostToDevice));
@@ -1855,6 +1910,11 @@ void hydroInit(
     rocprim::exclusive_scan(temp_storage_ptr, temp_storage_bytes,
 			    corners_per_pointD, first_corner_of_pointD, 0, numpH);
     CHKERR(hipFree(temp_storage_ptr));
+
+    hipLaunchKernelGGL(storeCornersByPoint, dim3(gridSizeP), dim3(chunkSize), 0, 0, first_corner_of_pointD,
+		       corners_by_pointD, corners_per_pointD, first_corner_and_corner_countD);
+    hipFree(first_corner_of_pointD);
+    hipFree(corners_per_pointD);
 #ifdef USE_JIT
 
     replacement_t replacements {
