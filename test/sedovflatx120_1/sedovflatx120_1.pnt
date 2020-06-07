@@ -1,6 +1,6 @@
 tstop   1.0
 meshtype rect
-meshparams 208 234 1.0 1.125
+meshparams 200 225 1.0 1.125
 subregion 0.0 1.0  0.0 0.025
 rinitsub 1.0
 einitsub 12.569
