@@ -1346,6 +1346,11 @@ __global__ void gpuMain2a(int* numsbad_pinned, double dt)
 
     const int p1 = mapsp1[s];
     const int p2 = mapsp2[s];
+
+    pu0[p1] = pu[p1];
+    const double dth = 0.5 * dt;
+    advPosHalf(p1, px, pu, dth, pxp);
+    
     const int z  = mapsz[s];
 
     const int s4 = mapss4[s];
@@ -2129,8 +2134,8 @@ void hydroDoCycle(
     }
 #else
     {
-      DEVICE_TIMER("Kernels", "gpuMain1", 0);
-      hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
+      // DEVICE_TIMER("Kernels", "gpuMain1", 0);
+      // hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
     }
 
     {
