@@ -419,6 +419,8 @@ __device__ void qcsSetCornerDiv(
         const int z,
         const int p1,
         const int p2,
+	const double2 pxp1,
+	const double2 pxp2,
 	int dss4[CHUNK_SIZE],
 	double sh_ccos[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
@@ -443,13 +445,13 @@ __device__ void qcsSetCornerDiv(
     // Associated zone, corner, point
     const int p0 = mapsp1[s3];
     double2 up0 = pu[p1];
-    double2 xp0 = pxp[p1];
+    double2 xp0 = pxp1;
     double2 up1 = 0.5 * (pu[p1] + pu[p2]);
-    double2 xp1 = 0.5 * (pxp[p1] + pxp[p2]);
+    double2 xp1 = 0.5 * (pxp1 + pxp2);
     double2 up2 = zuc;
     double2 xp2 = zxp[z];
     double2 up3 = 0.5 * (pu[p0] + pu[p1]);
-    double2 xp3 = 0.5 * (pxp[p0] + pxp[p1]);
+    double2 xp3 = 0.5 * (pxp[p0] + pxp1);
 
     // position, velocity diffs along diagonals
     double2 up2m0 = up2 - up0;
@@ -774,6 +776,8 @@ __device__ void qcsCalcForce(
         const int z,
         const int p1,
         const int p2,
+	const double2 pxp1,
+	const double2 pxp2,
 	int dss3[CHUNK_SIZE],
 	int dss4[CHUNK_SIZE],
 	double ctemp[CHUNK_SIZE],
@@ -789,7 +793,7 @@ __device__ void qcsCalcForce(
     double cdiv = 0.;
     double cdu = 0.;
     double cevol = 0;
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2, pxp1, pxp2, dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -1303,6 +1307,9 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
 
+    const auto pxp1 = pxp[p1];
+    const auto pxp2 = pxp[p2];
+    
     __syncthreads();
 
     const int s3 = s + dss3[s0];
@@ -1334,7 +1341,7 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, pxp1, pxp2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
 __global__ void gpuMain2a(int* numsbad_pinned, double dt)
@@ -1407,9 +1414,9 @@ __global__ void gpuMain2b(double dt)
 
     __syncthreads();
 
-    auto pxp1 = pxp[p1];
-    auto pxp2 = pxp[p2];
-    auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
+    const auto pxp1 = pxp[p1];
+    const auto pxp2 = pxp[p2];
+    const auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
     
     const int s3 = s + dss3[s0];
 
@@ -1418,7 +1425,7 @@ __global__ void gpuMain2b(double dt)
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, pxp1, pxp2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
