@@ -7,9 +7,13 @@ PRODUCT := pennant
 # uncomment the line below, or set an environment variable TIMERS to any value, to compile with Timers support
 # TIMERS = 1
 
+ifndef ROCM_PATH
+    ROCM_PATH := /opt/rocm
+endif
+
 SRCDIR := src.hip
-THRUSTDIR := /opt/rocm/rocthrust
-PRIMDIR := /opt/rocm/rocprim
+THRUSTDIR := ${ROCM_PATH}/rocthrust
+PRIMDIR := ${ROCM_PATH}/rocprim
 
 HDRS := $(wildcard $(SRCDIR)/*.hh)
 SRCS := $(wildcard $(SRCDIR)/*.cc)
@@ -23,7 +27,7 @@ CPPFLAGS += -Wall -Werror
 CPPFLAGS += -Wno-unused-command-line-argument
 
 # hipcc flags:
-CXX := /opt/rocm/bin/hipcc
+CXX := ${ROCM_PATH}/bin/hipcc
 CXXFLAGS_DEBUG := -g
 CXXFLAGS_OPT := -O3 -g
 
