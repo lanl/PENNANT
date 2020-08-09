@@ -1611,6 +1611,9 @@ static __device__ void qcsSetForce_opt(
             / elen;
 }
 
+#ifdef __HIP_ARCH_GFX908__
+__launch_bounds__(64,4)
+#endif
 __global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
