@@ -38,6 +38,7 @@
 
 using namespace std;
 
+//#define HIP_SYMBOL(X) &X
 
 const int CHUNK_SIZE = 64;
 
@@ -48,7 +49,7 @@ __constant__ int* mapprxp;
 __constant__ int* mapslvp;
 #endif
 
-__constant__ int nump;
+__device__ __constant__ int nump;
 __constant__ int numz;
 __constant__ int nums;
 __constant__ double pgamma, pssmin;
@@ -419,8 +420,6 @@ __device__ void qcsSetCornerDiv(
         const int z,
         const int p1,
         const int p2,
-	const double2 pxp1,
-	const double2 pxp2,
 	int dss4[CHUNK_SIZE],
 	double sh_ccos[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
@@ -445,13 +444,13 @@ __device__ void qcsSetCornerDiv(
     // Associated zone, corner, point
     const int p0 = mapsp1[s3];
     double2 up0 = pu[p1];
-    double2 xp0 = pxp1;
+    double2 xp0 = pxp[p1];
     double2 up1 = 0.5 * (pu[p1] + pu[p2]);
-    double2 xp1 = 0.5 * (pxp1 + pxp2);
+    double2 xp1 = 0.5 * (pxp[p1] + pxp[p2]);
     double2 up2 = zuc;
     double2 xp2 = zxp[z];
     double2 up3 = 0.5 * (pu[p0] + pu[p1]);
-    double2 xp3 = 0.5 * (pxp[p0] + pxp1);
+    double2 xp3 = 0.5 * (pxp[p0] + pxp[p1]);
 
     // position, velocity diffs along diagonals
     double2 up2m0 = up2 - up0;
@@ -776,8 +775,6 @@ __device__ void qcsCalcForce(
         const int z,
         const int p1,
         const int p2,
-	const double2 pxp1,
-	const double2 pxp2,
 	int dss3[CHUNK_SIZE],
 	int dss4[CHUNK_SIZE],
 	double ctemp[CHUNK_SIZE],
@@ -793,7 +790,7 @@ __device__ void qcsCalcForce(
     double cdiv = 0.;
     double cdu = 0.;
     double cevol = 0;
-    qcsSetCornerDiv(s, s0, s3, z, p1, p2, pxp1, pxp2, dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
+    qcsSetCornerDiv(s, s0, s3, z, p1, p2,dss4, ctemp, ctemp2, careap, cdiv, cdu, cevol);
 
     // [3] Find the limiters Psi(c)
     // *** NOT IMPLEMENTED IN PENNANT ***
@@ -1224,10 +1221,11 @@ __global__ void gpuMain1(double dt)
 
     // save off point variable values from previous cycle
     pu0[p] = pu[p];
+    pxp[p] = px[p] + pu0[p] * dth;
 
     // ===== Predictor step =====
     // 1. advance mesh to center of time step
-    advPosHalf(p, px, pu0, dth, pxp);
+//    advPosHalf(p, px, pu0, dth, pxp);
 
 }
 
@@ -1284,6 +1282,430 @@ __global__ void gpuMain2a_zb(int* numsbad_pinned, double dt){
   }
 }
 
+static __device__ void calcZoneCtrs_SideVols_ZoneVols(
+        const int s,
+        const int s0,
+        const double2 pxp1,
+        const double2 pxp2,
+        double2& __restrict__ zx,
+        double&  sarea,
+        double& zarea,
+    double& zvol,
+ int dss4[CHUNK_SIZE],
+        double2 ctemp2[CHUNK_SIZE],
+        double ctemp[CHUNK_SIZE],
+        double ctemp1[CHUNK_SIZE],
+        int* __restrict__ numsbad_pinned)
+{
+     ctemp2[s0] = pxp1;
+    __syncthreads();
+
+    double2 zxtot = ctemp2[s0];
+    double zct = 1.;
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zxtot += ctemp2[sn];
+        zct += 1.;
+    }
+    zx = zxtot / zct;
+
+    const double third = 1. / 3.;
+    double sa = 0.5 * cross(pxp2 - pxp1,  zx - pxp1);
+    double sv = third * sa * (pxp1.x + pxp2.x + zx.x);
+    sarea = sa;
+     if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
+  __syncthreads();
+
+    ctemp[s0] = sv;
+    ctemp1[s0] = sa;
+    __syncthreads();
+    double zvtot = ctemp[s0];
+    double zatot = ctemp1[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zvtot += ctemp[sn];
+        zatot += ctemp1[sn];
+    }
+
+    zarea = zatot;
+    zvol = zvtot;
+}
+
+static __device__ void meshCalcCharLen_opt(
+        const int s,
+        const int s0,
+        const int s3,
+        const int z,
+        const double2 pxp1,
+        const double2 pxp2,
+        const int* __restrict__ znump,
+        const double2  zx,
+        double* __restrict__ zdl,
+        int dss4[CHUNK_SIZE],
+        double ctemp[CHUNK_SIZE]) {
+
+    double area = 0.5 * cross(pxp2 - pxp1, zx - pxp1);
+    double base = length(pxp2 - pxp1);
+    double fac = (znump[z] == 3 ? 3. : 4.);
+    double sdl = fac * area / base;
+
+    ctemp[s0] = sdl;
+    __syncthreads();
+    double sdlmin = ctemp[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        sdlmin = min(sdlmin, ctemp[sn]);
+    }
+    zdl[z] = sdlmin;
+}
+
+static __device__ void pgasCalcForce_opt(
+        const int s,
+        const int z,
+        const double zp,
+        const double2  ssurf,
+        double2& __restrict__ sf) {
+    sf = -zp * ssurf;
+}
+static __device__ void pgasCalcStateAtHalf_opt(
+    const int z,
+    const double* __restrict__ zr0,
+    const double zvolp,
+    const double* __restrict__ zvol0,
+    const double* __restrict__ ze,
+    const double* __restrict__ zwrate,
+    const double  zm,
+    const double dt,
+    double &zp,
+    double &zss)
+{
+    double zper;
+
+    const double gm1 = pgamma - 1.;
+    const double ss2 = max(pssmin * pssmin, 1.e-99);
+
+    double rx = zr[z];
+    double ex = max(ze[z], 0.0);
+    double csqd = max(ss2, gm1 * ex * pgamma);
+    double z_t = gm1 * rx * ex;
+    zper = gm1 * rx;
+    zss = sqrt(csqd);
+
+    const double dth = 0.5 * dt;
+    const double zminv = 1. / zm ;
+    double dv = (zvolp - zvol0[z]) * zminv;
+    double bulk = zr0[z] * zr0[z] * csqd;
+    double denom = 1. + 0.5 * zper * dv;
+    double src = zwrate[z] * dth * zminv;
+    zp = z_t + (zper * src - bulk * dv) / denom;
+}
+
+//replace zss, zr, zarea,sf arrays with scaler
+static __device__ void ttsCalcForce_opt(
+        const int s,
+        const int z,
+        const double zarea,
+        const double  zr,
+        const double zss,
+        const double  sarea,
+        const double* __restrict__ smf,
+        const double2 ssurf,
+        double2& __restrict__ sf) {
+
+    double svfacinv = zarea / sarea;
+    double srho = zr * smf[s] * svfacinv;
+    double sstmp = max(zss, tssmin);
+    sstmp = talfa * sstmp * sstmp;
+    double sdp = sstmp * (srho - zr);
+    sf = -sdp * ssurf;
+}
+static __device__ void qcsSetCornerDiv_opt(
+        const int s,
+        const int s0,
+        const int s3,
+        const int z,
+        const int p1,
+        const int p2,
+        const double2 pxpp0,
+        const double2 pxpp1,
+        const double2 pxpp2,
+        const double2 pup0,
+        const double2 pup1,
+        const double2 pup2,
+        const double2  zxp,
+        double& careap,
+        double& cdiv,
+        double& cdu,
+        double& cevol,
+        int dss4[CHUNK_SIZE],
+        double2 ctemp2[CHUNK_SIZE],
+        double sh_ccos[CHUNK_SIZE]) {
+
+    // [1] Compute a zone-centered velocity
+    ctemp2[s0] = pup1;
+    __syncthreads();
+
+    double2 zutot = ctemp2[s0];
+    double zct = 1.;
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zutot += ctemp2[sn];
+        zct += 1.;
+    }
+    double2 zuc = zutot / zct;
+
+    // [2] Divergence at the corner
+    // Associated zone, corner, point
+    double2 up0 = pup1;
+    double2 xp0 = pxpp1;
+    double2 up1 = 0.5 * (pup1 + pup2);
+    double2 xp1 = 0.5 * (pxpp1 + pxpp2);
+    double2 up2 = zuc;
+    double2 xp2 = zxp;
+    double2 up3 = 0.5 * (pup0 + pup1);
+    double2 xp3 = 0.5 * (pxpp0 + pxpp1);
+    // position, velocity diffs along diagonals
+    double2 up2m0 = up2 - up0;
+    double2 xp2m0 = xp2 - xp0;
+    double2 up3m1 = up3 - up1;
+    double2 xp3m1 = xp3 - xp1;
+
+    // average corner-centered velocity
+    double2 duav = 0.25 * (up0 + up1 + up2 + up3);
+
+    // compute cosine angle
+    double2 v1 = xp1 - xp0;
+    double2 v2 = xp3 - xp0;
+    double de1 = length(v1);
+    double de2 = length(v2);
+    double minelen = 2.0 * min(de1, de2);
+    sh_ccos[s0] = (minelen < 1.e-12 ? 0. : dot(v1, v2) / (de1 * de2));
+
+    // compute 2d cartesian volume of corner
+    double cvolume = 0.5 * cross(xp2m0, xp3m1);
+    careap = cvolume;
+
+    // compute velocity divergence of corner
+
+    cdiv = (cross(up2m0, xp3m1) - cross(up3m1, xp2m0)) / (2.0 * cvolume);
+
+    // compute delta velocity
+    double dv1 = length2(up2m0 - up3m1);
+    double dv2 = length2(up2m0 + up3m1);
+    double du = sqrt(max(dv1, dv2));
+    cdu   = (cdiv < 0.0 ? du   : 0.);
+
+    // compute evolution factor
+    double2 dxx1 = 0.5 * (xp2m0 - xp3m1);
+    double2 dxx2 = 0.5 * (xp2m0 + xp3m1);
+    double dx1 = length(dxx1);
+    double dx2 = length(dxx2);
+
+    double test1 = abs(dot(dxx1, duav) * dx2);
+    double test2 = abs(dot(dxx2, duav) * dx1);
+    double num = (test1 > test2 ? dx1 : dx2);
+    double den = (test1 > test2 ? dx2 : dx1);
+    double r = num / den;
+    double evol = sqrt(4.0 * cvolume * r);
+    evol = min(evol, 2.0 * minelen);
+    cevol = (cdiv < 0.0 ? evol : 0.);
+
+}
+
+// Routine number [4]  in the full algorithm CS2DQforce(...)
+static __device__ void qcsSetQCnForce_opt(
+        const int s,
+        const int s3,
+        const int z,
+        const int p1,
+        const int p2,
+        const double2 pxpp0,
+        const double2 pxpp1,
+        const double2 pxpp2,
+        const double2 pup0,
+        const double2 pup1,
+        const double2 pup2,
+        const double zrp,
+        const double zss1,
+        double cdiv,
+        double cdu,
+        double cevol) {
+
+    const double gammap1 = qgamma + 1.0;
+
+    // [4.1] Compute the rmu (real Kurapatenko viscous scalar)
+    // Kurapatenko form of the viscosity
+    double ztmp2 = q2 * 0.25 * gammap1 * cdu;
+    double ztmp1 = q1 * zss1;
+    double zkur = ztmp2 + sqrt(ztmp2 * ztmp2 + ztmp1 * ztmp1);
+    // Compute rmu for each corner
+    double rmu = zkur * zrp * cevol;
+    rmu = (cdiv > 0. ? 0. : rmu);
+
+    // [4.2] Compute the cqe for each corner
+    const double elen1 = length(pxpp1 - pxpp0);
+    const double elen2 = length(pxpp2 - pxpp1);
+    // Compute: cqe(1,2,3)=edge 1, y component (2nd), 3rd corner
+    //          cqe(2,1,3)=edge 2, x component (1st)
+    cqe[2 * s]     = rmu * (pup1 - pup0) / elen1;
+    cqe[2 * s + 1] = rmu * (pup2 - pup1) / elen2;
+
+}
+// Routine number [6]  in the full algorithm
+static __device__ void qcsSetVelDiff_opt(
+        const int s,
+        const int s0,
+        const int p1,
+        const int p2,
+        const double2 pxpp1,
+        const double2 pxpp2,
+        const double2 pup1,
+        const double2 pup2,
+        const int z,
+        const double zss1,
+        int dss4[CHUNK_SIZE],
+        double ctemp[CHUNK_SIZE]) {
+
+    double2 du = pup2 - pup1;
+    double2 dx = pxpp2 - pxpp1;
+    double lenx = length(dx);
+    double dux = dot(du, dx);
+    dux = (lenx > 0. ? abs(dux) / lenx : 0.);
+
+    ctemp[s0] = dux;
+    __syncthreads();
+
+    double ztmp = ctemp[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        ztmp = max(ztmp, ctemp[sn]);
+    }
+    __syncthreads();
+
+    zdu[z] = q1 * zss1 + 2. * q2 * ztmp;
+}
+
+// Routine number [5]  in the full algorithm CS2DQforce(...)
+static __device__ void qcsSetForce_opt(
+        const int s,
+        const int s0,
+        const int s4,
+        const int s04,
+        const int p1,
+        const int p2,
+        const double2 pxpp1,
+        const double2 pxpp2,
+        double careap,
+        double2& sfq,
+        double sh_ccos[CHUNK_SIZE]) {
+
+    // [5.1] Preparation of extra variables
+    double csin2 = 1. - sh_ccos[s0] * sh_ccos[s0];
+    cw[s]   = ((csin2 < 1.e-4) ? 0. : careap / csin2);
+    sh_ccos[s0] = ((csin2 < 1.e-4) ? 0. : sh_ccos[s0]);
+    __syncthreads();
+
+
+    // [5.2] Set-Up the forces on corners
+    const double2 x1 = pxpp1;
+    const double2 x2 = pxpp2;
+    // Edge length for c1, c2 contribution to s
+    double elen = length(x1 - x2);
+    sfq = (cw[s] * (cqe[2*s+1] + sh_ccos[s0] * cqe[2*s]) +
+           cw[s4] * (cqe[2*s4] + sh_ccos[s04] * cqe[2*s4+1]))
+            / elen;
+}
+
+__global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
+{
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss3[CHUNK_SIZE];
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    __shared__ double ctemp1[CHUNK_SIZE];
+
+    dss4[s0] = s04 - s0;
+    dss3[s04] = s0 - s04;
+
+    __syncthreads();
+
+    const int s3 = s + dss3[s0];
+
+    // save off zone variable values from previous cycle
+    zvol0[z] = zvol[z];
+
+    double2 zxp1 = {0., 0.};
+//  combined functions calcZoneCtrs, calcSideVols into 1 function
+//  Replaced zxp array with scaler value
+    double zareap1, zvolp1, sareap1;
+
+
+    const double2 pxp_p1 = pxp[p1];
+    const double2 pxp_p2 = pxp[p2];
+
+    calcZoneCtrs_SideVols_ZoneVols(s,s0,pxp_p1, pxp_p2, zxp1, sareap1,zareap1, zvolp1,dss4,ctemp2, ctemp, ctemp1, numsbad_pinned);
+    double2 ssurf = rotateCCW(0.5 * (pxp_p1 + pxp_p2) - zxp1);
+    meshCalcCharLen_opt(s, s0, s3, z, pxp_p1, pxp_p2, znump, zxp1, zdl, dss4, ctemp);
+
+   //zareap, zvolp arrays are replaced with scaler values
+
+    // 2. compute corner masses
+    double zmz = zm[z];
+    double zpz = zp[z];
+    double zssz = zss[z];
+    double zrp1 = zmz / zvolp1;
+    cmaswt[s] = zrp1 * zareap1 * 0.5 * (smf[s] + smf[s3]);
+
+    // 3. compute material state (half-advanced)
+    // call this routine from only one thread per zone
+    //if (s3 > s) 
+    pgasCalcStateAtHalf_opt(z, zr, zvolp1, zvol0, ze, zwrate, zmz, dt, zpz, zssz);
+    __syncthreads();
+
+    // 4. compute forces
+// removed arrays sfp, sft, sfq, careap, cdiv, cdu, cevol, zdu with scaler values
+
+    double2 sfp = {0., 0.};
+    pgasCalcForce_opt(s, z, zpz, ssurf, sfp);
+    double2 sft = {0., 0.};
+    ttsCalcForce_opt(s, z, zareap1, zrp1, zssz, sareap1, smf, ssurf, sft);
+
+
+    double careap = 0.;
+    double cdiv = 0.;
+    double cdu = 0.;
+    double cevol = 0;
+
+
+   double2 sfq = { 0., 0. };
+
+   const int p0 = mapsp1[s3];
+   double2 pxp_p0 = pxp[p0];
+   double2 pup0 = pu[p0];
+   double2 pup1 = pu[p1];
+   double2 pup2 = pu[p2];
+   qcsSetCornerDiv_opt(s, s0, s3, z, p1, p2, pxp_p0, pxp_p1, pxp_p2, pup0, pup1,pup2, zxp1, careap, cdiv, cdu, cevol, dss4, ctemp2,ctemp);
+   qcsSetQCnForce_opt(s, s3, z, p1, p2,pxp_p0, pxp_p1, pxp_p2, pup0, pup1,pup2, zrp1, zssz, cdiv,cdu,cevol);
+   qcsSetForce_opt(s, s0, s4, s04,p1, p2, pxp_p1, pxp_p2, careap, sfq,ctemp);
+
+
+   sfpq[s] = sfp + sfq;
+    ctemp2[s0] = sfp + sft + sfq;
+    __syncthreads();
+    cftot[s] = ctemp2[s0] - ctemp2[s0 + dss3[s0]];
+    qcsSetVelDiff_opt(s, s0, p1, p2, pxp_p1, pxp_p2, pup1,pup2, z, zssz,dss4,ctemp);
+    zp[z] = zpz;
+    zss[z] = zssz;
+
+}
+
 
 __global__ void gpuMain2(int* numsbad_pinned, double dt)
 {
@@ -1307,9 +1729,6 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
 
-    const auto pxp1 = pxp[p1];
-    const auto pxp2 = pxp[p2];
-    
     __syncthreads();
 
     const int s3 = s + dss3[s0];
@@ -1341,7 +1760,7 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, pxp1, pxp2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
 __global__ void gpuMain2a(int* numsbad_pinned, double dt)
@@ -1414,9 +1833,9 @@ __global__ void gpuMain2b(double dt)
 
     __syncthreads();
 
-    const auto pxp1 = pxp[p1];
-    const auto pxp2 = pxp[p2];
-    const auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
+    auto pxp1 = pxp[p1];
+    auto pxp2 = pxp[p2];
+    auto ssurf = rotateCCW(0.5 * (pxp1 + pxp2) - zxp[z]);
     
     const int s3 = s + dss3[s0];
 
@@ -1425,7 +1844,7 @@ __global__ void gpuMain2b(double dt)
     pgasCalcForce(s, z, zp, ssurf, sfp);
     double2 sft = { 0., 0.};
     ttsCalcForce(s, z, zareap, zrp, zss, sareap, smf, ssurf, sft);
-    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, pxp1, pxp2, dss3, dss4, ctemp, ctemp2, sft, sfp);
+    qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 }
 
 
@@ -1554,7 +1973,50 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
     advPosFull(p, pu0, pap, dt, px, pu);
 }
 
+static __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
+        const int s,
+        const int s0,
+        const int z,
+        const double2 px1,
+        const double2 px2,
+       double* __restrict__ zarea,
+    double* __restrict__ zvol,
+    int dss4[CHUNK_SIZE],
+        double2 ctemp2[CHUNK_SIZE],
+        double ctemp[CHUNK_SIZE],
+        double ctemp1[CHUNK_SIZE],
+        int* __restrict__ numsbad_pinned)
+{
+            ctemp2[s0] = px1;
+    __syncthreads();
 
+    double2 zxtot = ctemp2[s0];
+    double zct = 1.;
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zxtot += ctemp2[sn];
+        zct += 1.;
+    }
+    double2 zx = zxtot / zct;
+
+    const double third = 1. / 3.;
+    double sa = 0.5 * cross(px2 - px1,  zx - px1);
+    double sv = third * sa * (px1.x + px2.x + zx.x);
+    if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
+  __syncthreads();
+
+    ctemp[s0] = sv;
+    ctemp1[s0] = sa;
+    __syncthreads();
+    double zvtot = ctemp[s0];
+    double zatot = ctemp1[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+        zvtot += ctemp[sn];
+        zatot += ctemp1[sn];
+    }
+
+    zarea[z] = zatot;
+    zvol[z] = zvtot;
+}
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
@@ -1572,6 +2034,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
     __shared__ int dss3[CHUNK_SIZE];
     __shared__ int dss4[CHUNK_SIZE];
     __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double ctemp1[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
     
     dss4[s0] = s04 - s0;
@@ -1582,9 +2045,13 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
     const int s3 = s + dss3[s0];
 
     // 6a. compute new mesh geometry
-    calcZoneCtrs(s, s0, z, p1, px, zx, dss4, ctemp2);
-    calcSideVols(s, z, p1, p2, px, zx, sarea, svol, numsbad_pinned);
-    calcZoneVols(s, s0, z, sarea, svol, zarea, zvol);
+//    calcZoneCtrs(s, s0, z, p1, px, zx, dss4, ctemp2);
+//    calcSideVols(s, z, p1, p2, px, zx, sarea, svol, numsbad_pinned);
+//    calcZoneVols(s, s0, z, sarea, svol, zarea, zvol);
+
+    const double2 px_p1 = px[p1];
+    const double2 px_p2 = px[p2];
+    calcZoneCtrs_SideVols_ZoneVols_main4(s,s0,z, px_p1,px_p2, zarea, zvol,dss4, ctemp2, ctemp, ctemp1, numsbad_pinned);
 
     // 7. compute work
     hydroCalcWork(s, s0, s3, z, p1, p2, sfpq, pu0, pu, pxp, dt,
@@ -1609,11 +2076,22 @@ __global__ void gpuMain5(double_int* dtnext, double dt)
     __shared__ double2 ctemp2[CHUNK_SIZE];
 
     // 7. compute work
-    hydroCalcWorkRate(z, zvol0, zvol, zw, zp, dt, zwrate);
+//    hydroCalcWorkRate(z, zvol0, zvol, zw, zp, dt, zwrate);
 
     // 8. update state variables
-    hydroCalcEnergy(z, zetot, zm, ze);
-    hydroCalcRho(z, zm, zvol, zr);
+//    hydroCalcEnergy(z, zetot, zm, ze);
+//    hydroCalcRho(z, zm, zvol, zr);
+
+    double dvol = zvol[z] - zvol0[z];
+    zwrate[z] = (zw[z] + zp[z] * dvol) / dt;
+
+    // 8. update state variables
+    const double fuzz = 1.e-99;
+    ze[z] = zetot[z] / (zm[z] + fuzz);
+    zr[z] = zm[z] / zvol[z];
+ 
+
+
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
@@ -2141,13 +2619,13 @@ void hydroDoCycle(
     }
 
     {
-      // DEVICE_TIMER("Kernels", "gpuMain2", 0);
-      // hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+       DEVICE_TIMER("Kernels", "gpuMain2_opt", 0);
+       hipLaunchKernelGGL((gpuMain2_opt), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
-      DEVICE_TIMER("Kernels", "gpuMain2a", 0);
-      hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+//      DEVICE_TIMER("Kernels", "gpuMain2a", 0);
+//      hipLaunchKernelGGL((gpuMain2a), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
 
     {
@@ -2156,8 +2634,8 @@ void hydroDoCycle(
     }
 
     {
-      DEVICE_TIMER("Kernels", "gpuMain2b", 0);
-      hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0, dt);
+//      DEVICE_TIMER("Kernels", "gpuMain2b", 0);
+//      hipLaunchKernelGGL((gpuMain2b), dim3(gridSizeS), dim3(chunkSize), 0, 0, dt);
     }
 
     {
