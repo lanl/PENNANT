@@ -49,7 +49,7 @@ __constant__ int* mapprxp;
 __constant__ int* mapslvp;
 #endif
 
-__device__ __constant__ int nump;
+__constant__ int nump;
 __constant__ int numz;
 __constant__ int nums;
 __constant__ double pgamma, pssmin;
@@ -1282,7 +1282,7 @@ __global__ void gpuMain2a_zb(int* numsbad_pinned, double dt){
   }
 }
 
-static __device__ void calcZoneCtrs_SideVols_ZoneVols(
+__device__ void calcZoneCtrs_SideVols_ZoneVols(
         const int s,
         const int s0,
         const double2 pxp1,
@@ -1329,7 +1329,7 @@ static __device__ void calcZoneCtrs_SideVols_ZoneVols(
     zvol = zvtot;
 }
 
-static __device__ void meshCalcCharLen_opt(
+__device__ void meshCalcCharLen_opt(
         const int s,
         const int s0,
         const int s3,
@@ -1356,7 +1356,7 @@ static __device__ void meshCalcCharLen_opt(
     zdl[z] = sdlmin;
 }
 
-static __device__ void pgasCalcForce_opt(
+__device__ void pgasCalcForce_opt(
         const int s,
         const int z,
         const double zp,
@@ -1364,7 +1364,7 @@ static __device__ void pgasCalcForce_opt(
         double2& __restrict__ sf) {
     sf = -zp * ssurf;
 }
-static __device__ void pgasCalcStateAtHalf_opt(
+__device__ void pgasCalcStateAtHalf_opt(
     const int z,
     const double* __restrict__ zr0,
     const double zvolp,
@@ -1398,7 +1398,7 @@ static __device__ void pgasCalcStateAtHalf_opt(
 }
 
 //replace zss, zr, zarea,sf arrays with scaler
-static __device__ void ttsCalcForce_opt(
+__device__ void ttsCalcForce_opt(
         const int s,
         const int z,
         const double zarea,
@@ -1416,7 +1416,9 @@ static __device__ void ttsCalcForce_opt(
     double sdp = sstmp * (srho - zr);
     sf = -sdp * ssurf;
 }
-static __device__ void qcsSetCornerDiv_opt(
+
+
+__device__ void qcsSetCornerDiv_opt(
         const int s,
         const int s0,
         const int s3,
@@ -1509,7 +1511,7 @@ static __device__ void qcsSetCornerDiv_opt(
 }
 
 // Routine number [4]  in the full algorithm CS2DQforce(...)
-static __device__ void qcsSetQCnForce_opt(
+__device__ void qcsSetQCnForce_opt(
         const int s,
         const int s3,
         const int z,
@@ -1548,7 +1550,7 @@ static __device__ void qcsSetQCnForce_opt(
 
 }
 // Routine number [6]  in the full algorithm
-static __device__ void qcsSetVelDiff_opt(
+__device__ void qcsSetVelDiff_opt(
         const int s,
         const int s0,
         const int p1,
@@ -1581,7 +1583,7 @@ static __device__ void qcsSetVelDiff_opt(
 }
 
 // Routine number [5]  in the full algorithm CS2DQforce(...)
-static __device__ void qcsSetForce_opt(
+__device__ void qcsSetForce_opt(
         const int s,
         const int s0,
         const int s4,
@@ -1976,7 +1978,7 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
     advPosFull(p, pu0, pap, dt, px, pu);
 }
 
-static __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
+__device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
         const int s,
         const int s0,
         const int z,
