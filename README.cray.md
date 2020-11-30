@@ -5,7 +5,6 @@
 ```
 git clone -b cray username@redwood.cray.com:/home/groups/amd_and_hpe/pennant-hip.git
 cd pennant-hip
-git clone username@redwood.cray.com:/home/groups/amd_and_hpe/timers.git
 source setenv.sh
 srun make -f Makefile.hip -j
 ```
