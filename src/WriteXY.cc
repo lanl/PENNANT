@@ -38,11 +38,11 @@ void WriteXY::write(
 
     int gnumz = numz;
     Parallel::globalSum(gnumz);
-    gnumz = (mype == 0 ? gnumz : 0);
-    vector<int> penumz(mype == 0 ? numpe : 0);
+    gnumz = (mype == 0 ? gnumz : 1);
+    vector<int> penumz((mype == 0 ? numpe : 1), 0);
     Parallel::gather(numz, &penumz[0]);
 
-    vector<double> gzr(gnumz), gze(gnumz), gzp(gnumz);
+    vector<double> gzr(gnumz, 0), gze(gnumz, 0), gzp(gnumz, 0);
     Parallel::gatherv(&zr[0], numz, &gzr[0], &penumz[0]);
     Parallel::gatherv(&ze[0], numz, &gze[0], &penumz[0]);
     Parallel::gatherv(&zp[0], numz, &gzp[0], &penumz[0]);

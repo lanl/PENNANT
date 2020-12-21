@@ -133,7 +133,7 @@ void gathervImpl(
 #ifdef USE_MPI
     const int type_size = sizeof(T);
     int sendcount = type_size * numx;
-    std::vector<int> recvcount, disp;
+    std::vector<int> recvcount(1, 0), disp(1, 0);
     if (mype == 0) {
         recvcount.resize(numpe);
         for (int pe = 0; pe < numpe; ++pe) {
