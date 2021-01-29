@@ -2792,13 +2792,17 @@ void hydroInitMPI(const int nummstrpeH,
 void hydroInitGPU()
 {
 #ifdef USE_MPI
+  using Parallel::mype;
+#else
+  constexpr int mype = 1;
+#endif
+  
   // TODO: consider letting slurm handle the pe to device mapping
   int nDevices;
   hipGetDeviceCount(&nDevices);
-  using Parallel::mype;
+  if(not (nDevices > 0)){ throw std::runtime_error("Pennant does not see any GPU devices."); }
   int device_num = mype % nDevices;
   hipSetDevice(device_num);
-#endif
 }
 
 
