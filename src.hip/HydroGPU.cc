@@ -923,6 +923,7 @@ __device__ void pgasCalcStateAtHalf(
 }
 
 
+__launch_bounds__(64)
 __global__ void gpuInvMap(
         const int* mapspkey,
         const int* mapspval,
@@ -1169,6 +1170,7 @@ __device__ void hydroCalcDt(
 }
 
 
+__launch_bounds__(64)
 __global__ void calcCornersPerPoint(int* corners_per_point)
 {
   const int p = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1194,6 +1196,7 @@ __device__ void quadratic_sort(int* array, int first, int last){
 }
 
 
+__launch_bounds__(64)
 __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_point,
 				    int* corners_per_point, int2* first_corner_and_corner_count)
 {
@@ -1212,6 +1215,7 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 }
 
 
+__launch_bounds__(64)
 __global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1230,6 +1234,7 @@ __global__ void gpuMain1(double dt)
 }
 
 
+__launch_bounds__(64)
 __global__ void gpuMain2a_zb(int* numsbad_pinned, double dt){
   // iterate over the zones of the mesh
   constexpr int sides_per_zone = 4;
@@ -1613,8 +1618,10 @@ __device__ void qcsSetForce_opt(
             / elen;
 }
 
-#ifdef __HIP_ARCH_GFX908__
+#ifdef __gfx908__
 __launch_bounds__(64,4)
+#else
+__launch_bounds__(64)
 #endif
 __global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
 {
@@ -1712,6 +1719,7 @@ __global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
 }
 
 
+__launch_bounds__(64)
 __global__ void gpuMain2(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
@@ -1768,6 +1776,9 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     qcsCalcForce(s, s0, s3, s4, s04, z, p1, p2, dss3, dss4, ctemp, ctemp2, sft, sfp);
 
 }
+
+
+__launch_bounds__(64)
 __global__ void gpuMain2a(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
@@ -1814,6 +1825,8 @@ __global__ void gpuMain2a(int* numsbad_pinned, double dt)
             zm, dt, zp, zss);
 }
 
+
+__launch_bounds__(64)
 __global__ void gpuMain2b(double dt)
 {
     const int s0 = threadIdx.x;
@@ -1854,6 +1867,7 @@ __global__ void gpuMain2b(double dt)
 
 
 template<int sides_per_zone>
+__launch_bounds__(64)
 __global__ void gpuMain2b_fixed_zone_size(double dt)
 {
   constexpr int zone_offset = 0; // first of 4-sided zones
@@ -1944,6 +1958,7 @@ __device__ void localReduceToPoints(const int p,
 
 
 #ifdef USE_MPI
+__launch_bounds__(64)
 __global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1954,6 +1969,7 @@ __global__ void localReduceToPoints()
 }
 #endif
 
+__launch_bounds__(64)
 __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -2022,6 +2038,8 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
     zarea[z] = zatot;
     zvol[z] = zvtot;
 }
+
+__launch_bounds__(64)
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
@@ -2069,6 +2087,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 }
 
 
+__launch_bounds__(64)
 __global__ void gpuMain5(double_int* dtnext, double dt)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -2459,6 +2478,7 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
+__launch_bounds__(256)
 __global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2484,7 +2504,7 @@ void copySlavePointDataToMPIBuffers(){
 #endif
 }
 
-
+__launch_bounds__(256)
 __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2508,7 +2528,7 @@ void copyMPIBuffersToSlavePointData(){
   }
 }
 
-
+__launch_bounds__(256)
 __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
 					   double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
@@ -2520,7 +2540,7 @@ __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
   atomicAdd(&pf[point].y, pf_proxy_buffer_D[proxy].y);
 }
 
-
+__launch_bounds__(256)
 __global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
 					 double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
