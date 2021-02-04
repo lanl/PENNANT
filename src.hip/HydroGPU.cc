@@ -923,7 +923,7 @@ __device__ void pgasCalcStateAtHalf(
 }
 
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void gpuInvMap(
         const int* mapspkey,
         const int* mapspval,
@@ -1170,7 +1170,7 @@ __device__ void hydroCalcDt(
 }
 
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void calcCornersPerPoint(int* corners_per_point)
 {
   const int p = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1196,7 +1196,7 @@ __device__ void quadratic_sort(int* array, int first, int last){
 }
 
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_point,
 				    int* corners_per_point, int2* first_corner_and_corner_count)
 {
@@ -1215,7 +1215,7 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 }
 
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1962,7 +1962,7 @@ __device__ void localReduceToPoints(const int p,
 
 
 #ifdef USE_MPI
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1973,7 +1973,7 @@ __global__ void localReduceToPoints()
 }
 #endif
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -2043,7 +2043,7 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
     zvol[z] = zvtot;
 }
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
@@ -2091,7 +2091,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 }
 
 
-__launch_bounds__(64)
+__launch_bounds__(256)
 __global__ void gpuMain5(double_int* dtnext, double dt)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
