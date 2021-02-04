@@ -1618,7 +1618,11 @@ __device__ void qcsSetForce_opt(
             / elen;
 }
 
-#ifdef __gfx908__
+// For older ROCm compilers, __HIP_ARCH_GFX908__ is defined for MI100.
+// Newer ROCm compilers change this to __gfx908__.
+// Using the second launch bound parameter forces spilling to the AccVGPRs,
+// which is unique to MI100
+#if defined(__gfx908__) or defined(__HIP_ARCH_GFX908__)
 __launch_bounds__(64,4)
 #else
 __launch_bounds__(64)
