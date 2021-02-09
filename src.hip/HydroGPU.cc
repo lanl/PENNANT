@@ -116,6 +116,7 @@ struct double_int {
 };
   
 double_int *dtnext_D, *dtnext_H;
+int* remaining_wg_D;
 
 #ifdef USE_MPI
 int nummstrpeD, numslvpeD;
@@ -1119,7 +1120,9 @@ __device__ void hydroFindMinDt(
         const int idtz,
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
-	double_int* dtnext) {
+	double_int* dtnext,
+	double_int* dtnext_H,
+	int* remaining_wg) {
 
     int* ctempi = (int*) ctemp2;
 
@@ -1144,6 +1147,17 @@ __device__ void hydroFindMinDt(
         // a debugging aid, I'm not going to worry about it.
         if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
     }
+    if(threadIdx.x == 0){
+      int old = atomicSub(remaining_wg, 1);
+      bool this_wg_is_last = (old == 1);
+      if(this_wg_is_last){
+	// force reloading of dtnext->d from L2 into register
+	atomicMin(&(dtnext->d), ctemp[0]);
+	// write values to pinned host memory
+	dtnext_H->d = dtnext->d;
+	dtnext_H->i = dtnext->i;
+      }
+    }
 }
 
 
@@ -1159,13 +1173,15 @@ __device__ void hydroCalcDt(
         const double dtlast,
 	double ctemp[CHUNK_SIZE],
 	double2 ctemp2[CHUNK_SIZE],
-	double_int* dtnext) {
+	double_int* dtnext,
+	double_int* dtnext_H,
+	int* remaining_wg) {
 
     double dtz;
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
     hydroCalcDtVolume(z, zvol, zvol0, dtlast, dtz, idtz);
-    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext);
+    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext, dtnext_H, remaining_wg);
 
 }
 
@@ -2044,7 +2060,8 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
 }
 
 __launch_bounds__(256)
-__global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
+__global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
+			 int* remaining_wg, int gpuMain5_gridsize)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -2084,15 +2101,16 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
     hydroCalcWork(s, s0, s3, z, p1, p2, sfpq, pu0, pu, pxp, dt,
 		  zw, zetot, dss4, ctemp);
 
-    // reset dtnext prior to finding the minimum over all sides in the next kernel
+    // reset dtnext and remaining_wg prior to finding the minimum over all sides in the next kernel
     if(blockIdx.x == 0 and threadIdx.x == 0){
       dtnext->d = 1.e99;
+      *remaining_wg = gpuMain5_gridsize;
     }
 }
 
 
 __launch_bounds__(256)
-__global__ void gpuMain5(double_int* dtnext, double dt)
+__global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, int* remaining_wg)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (z >= numz) return;
@@ -2123,7 +2141,7 @@ __global__ void gpuMain5(double_int* dtnext, double dt)
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
-		ctemp, ctemp2, dtnext);
+		ctemp, ctemp2, dtnext, dtnext_H, remaining_wg);
 
 }
 
@@ -2264,6 +2282,7 @@ void hydroInit(
     *numsbad_pinned = 0;
     CHKERR(hipHostMalloc(&dtnext_H, sizeof(double_int),hipHostMallocNonCoherent));
     CHKERR(hipMalloc(&dtnext_D, sizeof(double_int)));
+    CHKERR(hipMalloc(&remaining_wg_D, sizeof(int)));
 
     CHKERR(hipMalloc(&schsfirstD, numschH*sizeof(int)));
     CHKERR(hipMalloc(&schslastD, numschH*sizeof(int)));
@@ -2699,12 +2718,14 @@ void hydroDoCycle(
 
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);
-      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt);
+      hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt,
+			 remaining_wg_D, gridSizeZ);
     }
     
     {
       DEVICE_TIMER("Kernels", "gpuMain5", 0);
-      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt);
+      hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt,
+			 dtnext_H, remaining_wg_D);
     }
 
     {
@@ -2713,8 +2734,8 @@ void hydroDoCycle(
     }
 
     {
-      HOST_TIMER("Other", "hipMemcpy H2D");
-      CHKERR(hipMemcpy(dtnext_H, dtnext_D, sizeof(double_int), hipMemcpyDeviceToHost));
+      HOST_TIMER("Other", "copy dtnext values");
+      hipDeviceSynchronize();
       dtnextH = dtnext_H->d;
       idtnextH = dtnext_H->i;
     }
