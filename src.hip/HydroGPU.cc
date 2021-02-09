@@ -150,6 +150,8 @@ double2 *pf_proxy_buffer_H, *pf_slave_buffer_H;         // we can't do MPI trans
 std::unique_ptr<Pajama> jit;
 #endif
 
+hipEvent_t mainLoopEvent;
+
 int checkCudaError(const hipError_t err, const char* cmd)
 {
     if(err) {
@@ -2498,6 +2500,7 @@ void hydroInit(
     jit->load_kernel("gpuMain1_jit");
     jit->load_kernel("gpuMain2_jit");
 #endif // USE_JIT
+    hipEventCreate(&mainLoopEvent);
 }
 
 #ifdef USE_MPI
@@ -2735,7 +2738,8 @@ void hydroDoCycle(
 
     {
       HOST_TIMER("Other", "copy dtnext values");
-      hipDeviceSynchronize();
+      hipEventRecord(mainLoopEvent, 0);
+      hipEventSynchronize(mainLoopEvent);
       dtnextH = dtnext_H->d;
       idtnextH = dtnext_H->i;
     }
