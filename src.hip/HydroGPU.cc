@@ -94,6 +94,7 @@ __constant__ double* cw;
 
 int numschH, numpchH, numzchH;
 int* numsbad_pinned;
+int* pinned_control_flag;
 int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
 int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
@@ -1124,7 +1125,8 @@ __device__ void hydroFindMinDt(
 	double2 ctemp2[CHUNK_SIZE],
 	double_int* dtnext,
 	double_int* dtnext_H,
-	int* remaining_wg) {
+	int* remaining_wg,
+	int* pinned_control_flag) {
 
     int* ctempi = (int*) ctemp2;
 
@@ -1158,6 +1160,8 @@ __device__ void hydroFindMinDt(
 	// write values to pinned host memory
 	dtnext_H->d = dtnext->d;
 	dtnext_H->i = dtnext->i;
+	int one = 1;
+	__atomic_store(pinned_control_flag, &one, __ATOMIC_RELEASE);
       }
     }
 }
@@ -1177,13 +1181,14 @@ __device__ void hydroCalcDt(
 	double2 ctemp2[CHUNK_SIZE],
 	double_int* dtnext,
 	double_int* dtnext_H,
-	int* remaining_wg) {
+	int* remaining_wg,
+	int* pinned_control_flag) {
 
     double dtz;
     int idtz;
     hydroCalcDtCourant(z, zdu, zss, zdl, dtz, idtz);
     hydroCalcDtVolume(z, zvol, zvol0, dtlast, dtz, idtz);
-    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext, dtnext_H, remaining_wg);
+    hydroFindMinDt(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext, dtnext_H, remaining_wg, pinned_control_flag);
 
 }
 
@@ -2112,7 +2117,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
 
 
 __launch_bounds__(256)
-__global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, int* remaining_wg)
+__global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, int* remaining_wg, int* pinned_control_flag)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (z >= numz) return;
@@ -2143,7 +2148,7 @@ __global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, in
 
     // 9.  compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
-		ctemp, ctemp2, dtnext, dtnext_H, remaining_wg);
+		ctemp, ctemp2, dtnext, dtnext_H, remaining_wg, pinned_control_flag);
 
 }
 
@@ -2282,7 +2287,8 @@ void hydroInit(
     
     CHKERR(hipHostMalloc(&numsbad_pinned, sizeof(int),hipHostMallocCoherent));
     *numsbad_pinned = 0;
-    CHKERR(hipHostMalloc(&dtnext_H, sizeof(double_int),hipHostMallocNonCoherent));
+    CHKERR(hipHostMalloc(&pinned_control_flag, sizeof(int),hipHostMallocCoherent));
+    CHKERR(hipHostMalloc(&dtnext_H, sizeof(double_int),hipHostMallocCoherent));
     CHKERR(hipMalloc(&dtnext_D, sizeof(double_int)));
     CHKERR(hipMalloc(&remaining_wg_D, sizeof(int)));
 
@@ -2724,11 +2730,12 @@ void hydroDoCycle(
       hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt,
 			 remaining_wg_D, gridSizeZ);
     }
-    
+
+    *pinned_control_flag = 0;
     {
       DEVICE_TIMER("Kernels", "gpuMain5", 0);
       hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt,
-			 dtnext_H, remaining_wg_D);
+			 dtnext_H, remaining_wg_D, pinned_control_flag);
     }
 
     {
@@ -2738,8 +2745,7 @@ void hydroDoCycle(
 
     {
       HOST_TIMER("Other", "copy dtnext values");
-      hipEventRecord(mainLoopEvent, 0);
-      hipEventSynchronize(mainLoopEvent);
+      for(int flag = 0; flag == 0; __atomic_load(pinned_control_flag, &flag, __ATOMIC_ACQUIRE)); // spin on flag
       dtnextH = dtnext_H->d;
       idtnextH = dtnext_H->i;
     }
