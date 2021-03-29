@@ -27,5 +27,16 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
 		     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
 		     double* pmaswt_proxy_buffer, double2* pf_proxy_buffer,
 		     double* pmaswt_slave_buffer, double2* pf_slave_buffer);
+
+void parallelGather_test(const int numslvpe, const int nummstrpe,
+                    const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
+                    const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1,
+                    double* pmaswt_pf_proxy_buffer, double* pmaswt_pf_slave_buffer);
+
+void parallelScatter_test(const int numslvpe, const int nummstrpe,
+                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
+                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
+                     double* pmaswt_pf_proxy_buffer, double* pmaswt_pf_slave_buffer);
+
 #endif // USE_MPI
 #endif // HYDROMPI_H_
