@@ -2849,7 +2849,7 @@ void hydroInitGPU()
 #ifdef USE_MPI
   using Parallel::mype;
 #else
-  constexpr int mype = 1;
+  constexpr int mype = 0;
 #endif
   
   // TODO: consider letting slurm handle the pe to device mapping
