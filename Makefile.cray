@@ -18,7 +18,7 @@ BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include 
 CPPFLAGS += -I$(MPI_HOME)/include
-CPPFLAGS += -DUSE_MPI
+CPPFLAGS += -DUSE_MPI -D__HIP_ARCH_GFX908__ #-DUSE_GPU_AWARE_MPI
 CPPFLAGS += -Wno-unused-command-line-argument
 CPPFLAGS += -amdgpu-target=gfx908
 
@@ -65,7 +65,7 @@ endif
 LD := $(CXX)
 LDFLAGS := -Wno-unused-command-line-argument
 LDFLAGS += -amdgpu-target=gfx908
-LDFLAGS += -L$(MPI_HOME)/lib -lmpi
+LDFLAGS += -L$(MPI_HOME)/lib -lmpi -L${MPI_HOME}/../GTL/lib -lmpi_gtl_hsa  -L${ROCM_PATH}/lib -lhsa-runtime64
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS) -g
