@@ -176,7 +176,7 @@ int checkCudaError(const hipError_t err, const char* cmd)
 
 
 
-
+__launch_bounds__(256)
 __global__ void gpuInvMap(
         const int* mapspkey,
         const int* mapspval,
@@ -410,6 +410,7 @@ __device__ void hydroCalcDt(
 }
 
 
+__launch_bounds__(256)
 __global__ void calcCornersPerPoint(int* corners_per_point)
 {
   const int p = blockIdx.x * blockDim.x + threadIdx.x;
@@ -435,6 +436,7 @@ __device__ void quadratic_sort(int* array, int first, int last){
 }
 
 
+__launch_bounds__(256)
 __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_point,
 				    int* corners_per_point, int2* first_corner_and_corner_count)
 {
@@ -453,6 +455,7 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 }
 
 
+__launch_bounds__(256)
 __global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -752,8 +755,14 @@ __device__ void qcsSetVelDiff(
     zdu[z] = q1 * zss1 + 2. * q2 * ztmp;
 }
 
-#ifdef __HIP_ARCH_GFX908__
+// For older ROCm compilers, __HIP_ARCH_GFX908__ is defined for MI100.
+// Newer ROCm compilers change this to __gfx908__.
+// Using the second launch bound parameter forces spilling to the AccVGPRs,
+// which is unique to MI100
+#if defined(__gfx908__) or defined(__HIP_ARCH_GFX908__)
 __launch_bounds__(64,4)
+#else
+__launch_bounds__(64)
 #endif
 __global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
 {
@@ -888,6 +897,7 @@ __device__ void localReduceToPoints(const int p,
 
 
 #ifdef USE_MPI
+__launch_bounds__(256)
 __global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -898,6 +908,7 @@ __global__ void localReduceToPoints()
 }
 #endif
 
+__launch_bounds__(256)
 __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -978,8 +989,14 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
     //zvol[z] = zvtot;
     zvol_1 = zvtot;
 }
-#ifdef __HIP_ARCH_GFX908__
+// For older ROCm compilers, __HIP_ARCH_GFX908__ is defined for MI100.
+// Newer ROCm compilers change this to __gfx908__.
+// Using the second launch bound parameter forces spilling to the AccVGPRs,
+// which is unique to MI100
+#if defined(__gfx908__) or defined(__HIP_ARCH_GFX908__)
 __launch_bounds__(64,4)
+#else
+__launch_bounds__(64)
 #endif
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 {
@@ -1031,6 +1048,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
 }
 
 
+__launch_bounds__(256)
 __global__ void gpuMain5(double_int* dtnext, double dt)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1391,6 +1409,7 @@ void hydroInit(
 }
 
 #ifdef USE_MPI
+__launch_bounds__(256)
 __global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1400,6 +1419,7 @@ __global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffe
   pf_slave_buffer_D[slave] = pf[point];
 }
 
+__launch_bounds__(256)
 __global__ void copySlavePointDataToMPIBuffers_kernel_test(double* pmaswt_pf_slave_buffer_D){
 
    int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1436,6 +1456,7 @@ void copySlavePointDataToMPIBuffers(){
 }
 
 
+__launch_bounds__(256)
 __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffer_D,
 						      double2* pf_slave_buffer_D){
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1445,6 +1466,7 @@ __global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffe
   pf[point] = pf_slave_buffer_D[slave];
 }
 
+__launch_bounds__(256)
 __global__ void copyMPIBuffersToSlavePointData_kernel_test(double* pmaswt_pf_slave_buffer_D){
 
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1479,6 +1501,7 @@ void copyMPIBuffersToSlavePointData(){
 }
 
 
+__launch_bounds__(256)
 __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
 					   double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1490,6 +1513,7 @@ __global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
   atomicAdd(&pf[point].y, pf_proxy_buffer_D[proxy].y);
 }
 
+__launch_bounds__(256)
 __global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
 
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1504,6 +1528,7 @@ __global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
 
 
 
+__launch_bounds__(256)
 __global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
 					 double2* pf_proxy_buffer_D){
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1515,6 +1540,7 @@ __global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
 }
 
 
+__launch_bounds__(256)
 __global__ void copyPointValuesToProxies_test(double* pmaswt_pf_proxy_buffer_D){
 
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
