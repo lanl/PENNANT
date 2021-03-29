@@ -649,7 +649,6 @@ __device__ void qcsSetCornerDiv(
     const double minelen = 2.0 * min(de1, de2);
 
     // compute 2d cartesian volume of corner
-    const double cvolume = 0.5 * cross(xp2m0, xp3m1);
     const double careap = 0.5 * cross(xp2m0, xp3m1);
 
     // compute velocity divergence of corner
@@ -1006,8 +1005,6 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt)
     dss3[s04] = s0 - s04;
 
     __syncthreads();
-
-    const int s3 = s + dss3[s0];
 
     // 6a. compute new mesh geometry
 
