@@ -1888,7 +1888,6 @@ void hydroInitGPU()
   // TODO: consider letting slurm handle the pe to device mapping
   int nDevices;
   hipGetDeviceCount(&nDevices);
-  using Parallel::mype;
   int device_num = mype % nDevices;
   hipSetDevice(device_num);
 }
