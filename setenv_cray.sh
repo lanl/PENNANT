@@ -2,12 +2,8 @@ module load craype-x86-naples
 module load craype-network-infiniband       
 module load shared                          
 module load slurm                   
-module load gcc
-module load rocm/3.6.0
-#module use /home/users/twhite/share/modulefiles
-#module load ompi
-
-
+module load gcc/8.1.0
+module load rocm
 
 module unload cray-mvapich2
 module load cray-mvapich2_nogpu_gnu
