@@ -1,7 +1,7 @@
 BUILDDIR := build_hip
 PRODUCT := pennant
 # uncomment the line below, or set MPI as an environment variable, to compile with MPI support
-# MPI := OpenMPI
+MPI := OpenMPI
 # uncomment the line below, or set an environment variable JIT to any value, to compile with JIT support
 # JIT = 1
 # uncomment the line below, or set an environment variable TIMERS to any value, to compile with Timers support
