@@ -65,7 +65,7 @@ endif
 LD := $(CXX)
 LDFLAGS := -Wno-unused-command-line-argument
 LDFLAGS += -amdgpu-target=gfx908
-LDFLAGS += -L$(MPI_HOME)/lib -lmpi -L${MPI_HOME}/../GTL/lib -lmpi_gtl_hsa  -L${ROCM_PATH}/lib -lhsa-runtime64
+LDFLAGS += -L$(MPI_HOME)/lib -lmpi -L${ROCM_PATH}/lib -lhsa-runtime64
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS) -g
