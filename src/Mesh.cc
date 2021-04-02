@@ -181,7 +181,7 @@ void Mesh::initEdges() {
 
         vector<int>& vpp = edgepp[p1];
         vector<int>& vpe = edgepe[p1];
-        int i = find(vpp.begin(), vpp.end(), p2) - vpp.begin();
+        size_t i = find(vpp.begin(), vpp.end(), p2) - vpp.begin();
         if (i == vpp.size()) {
             // (p, p2) isn't in the edge list - add it
             vpp.push_back(p2);
@@ -391,7 +391,7 @@ void Mesh::calcCtrs(
 
     int zfirst = mapsz[sfirst];
     int zlast = (slast < nums ? mapsz[slast] : numz);
-    fill(&zx[zfirst], &zx[zlast], double2(0., 0.));
+    fill(&zx[zfirst], &zx[zlast], make_double2(0., 0.));
 
     for (int s = sfirst; s < slast; ++s) {
         int p1 = mapsp1[s];

@@ -21,7 +21,7 @@
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
-#include <rocprim/rocprim.hpp>
+#include <thrust/scan.h>
 #include "scoped_timers.h"
 
 #ifdef USE_MPI
@@ -391,6 +391,7 @@ __device__ void hydroFindMinDt(
         // a debugging aid, I'm not going to worry about it.
         if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
     }
+#if !defined(__CUDACC__)
     if(threadIdx.x == 0){
       int old = atomicSub(remaining_wg, 1);
       bool this_wg_is_last = (old == 1);
@@ -404,6 +405,7 @@ __device__ void hydroFindMinDt(
 	__atomic_store(pinned_control_flag, &one, __ATOMIC_RELEASE);
       }
     }
+#endif
 }
 
 
@@ -478,7 +480,7 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 }
 
 
-__launch_bounds__(256)
+__launch_bounds__(64)
 __global__ void gpuMain1(double dt)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -530,7 +532,9 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols(
     const double third = 1. / 3.;
     sarea = 0.5 * cross(pxp2 - pxp1,  zx - pxp1);
     const double sv = third * sarea * (pxp1.x + pxp2.x + zx.x);
+#if !defined(__CUDACC__)
     if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
+#endif
 //    __syncthreads();
 
     ctemp[s0] = sv;
@@ -905,7 +909,14 @@ __device__ void localReduceToPoints(const int p,
     // load in batches of 4. Safe to do, even near the end of the array
     // 'corners_by_point', since it has been over-allocated sufficiently,
     // and we don't use the over-allocated values.
+#if !defined(__CUDACC__)
     corners4.i4 = * (int4*)(corners_by_point + c);
+#else
+    corners4.a[0] = corners_by_point[c + 0];
+    corners4.a[1] = corners_by_point[c + 1];
+    corners4.a[2] = corners_by_point[c + 2];
+    corners4.a[3] = corners_by_point[c + 3];
+#endif
     int inner_count = min(count, 4);
     for(int i = 0; i != inner_count; ++i){
       int s = corners4.a[i];
@@ -920,7 +931,7 @@ __device__ void localReduceToPoints(const int p,
 
 
 #ifdef USE_MPI
-__launch_bounds__(256)
+__launch_bounds__(64)
 __global__ void localReduceToPoints()
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -931,7 +942,7 @@ __global__ void localReduceToPoints()
 }
 #endif
 
-__launch_bounds__(256)
+__launch_bounds__(64)
 __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -996,7 +1007,9 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
     const double third = 1. / 3.;
     const double sa = 0.5 * cross(px2 - px1,  zx - px1);
     const double sv = third * sa * (px1.x + px2.x + zx.x);
+#if !defined(__CUDACC__)
     if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
+#endif
 
     ctemp[s0] = sv;
     ctemp1[s0] = sa;
@@ -1036,14 +1049,12 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
     const int s4 = mapss4[s];
     const int s04 = s4 - schsfirst[sch];
 
-    __shared__ int dss3[CHUNK_SIZE];
     __shared__ int dss4[CHUNK_SIZE];
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double ctemp1[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
     
     dss4[s0] = s04 - s0;
-    dss3[s04] = s0 - s04;
 
     __syncthreads();
 
@@ -1074,7 +1085,7 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
 }
 
 
-__launch_bounds__(256)
+__launch_bounds__(64)
 __global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, int* remaining_wg, int* pinned_control_flag)
 {
     const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
@@ -1374,19 +1385,10 @@ void hydroInit(
     int gridSizeP = (numpH + CHUNK_SIZE - 1) / CHUNK_SIZE;
     hipLaunchKernelGGL(calcCornersPerPoint, dim3(gridSizeP), dim3(chunkSize), 0, 0, corners_per_pointD);
 
-    size_t temp_storage_bytes;
-    void* temp_storage_ptr = nullptr;
-    // first call, with nullptr argument, gets required size of temp storage
-    rocprim::exclusive_scan(temp_storage_ptr, temp_storage_bytes,
-			    corners_per_pointD, first_corner_of_pointD, 0, numpH);
-    CHKERR(hipMalloc(&temp_storage_ptr, temp_storage_bytes));
-    // second call, with non-nullptr for temp storage, does the actual work
-    rocprim::exclusive_scan(temp_storage_ptr, temp_storage_bytes,
-			    corners_per_pointD, first_corner_of_pointD, 0, numpH);
-    CHKERR(hipFree(temp_storage_ptr));
-
+    thrust::exclusive_scan(thrust::device, corners_per_pointD, corners_per_pointD + numpH, first_corner_of_pointD);
     hipLaunchKernelGGL(storeCornersByPoint, dim3(gridSizeP), dim3(chunkSize), 0, 0, first_corner_of_pointD,
 		       corners_by_pointD, corners_per_pointD, first_corner_and_corner_countD);
+    hipDeviceSynchronize();
     hipFree(first_corner_of_pointD);
     hipFree(corners_per_pointD);
 #ifdef USE_JIT
@@ -1760,7 +1762,12 @@ void hydroDoCycle(
 
     {
       HOST_TIMER("Other", "copy dtnext values");
+#if !defined(__CUDACC__)
       for(int flag = 0; flag == 0; __atomic_load(pinned_control_flag, &flag, __ATOMIC_ACQUIRE)); // spin on flag
+#else
+      hipDeviceSynchronize();
+      hipMemcpy(dtnext_H, dtnext_D, sizeof(double_int), hipMemcpyDeviceToHost);
+#endif
       dtnextH = dtnext_H->d;
       idtnextH = dtnext_H->i;
     }

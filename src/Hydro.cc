@@ -95,7 +95,7 @@ Hydro::~Hydro() {
 
     delete tts;
     delete qcs;
-    for (int i = 0; i < bcs.size(); ++i) {
+    for (size_t i = 0; i < bcs.size(); ++i) {
         delete bcs[i];
     }
 }
@@ -155,7 +155,7 @@ void Hydro::init() {
     if (uinitradial != 0.)
         initRadialVel(uinitradial);
     else
-        fill(&pu[0], &pu[nump], double2(0., 0.));
+        fill(&pu[0], &pu[nump], make_double2(0., 0.));
 }
 
 
@@ -178,7 +178,7 @@ void Hydro::initRadialVel(const double vel) {
         if (pmag > eps)
             pu[p] = vel * px[p] / pmag;
         else
-            pu[p] = double2(0., 0.);
+            pu[p] = make_double2(0., 0.);
     }
 }
 
