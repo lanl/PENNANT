@@ -2,7 +2,7 @@ module load craype-x86-naples
 module load craype-network-infiniband       
 module load shared                          
 module load slurm                   
-module load gcc/8.1.0
+module load gcc
 module load rocm
 
 module unload cray-mvapich2
