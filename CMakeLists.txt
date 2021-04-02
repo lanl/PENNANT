@@ -15,7 +15,7 @@ option(PENNANT_ARCH_GFX906 "Build with support for gfx906 (vega20, MI50/60)" ON)
 option(PENNANT_ARCH_GFX908 "Build with support for gfx908 (vega7nm, MI100)" ON)
 option(PENNANT_ARCH_GFX90A "Build with support for gfx90a (MI200)" OFF)
 
-# Preparing to add support for building with CUDA
+# Pick your favorite GPU vendor
 set(PENNANT_GPU_VENDOR "AMD" CACHE STRING "Are we using AMD or NVIDIA GPUs?")
 set_property(CACHE PENNANT_GPU_VENDOR PROPERTY STRINGS "AMD" "NVIDIA")
 
@@ -36,7 +36,7 @@ mark_as_advanced(FORCE
 
 # Use hipcc for compiling and linking
 set(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
-set(CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE})
+#set(CMAKE_CXX_LINKER   ${HIP_HIPCC_EXECUTABLE})
 
 # Basic set of PENNANT source files
 set(pennant_sources
@@ -75,23 +75,34 @@ target_include_directories(pennant PRIVATE timers)
 
 # compilation options
 # todo: differentiate between Debug, Release, RelWithDebug builds
-list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Wall" "-Werror")
+if(PENNANT_GPU_VENDOR STREQUAL "AMD")
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Wall" "-Werror")
+endif()
+if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Xcompiler" "-Wall -Werror -Wno-unknown-pragmas")
+endif()
 
 if(PENNANT_FAST_MATH)
   list(APPEND PENNANT_COMPILATION_OPTIONS "-ffp-contract=fast" "-ffast-math" "-funsafe-math-optimizations")
 endif()
 
-if(PENNANT_ARCH_GFX900)
-  list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx900")
+if(PENNANT_GPU_VENDOR STREQUAL "AMD")
+  if(PENNANT_ARCH_GFX900)
+    list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx900")
+  endif()
+  if(PENNANT_ARCH_GFX906)
+    list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx906")
+  endif()
+  if(PENNANT_ARCH_GFX908)
+    list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx908")
+  endif()
+  if(PENNANT_ARCH_GFX90A)
+    list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx90a")
+  endif()
 endif()
-if(PENNANT_ARCH_GFX906)
-  list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx906")
-endif()
-if(PENNANT_ARCH_GFX908)
-  list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx908")
-endif()
-if(PENNANT_ARCH_GFX90A)
-  list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx90a")
+
+if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-arch=sm_70")
 endif()
 
 target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
