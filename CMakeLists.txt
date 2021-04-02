@@ -15,6 +15,10 @@ option(PENNANT_ARCH_GFX906 "Build with support for gfx906 (vega20, MI50/60)" ON)
 option(PENNANT_ARCH_GFX908 "Build with support for gfx908 (vega7nm, MI100)" ON)
 option(PENNANT_ARCH_GFX90A "Build with support for gfx90a (MI200)" OFF)
 
+# Preparing to add support for building with CUDA
+set(PENNANT_GPU_VENDOR "AMD" CACHE STRING "Are we using AMD or NVIDIA GPUs?")
+set_property(CACHE PENNANT_GPU_VENDOR PROPERTY STRINGS "AMD" "NVIDIA")
+
 # Load CMake settings for building HIP code. Mark some CMake variables defined
 # by the HIP package as advanced, so that they don't show up by default when
 # using ccmake.
