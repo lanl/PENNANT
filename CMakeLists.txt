@@ -79,7 +79,7 @@ if(PENNANT_GPU_VENDOR STREQUAL "AMD")
   list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Wall" "-Werror")
 endif()
 if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
-  list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Xcompiler" "-Wall -Werror -Wno-unknown-pragmas")
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Xcompiler" "-Wall -Wno-unknown-pragmas")
 endif()
 
 if(PENNANT_FAST_MATH)
