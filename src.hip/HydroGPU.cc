@@ -532,10 +532,7 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols(
     const double third = 1. / 3.;
     sarea = 0.5 * cross(pxp2 - pxp1,  zx - pxp1);
     const double sv = third * sarea * (pxp1.x + pxp2.x + zx.x);
-#if !defined(__CUDACC__)
     if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
-#endif
-//    __syncthreads();
 
     ctemp[s0] = sv;
     ctemp1[s0] = sarea;
@@ -1007,9 +1004,7 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
     const double third = 1. / 3.;
     const double sa = 0.5 * cross(px2 - px1,  zx - px1);
     const double sv = third * sa * (px1.x + px2.x + zx.x);
-#if !defined(__CUDACC__)
     if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
-#endif
 
     ctemp[s0] = sv;
     ctemp1[s0] = sa;
