@@ -391,7 +391,6 @@ __device__ void hydroFindMinDt(
         // a debugging aid, I'm not going to worry about it.
         if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
     }
-#if !defined(__CUDACC__)
     if(threadIdx.x == 0){
       int old = atomicSub(remaining_wg, 1);
       bool this_wg_is_last = (old == 1);
@@ -401,11 +400,15 @@ __device__ void hydroFindMinDt(
 	// write values to pinned host memory
 	dtnext_H->d = dtnext->d;
 	dtnext_H->i = dtnext->i;
+#ifdef __CUDACC__
+	*pinned_control_flag = 1;
+	__threadfence_system();
+#else
 	int one = 1;
 	__atomic_store(pinned_control_flag, &one, __ATOMIC_RELEASE);
+#endif
       }
     }
-#endif
 }
 
 
@@ -1749,12 +1752,7 @@ void hydroDoCycle(
 
     {
       HOST_TIMER("Other", "copy dtnext values");
-#if !defined(__CUDACC__)
       for(int flag = 0; flag == 0; __atomic_load(pinned_control_flag, &flag, __ATOMIC_ACQUIRE)); // spin on flag
-#else
-      hipDeviceSynchronize();
-      hipMemcpy(dtnext_H, dtnext_D, sizeof(double_int), hipMemcpyDeviceToHost);
-#endif
       dtnextH = dtnext_H->d;
       idtnextH = dtnext_H->i;
     }
