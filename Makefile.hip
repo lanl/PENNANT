@@ -23,7 +23,7 @@ DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
 CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include
-CPPFLAGS += -Wall -Werror
+CPPFLAGS += -std=c++14 -Wall -Werror
 CPPFLAGS += -Wno-unused-command-line-argument
 
 # hipcc flags:
