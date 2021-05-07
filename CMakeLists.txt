@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# The following three lines are not necessary on some systems, while
+# leaving them out causes issues with finding HIP and rocBLAS on other
+# systems. Beats me.
+set(ROCM_PATH /opt/rocm CACHE STRING "Path to ROCm install")
+list(APPEND CMAKE_MODULE_PATH ${ROCM_PATH}/hip/cmake)
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
+
 # Preferred way of working: don't change options in this file. Instead, call cmake with
 # e.g. "-DPENNANT_MPI=OFF" if you want to change that setting
 option(PENNANT_MPI "Build with MPI support" ON)
