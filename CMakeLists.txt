@@ -14,7 +14,8 @@ list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 
 # Preferred way of working: don't change options in this file. Instead, call cmake with
 # e.g. "-DPENNANT_MPI=OFF" if you want to change that setting
-option(PENNANT_MPI "Build with MPI support" ON)
+option(PENNANT_USE_MPI "Build with MPI support" ON)
+option(PENNANT_USE_GPU_AWARE_MPI "Build with GPU-aware MPI. Requires supporting MPI stack" OFF)
 option(PENNANT_TIMERS "Put timers around important code sections and print stats" OFF)
 option(PENNANT_FAST_MATH "Use math optimizations that may not be IEEE 764 compliant" OFF)
 option(PENNANT_ARCH_GFX900 "Build with support for gfx900 (vega10)" OFF)
@@ -63,8 +64,12 @@ set(pennant_sources
   src.hip/TTS.cc
   src.hip/WriteXY.cc)
 
+if(PENNANT_USE_GPU_AWARE_MPI)
+  SET(PENNANT_USE_MPI ON CACHE BOOL "Build with MPI support" FORCE)
+endif()
+
 # PENNANT source file that handles MPI comms, if MPI is supported
-if(PENNANT_MPI)
+if(PENNANT_USE_MPI)
   list(APPEND pennant_sources src.hip/HydroMPI.cc)
 endif()
 
@@ -115,11 +120,15 @@ endif()
 target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
 
 # Optionally configure MPI 
-if(PENNANT_MPI)
+if(PENNANT_USE_MPI)
   find_package(MPI REQUIRED)
 
   target_compile_definitions(pennant PRIVATE USE_MPI)
   target_link_libraries(pennant PRIVATE MPI::MPI_CXX)
+endif()
+
+if(PENNANT_USE_GPU_AWARE_MPI)
+  target_compile_definitions(pennant PRIVATE USE_GPU_AWARE_MPI)
 endif()
 
 # Optionally configure the use of timing code
