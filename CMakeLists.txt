@@ -37,6 +37,7 @@ mark_as_advanced(FORCE
   AMDDeviceLibs_DIR
   HIP_CLANG_INCLUDE_PATH
   HIP_DIR
+  HIP_VERBOSE_BUILD
   HSA_HEADER
   ROCclr_DIR
   amd_comgr_DIR
@@ -128,7 +129,15 @@ target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
 
 # Optionally configure MPI 
 if(PENNANT_USE_MPI)
+  # To select a specific MPI version, users should define an environment
+  # variable MPI_HOME when running cmake or ccmake (only needed once)
   find_package(MPI REQUIRED)
+  # show some of the MPI variable if we use ccmake, to help verifying
+  # that we use the expected MPI version
+  mark_as_advanced(CLEAR
+    MPI_CXX_HEADER_DIR
+    MPI_CXX_LINK_FLAGS
+    MPI_mpi_LIBRARY)
 
   target_compile_definitions(pennant PRIVATE USE_MPI)
   target_link_libraries(pennant PRIVATE MPI::MPI_CXX)
