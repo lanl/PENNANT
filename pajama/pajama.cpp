@@ -6,17 +6,18 @@
 #include <stdexcept>
 
 namespace {
-  std::string fname_extension_change(const std::string& fname, const std::string& new_ext, bool attach_old_extension);
+  std::string fname_extension_change(const std::string& fname, const std::string& new_ext, bool attach_old_extension,
+				     int rank, bool insert_rank);
   std::string read_file_as_string(const std::string& fname);
   void replace(std::string& source, replacement_t replacements);
   void save(const std::string& source, const std::string& fname);
 }
 
 
-Pajama::Pajama(std::string source_fname, replacement_t replacements)
+Pajama::Pajama(std::string source_fname, replacement_t replacements, int rank)
   : source_fname_(source_fname),
-    source_with_replacements_fname_(fname_extension_change(source_fname, ".pj", true)),
-    co_fname_(fname_extension_change(source_with_replacements_fname_, ".co", false)),
+    source_with_replacements_fname_(fname_extension_change(source_fname, ".pj", true, rank, true)),
+    co_fname_(fname_extension_change(source_with_replacements_fname_, ".co", false, rank, false)),
     source_(read_file_as_string(source_fname))
 {
   replace(source_, replacements);
@@ -127,9 +128,14 @@ void Pajama::hcc_compile(){
   }
 }
 namespace {
-  std::string fname_extension_change(const std::string& fname, const std::string& new_ext, bool attach_old_extension){
+  std::string fname_extension_change(const std::string& fname, const std::string& new_ext, bool attach_old_extension,
+				     int rank, bool insert_rank){
     auto dot = fname.find_last_of('.');
-    auto new_fname = fname.substr(0,dot) + new_ext;
+    auto new_fname = fname.substr(0,dot);
+    if(insert_rank){
+      new_fname += '.' + std::to_string(rank);
+    }
+    new_fname += new_ext;
     if(attach_old_extension){
       new_fname += fname.substr(dot);
     }
@@ -139,6 +145,11 @@ namespace {
 
   std::string read_file_as_string(const std::string& fname){
     std::ifstream f(fname.c_str());
+    if(f.fail()){
+      std::string message("Pajama::read_file_as_string: failed to open file ");
+      message += fname;
+      throw std::runtime_error(message);
+    }
     std::string s;
     f.seekg(0, std::ios::end);
     s.reserve(f.tellg());

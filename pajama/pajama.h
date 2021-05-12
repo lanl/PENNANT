@@ -13,7 +13,7 @@ using replacement_t = std::map<std::string, std::string>;
 
 class Pajama {
  public:
-  Pajama(std::string source_fname, replacement_t replacements = replacement_t());
+  Pajama(std::string source_fname, replacement_t replacements = replacement_t(), int rank=0);
   void call(const char* kernel, dim3 grid_dim, dim3 block_dim,
 	    unsigned int shmem_bytes, hipStream_t stream, void** kernel_args);
   int call_preloaded(const char* kernel, dim3 grid_dim, dim3 block_dim,

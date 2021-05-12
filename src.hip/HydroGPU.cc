@@ -192,7 +192,7 @@ __global__ void gpuInvMap(
 }
 
 
-__device__ void applyFixedBC_opt(
+__device__ void applyFixedBC(
         const int p,
         const double2 px,
         double2 &pu,
@@ -737,7 +737,7 @@ __launch_bounds__(64,4)
 #else
 __launch_bounds__(64)
 #endif
-__global__ void gpuMain2_opt(int* numsbad_pinned, double dt)
+__global__ void gpuMain2(int* numsbad_pinned, double dt)
 {
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
@@ -904,9 +904,9 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
     double2 pu0p = pu0[p];
     double2 pfp  = pf[p];
     for (int bc = 0; bc < numbcx; ++bc)
-        applyFixedBC_opt(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
+        applyFixedBC(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
     for (int bc = 0; bc < numbcy; ++bc)
-        applyFixedBC_opt(p, pxpp, pu0p, pfp, vfixy, bcy[bc]);
+        applyFixedBC(p, pxpp, pu0p, pfp, vfixy, bcy[bc]);
 
     // 5. compute accelerations
     const double fuzz = 1.e-99;
@@ -1297,45 +1297,14 @@ void hydroInit(
 
     replacement_t replacements {
       { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
-      { "${cftot}", jit_string(cftotD) },
-      { "${cmaswt}", jit_string(cmaswtD) },
-      { "${cw}", jit_string(cwD) },
-      { "${mapsp1}", jit_string(mapsp1D) },
-      { "${mapsp2}", jit_string(mapsp2D) },
-      { "${mapss4}", jit_string(mapss4D) },
-      { "${mapsz}", jit_string(mapszD) },
       { "${nump}", jit_string(numpH) },
-      { "${pgamma}", jit_string(pgammaH) },
-      { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
       { "${pu}", jit_string(puD) },
       { "${pxp}", jit_string(pxpD) },
       { "${px}", jit_string(pxD) },
-      { "${q1}", jit_string(q1H) },
-      { "${q2}", jit_string(q2H) },
-      { "${qgamma}", jit_string(qgammaH) },
-      { "${schsfirst}", jit_string(schsfirstD) },
-      { "${schslast}", jit_string(schslastD) },
-      { "${sfpq}", jit_string(sfpqD) },
-      { "${smf}", jit_string(smfD) },
-      { "${talfa}", jit_string(talfaH) },
-      { "${tssmin}", jit_string(tssminH) },
-      { "${zdl}", jit_string(zdlD) },
-      { "${zdu}", jit_string(zduD) },
-      { "${ze}", jit_string(zeD) },
-      { "${zm}", jit_string(zmD) },
-      { "${znump}", jit_string(znumpD) },
-      { "${zp}", jit_string(zpD) },
-      { "${zr}", jit_string(zrD) },
-      { "${zss}", jit_string(zssD) },
-      { "${zvol0}", jit_string(zvol0D) },
-      { "${zvolp}", jit_string(zvolpD) },
-      { "${zvol}", jit_string(zvolD) },
-      { "${zwrate}", jit_string(zwrateD) }
     };
-    jit = std::unique_ptr<Pajama>(new Pajama("src.jit/kernels.cc", replacements));
+    jit = std::unique_ptr<Pajama>(new Pajama("../src.jit/kernels.cc", replacements, mype));
     jit->load_kernel("gpuMain1_jit");
-    jit->load_kernel("gpuMain2_jit");
 #endif // USE_JIT
     hipEventCreate(&mainLoopEvent);
 }
@@ -1544,20 +1513,16 @@ void hydroDoCycle(
       DEVICE_TIMER("Kernels", "gpuMain1_jit", 0);
       jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
     }
-    {
-      DEVICE_TIMER("Kernels", "gpuMain2_jit", 0);
-      jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
-    }
 #else
     {
       DEVICE_TIMER("Kernels", "gpuMain1", 0);
       hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
     }
-    {
-       DEVICE_TIMER("Kernels", "gpuMain2_opt", 0);
-       hipLaunchKernelGGL((gpuMain2_opt), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
-    }
 #endif
+    {
+       DEVICE_TIMER("Kernels", "gpuMain2", 0);
+       hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
+    }
 
     {
       HOST_TIMER("Other", "meshCheckBadSides");

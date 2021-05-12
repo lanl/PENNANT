@@ -16,6 +16,7 @@ list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 # e.g. "-DPENNANT_MPI=OFF" if you want to change that setting
 option(PENNANT_USE_MPI "Build with MPI support" ON)
 option(PENNANT_USE_GPU_AWARE_MPI "Build with GPU-aware MPI. Requires supporting MPI stack" OFF)
+option(PENNANT_USE_JIT "JIT-compile kernels" OFF)
 option(PENNANT_TIMERS "Put timers around important code sections and print stats" OFF)
 option(PENNANT_FAST_MATH "Use math optimizations that may not be IEEE 764 compliant" OFF)
 option(PENNANT_ARCH_GFX900 "Build with support for gfx900 (vega10)" OFF)
@@ -74,6 +75,10 @@ if(PENNANT_USE_MPI)
   list(APPEND pennant_sources src.hip/HydroMPI.cc)
 endif()
 
+if(PENNANT_USE_JIT)
+  list(APPEND pennant_sources pajama/pajama.cpp)
+endif()
+
 # PENNANT source file with functionality for timing various sections of the code
 if(PENNANT_TIMERS)
   list(APPEND pennant_sources timers/scoped_timers.cpp)
@@ -85,6 +90,10 @@ add_executable(pennant ${pennant_sources})
 # One timers include file is always included, even if we're not using
 # timers; in that case, the macros in the include file evaluate to the empty string
 target_include_directories(pennant PRIVATE timers)
+
+if(PENNANT_USE_JIT)
+  target_include_directories(pennant PRIVATE pajama)
+endif()
 
 # compilation options
 # todo: differentiate between Debug, Release, RelWithDebug builds
@@ -145,6 +154,10 @@ endif()
 
 if(PENNANT_USE_GPU_AWARE_MPI)
   target_compile_definitions(pennant PRIVATE USE_GPU_AWARE_MPI)
+endif()
+
+if(PENNANT_USE_JIT)
+  target_compile_definitions(pennant PRIVATE USE_JIT)
 endif()
 
 # Optionally configure the use of timing code
