@@ -38,8 +38,6 @@
 
 using namespace std;
 
-//#define HIP_SYMBOL(X) &X
-
 const int CHUNK_SIZE = 64;
 
 #ifdef USE_MPI
@@ -74,25 +72,18 @@ __constant__ int* first_corner_of_point;
 __constant__ int2* first_corner_and_corner_count;
 
 __constant__ double2 *px, *pxp;
-//__constant__ double2 *zx, *zxp;
 __constant__ double2 *pu, *pu0;
-//__constant__ double2* pap;
 __constant__ const double* zm;
 __constant__ double *zr;
-//__constant__ double	     *zrp;
 __constant__ double *ze, *zetot;
-//__constant__ double *zw, 
 __constant__ double *zwrate;
 __constant__ double *zp, *zss;
 __constant__ const double* smf;
 __constant__ double   *zvolp;
-//__constant__ double *sareap, *svolp, *zareap;
 __constant__ double   *zarea, *zvol, *zvol0;
-//__constant__ double *sarea,  *svol;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
 __constant__ double2 *sfpq, *cftot, *pf;
-//__constant__ double2* cqe;
 __constant__ double* cw;
 
 int numschH, numpchH, numzchH;
@@ -107,14 +98,11 @@ int *corners_per_pointD, *corners_by_pointD, *first_corner_of_pointD;
 int2 *first_corner_and_corner_countD;
 double2 *pxD, *pxpD,  *puD, *pu0D, 
   *sfpqD, *cftotD, *pfD, *cqeD;
-//double2 *zxD, *zxpD, *papD, *cqeD;
-//double *sareaD, *sareapD, *svolD,*svolpD, *zareapD, cwD, zrpD, zwD;
 double *zmD, *zrD, 
       *zareaD, *zvolD, *zvol0D, *zdlD, *zduD,
     *zeD, *zetot0D, *zetotD, *zwrateD,
     *zpD, *zssD, *smfD,    *zvolpD;
 double *cmaswtD, *pmaswtD;
-//double *crmuD;
 
 struct double_int {
   double d;
@@ -246,7 +234,6 @@ __device__ void applyFixedBC_opt(
 __device__ void hydroCalcWork(
         const int s,
         const int s0,
-//        const int s3,
         const int z,
         const int p1,
         const int p2,
@@ -255,7 +242,6 @@ __device__ void hydroCalcWork(
         const double2* __restrict__ pu,
         const double2* __restrict__ px,
         const double dt,
-//        double* __restrict__ zw,
         double &zwz,
         double* __restrict__ zetot,
 	int dss4[CHUNK_SIZE],
@@ -279,28 +265,11 @@ __device__ void hydroCalcWork(
         dwtot += ctemp[sn];
     }
     zetot[z] = etot + dwtot;
-    //zw[z] = dwtot;
     zwz = dwtot;
 
 
 
 }
-
-/*
-__device__ void hydroCalcWorkRate(
-        const int z,
-        const double* __restrict__ zvol0,
-        const double* __restrict__ zvol,
-        const double* __restrict__ zw,
-        const double* __restrict__ zp,
-        const double dt,
-        double* __restrict__ zwrate) {
-
-    const double dvol = zvol[z] - zvol0[z];
-    zwrate[z] = (zw[z] + zp[z] * dvol) / dt;
-
-}
-*/
 
 
 __device__ void hydroCalcDtCourant(
@@ -318,7 +287,6 @@ __device__ void hydroCalcDtCourant(
     idtz = z << 1;
 
 }
-
 
 __device__ void hydroCalcDtVolume(
         const int z,
@@ -475,10 +443,8 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
   for(int s = mappsfirst[p]; s >= 0; s = mapssnext[s], ++c){
     corners_by_point[c] = s;
   }
-  // int last = first + corners_per_point[p];
   first_corner_and_corner_count[p].x = first;
   first_corner_and_corner_count[p].y = corners_per_point[p];
-  // quadratic_sort(corners_by_point, first, last);
 }
 
 
@@ -617,7 +583,6 @@ static __device__ void ttsCalcForce(
 __device__ void qcsSetCornerDiv(
         const int s,
         const int s0,
-//        const int s3,
 	const int s4,
         const int s04,
         const int z,
@@ -957,20 +922,16 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
     double2 pu0p = pu0[p];
     double2 pfp  = pf[p];
     for (int bc = 0; bc < numbcx; ++bc)
-//        applyFixedBC(p, pxp, pu0, pf, vfixx, bcx[bc]);
         applyFixedBC_opt(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
     for (int bc = 0; bc < numbcy; ++bc)
-//        applyFixedBC(p, pxp, pu0, pf, vfixy, bcy[bc]);
         applyFixedBC_opt(p, pxpp, pu0p, pfp, vfixy, bcy[bc]);
 
     // 5. compute accelerations
     const double fuzz = 1.e-99;
-    //double2 pa = pf[p] / max(pmaswt[p], fuzz);
     double2 pa = pfp / max(pmaswt[p], fuzz);
 
     // ===== Corrector step =====
     // 6. advance mesh to end of time step
-//    pu[p] = pu0[p] + pa * dt;
     pu[p] = pu0p + pa * dt;
     px[p] = px[p] + 0.5 * (pu[p] + pu0[p]) * dt;
     pu0[p] = pu0p;
@@ -984,7 +945,6 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(
         const double2 px1,
         const double2 px2,
         double* __restrict__ zarea,
-//        double* __restrict__ zvol,
         double & zvol_1,
         int dss4[CHUNK_SIZE],
         double2 ctemp2[CHUNK_SIZE],
@@ -1086,25 +1046,9 @@ __global__ void gpuMain5(double_int* dtnext, double dt, double_int* dtnext_H, in
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
 
-    // 7. compute work
-
-    // 8. update state variables
-
-//    const double dvol = zvol[z] - zvol0[z];
-//    zwrate[z] = (zw[z] + zp[z] * dvol) / dt;
-
-    // 8. update state variables
-//    const double fuzz = 1.e-99;
-//    ze[z] = zetot[z] / (zm[z] + fuzz);
-//    zr[z] = zm[z] / zvol[z];
- 
-
-
-
-    // 9.  compute timestep for next cycle
+    // compute timestep for next cycle
     hydroCalcDt(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
 		ctemp, ctemp2, dtnext, dtnext_H, remaining_wg, pinned_control_flag);
-
 }
 
 
@@ -1262,7 +1206,6 @@ void hydroInit(
     CHKERR(hipMalloc(&pu0D, numpH*sizeof(double2)));
     CHKERR(hipMalloc(&zmD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zrD, numzH*sizeof(double)));
-//    CHKERR(hipMalloc(&zrpD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zareaD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zvolD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zvol0D, numzH*sizeof(double)));
@@ -1271,7 +1214,6 @@ void hydroInit(
     CHKERR(hipMalloc(&zeD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zetot0D, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zetotD, numzH*sizeof(double)));
-//    CHKERR(hipMalloc(&zwD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zwrateD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zpD, numzH*sizeof(double)));
     CHKERR(hipMalloc(&zssD, numzH*sizeof(double)));
@@ -1282,18 +1224,14 @@ void hydroInit(
     CHKERR(hipMalloc(&sfpqD, numsH*sizeof(double2)));
     CHKERR(hipMalloc(&cftotD, numcH*sizeof(double2)));
     CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
-//    CHKERR(hipMalloc(&crmuD, numcH*sizeof(double)));
-
     CHKERR(hipMalloc(&mapspkeyD, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mapspvalD, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mappsfirstD, numpH*sizeof(int)));
     CHKERR(hipMalloc(&mapssnextD, numsH*sizeof(int)));
-
     CHKERR(hipMalloc(&corners_per_pointD, numpH*sizeof(int)));
     CHKERR(hipMalloc(&corners_by_pointD, (numsH+4)*sizeof(int)));
     CHKERR(hipMalloc(&first_corner_of_pointD, numpH*sizeof(int)));
     CHKERR(hipMalloc(&first_corner_and_corner_countD, numpH*sizeof(int2)));
-    
 
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schsfirst), &schsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(schslast), &schslastD, sizeof(void*)));
@@ -1304,14 +1242,12 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mappsfirst), &mappsfirstD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(mapssnext), &mapssnextD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(znump), &znumpD, sizeof(void*)));
-
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(px), &pxD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pxp), &pxpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu), &puD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pu0), &pu0D, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zm), &zmD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zr), &zrD, sizeof(void*)));
-//    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zrp), &zrpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zarea), &zareaD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol), &zvolD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvol0), &zvol0D, sizeof(void*)));
@@ -1319,7 +1255,6 @@ void hydroInit(
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zdu), &zduD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(ze), &zeD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zetot), &zetotD, sizeof(void*)));
-//    CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zw), &zwD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zwrate), &zwrateD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp), &zpD, sizeof(void*)));
     CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss), &zssD, sizeof(void*)));
@@ -1344,7 +1279,6 @@ void hydroInit(
     CHKERR(hipMemcpy(mapszD, mapszH, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapss4D, mapss4H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(znumpD, znumpH, numzH*sizeof(int), hipMemcpyHostToDevice));
-
     CHKERR(hipMemcpy(zmD, zmH, numzH*sizeof(double), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(smfD, smfH, numsH*sizeof(double), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(pxD, pxH, numpH*sizeof(double2), hipMemcpyHostToDevice));
@@ -1410,7 +1344,6 @@ void hydroInit(
       { "${zm}", jit_string(zmD) },
       { "${znump}", jit_string(znumpD) },
       { "${zp}", jit_string(zpD) },
-//      { "${zrp}", jit_string(zrpD) },
       { "${zr}", jit_string(zrD) },
       { "${zss}", jit_string(zssD) },
       { "${zvol0}", jit_string(zvol0D) },
@@ -1451,12 +1384,6 @@ __global__ void copySlavePointDataToMPIBuffers_kernel_test(double* pmaswt_pf_sla
 void copySlavePointDataToMPIBuffers(){
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
-/*  {
-    DEVICE_TIMER("MPI device overhead", "copySlavePointDataToMPIBuffers_kernel", 0);
-    hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel, blocks, blocksize, 0, 0,
-		       pmaswt_slave_buffer_D, pf_slave_buffer_D);
-  }
-  */
   {
     DEVICE_TIMER("MPI device overhead", "copySlavePointDataToMPIBuffers_kernel_test", 0);
     hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel_test, blocks, blocksize, 0, 0,
@@ -1464,8 +1391,6 @@ void copySlavePointDataToMPIBuffers(){
   }
 
 #ifndef USE_GPU_AWARE_MPI
-//  CHKERR(hipMemcpy(pmaswt_slave_buffer_H, pmaswt_slave_buffer_D, numslvH * sizeof(double), hipMemcpyDeviceToHost));
-//  CHKERR(hipMemcpy(pf_slave_buffer_H, pf_slave_buffer_D, numslvH * sizeof(double2), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(pmaswt_pf_slave_buffer_H, pmaswt_pf_slave_buffer_D, numslvH * 3 * sizeof(double), hipMemcpyDeviceToHost));
 #else
   hipDeviceSynchronize();
@@ -1497,19 +1422,10 @@ __global__ void copyMPIBuffersToSlavePointData_kernel_test(double* pmaswt_pf_sla
 
 void copyMPIBuffersToSlavePointData(){
 #ifndef USE_GPU_AWARE_MPI
-//  CHKERR(hipMemcpy(pmaswt_slave_buffer_D, pmaswt_slave_buffer_H, numslvH * sizeof(double), hipMemcpyHostToDevice));
-//  CHKERR(hipMemcpy(pf_slave_buffer_D, pf_slave_buffer_H, numslvH * sizeof(double2), hipMemcpyHostToDevice));
-
   CHKERR(hipMemcpy(pmaswt_pf_slave_buffer_D, pmaswt_pf_slave_buffer_H, numslvH * 3 * sizeof(double), hipMemcpyHostToDevice));
 #endif
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
-/*  {
-    DEVICE_TIMER("MPI device overhead", "copyMPIBuffersToSlavePointData_kernel", 0);
-    hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel, blocks, blocksize, 0, 0,
-		       pmaswt_slave_buffer_D, pf_slave_buffer_D);
-  }
-  */
     {
     DEVICE_TIMER("MPI device overhead", "copyMPIBuffersToSlavePointData_kernel_test", 0);
     hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel_test, blocks, blocksize, 0, 0,
@@ -1573,39 +1489,22 @@ __global__ void copyPointValuesToProxies_test(double* pmaswt_pf_proxy_buffer_D){
 
 void reduceToMasterPointsAndProxies(){
 #ifndef USE_GPU_AWARE_MPI
-//  CHKERR(hipMemcpy(pmaswt_proxy_buffer_D, pmaswt_proxy_buffer_H, numprxH * sizeof(double), hipMemcpyHostToDevice));
-//  CHKERR(hipMemcpy(pf_proxy_buffer_D, pf_proxy_buffer_H, numprxH * sizeof(double2), hipMemcpyHostToDevice));
-
   CHKERR(hipMemcpy(pmaswt_pf_proxy_buffer_D, pmaswt_pf_proxy_buffer_H, numprxH * 3 * sizeof(double), hipMemcpyHostToDevice));
 #endif
 
   constexpr int blocksize = 256;
   const int blocks = (numprxH + blocksize - 1) / blocksize;
-/*  {
-    DEVICE_TIMER("Kernels", "reduceToMasterPoints", 0);
-    hipLaunchKernelGGL(reduceToMasterPoints, blocks, blocksize, 0, 0,
-		       pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
-  }
-*/
   {
     DEVICE_TIMER("Kernels", "reduceToMasterPoints_test", 0);
     hipLaunchKernelGGL(reduceToMasterPoints_test, blocks, blocksize, 0, 0,
                        pmaswt_pf_proxy_buffer_D);
   }
-/*  {
-    DEVICE_TIMER("MPI device overhead", "copyPointValuesToProxies", 0);
-    hipLaunchKernelGGL(copyPointValuesToProxies, blocks, blocksize, 0, 0,
-		       pmaswt_proxy_buffer_D, pf_proxy_buffer_D);
-  }
-*/
   {
     DEVICE_TIMER("MPI device overhead", "copyPointValuesToProxies_test", 0);
     hipLaunchKernelGGL(copyPointValuesToProxies_test, blocks, blocksize, 0, 0,
                        pmaswt_pf_proxy_buffer_D);
   }
 #ifndef USE_GPU_AWARE_MPI
-//  CHKERR(hipMemcpy(pmaswt_proxy_buffer_H, pmaswt_proxy_buffer_D, numprxH * sizeof(double), hipMemcpyDeviceToHost));
-//  CHKERR(hipMemcpy(pf_proxy_buffer_H, pf_proxy_buffer_D, numprxH * sizeof(double2), hipMemcpyDeviceToHost));
     CHKERR(hipMemcpy(pmaswt_pf_proxy_buffer_H, pmaswt_pf_proxy_buffer_D, numprxH * 3 * sizeof(double), hipMemcpyDeviceToHost));  
 #else
   hipDeviceSynchronize();
@@ -1614,15 +1513,6 @@ void reduceToMasterPointsAndProxies(){
 
 void globalReduceToPoints() {
   copySlavePointDataToMPIBuffers();
-/*  {
-    HOST_TIMER("MPI", "parallelGather");
-    parallelGather( numslvpeD, nummstrpeD,
-		    mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-		    mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-		    pmaswt_proxy_buffer, pf_proxy_buffer,
-		    pmaswt_slave_buffer, pf_slave_buffer);
-  }
-  */
   {
     HOST_TIMER("MPI", "parallelGather_test");
     parallelGather_test( numslvpeD, nummstrpeD,
@@ -1632,15 +1522,6 @@ void globalReduceToPoints() {
   }
 
   reduceToMasterPointsAndProxies();
-/*  {
-    HOST_TIMER("MPI", "parallelScatter");
-      parallelScatter( numslvpeD, nummstrpeD,
-		       mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-		       mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-		       pmaswt_proxy_buffer, pf_proxy_buffer,
-		       pmaswt_slave_buffer, pf_slave_buffer);
-  }
-  */
   {
    HOST_TIMER("MPI", "parallelScatter_test");
       parallelScatter_test( numslvpeD, nummstrpeD,
@@ -1664,9 +1545,6 @@ void hydroDoCycle(
     gridSizeP = numpchH;
     gridSizeZ = numzchH;
     chunkSize = CHUNK_SIZE;
-
-    // TODO: remove after optimizing gpuMain2
-    // int grid_zb = (numz_zb + CHUNK_SIZE - 1) / CHUNK_SIZE;
     
 #ifdef USE_JIT
     struct {
@@ -1693,15 +1571,10 @@ void hydroDoCycle(
       DEVICE_TIMER("Kernels", "gpuMain1", 0);
       hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
     }
-
     {
        DEVICE_TIMER("Kernels", "gpuMain2_opt", 0);
        hipLaunchKernelGGL((gpuMain2_opt), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
-
-
-
-
 #endif
 
     {
