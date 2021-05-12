@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 project(pennant LANGUAGES CXX)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -89,7 +89,7 @@ target_include_directories(pennant PRIVATE timers)
 # compilation options
 # todo: differentiate between Debug, Release, RelWithDebug builds
 if(PENNANT_GPU_VENDOR STREQUAL "AMD")
-  list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Wall" "-Werror")
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-g" "-O3" "-Wall" "-Wno-unused-result" "-Werror")
 endif()
 if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
   list(APPEND PENNANT_COMPILATION_OPTIONS "-O3" "-Xcompiler" "-Wall -Wno-unknown-pragmas")
