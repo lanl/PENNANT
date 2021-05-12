@@ -192,24 +192,6 @@ __global__ void gpuInvMap(
 }
 
 
-__device__ void applyFixedBC(
-        const int p,
-        const double2* __restrict__ px,
-        double2* __restrict__ pu,
-        double2* __restrict__ pf,
-        const double2 vfix,
-        const double bcconst) {
-
-    const double eps = 1.e-12;
-    double dp = dot(px[p], vfix);
-
-    if (fabs(dp - bcconst) < eps) {
-        pu[p] = project(pu[p], vfix);
-        pf[p] = project(pf[p], vfix);
-    }
-
-}
-
 __device__ void applyFixedBC_opt(
         const int p,
         const double2 px,
