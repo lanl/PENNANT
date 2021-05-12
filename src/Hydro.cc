@@ -82,7 +82,6 @@ Hydro::Hydro(const InputFile* inp, Mesh* m) : mesh(m) {
 	      mesh->mapsp1,
 	      mesh->mapsp2,
 	      mesh->mapsz,
-	      mesh->mapzs,
 	      mesh->mapss4,
 	      mesh->mapse,
 	      mesh->znump);

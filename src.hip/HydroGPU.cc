@@ -65,7 +65,6 @@ __constant__ const int* schslast;
 __constant__ const int* mapsp1;
 __constant__ const int* mapsp2;
 __constant__ const int* mapsz;
-// __constant__ const int* mapzs; currently not used, may be revived
 __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
@@ -101,7 +100,7 @@ int* numsbad_pinned;
 int* pinned_control_flag;
 int *schsfirstH, *schslastH, *schzfirstH, *schzlastH;
 int *schsfirstD, *schslastD, *schzfirstD, *schzlastD;
-int *mapsp1D, *mapsp2D, *mapszD, *mapzsD, *mapss4D, *znumpD;
+int *mapsp1D, *mapsp2D, *mapszD, *mapss4D, *znumpD;
 int *mapspkeyD, *mapspvalD;
 int *mappsfirstD, *mapssnextD;
 int *corners_per_pointD, *corners_by_pointD, *first_corner_of_pointD;
@@ -1200,7 +1199,6 @@ void hydroInit(
         const int* mapsp1H,
         const int* mapsp2H,
         const int* mapszH,
-        const int* mapzsH,
         const int* mapss4H,
         const int* mapseH,
         const int* znumpH) {
@@ -1255,7 +1253,6 @@ void hydroInit(
     CHKERR(hipMalloc(&mapsp1D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mapsp2D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&mapszD, numsH*sizeof(int)));
-    CHKERR(hipMalloc(&mapzsD, numzH*sizeof(int)));
     CHKERR(hipMalloc(&mapss4D, numsH*sizeof(int)));
     CHKERR(hipMalloc(&znumpD, numzH*sizeof(int)));
 
@@ -1345,7 +1342,6 @@ void hydroInit(
     CHKERR(hipMemcpy(mapsp1D, mapsp1H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapsp2D, mapsp2H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapszD, mapszH, numsH*sizeof(int), hipMemcpyHostToDevice));
-    CHKERR(hipMemcpy(mapzsD, mapzsH, numzH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(mapss4D, mapss4H, numsH*sizeof(int), hipMemcpyHostToDevice));
     CHKERR(hipMemcpy(znumpD, znumpH, numzH*sizeof(int), hipMemcpyHostToDevice));
 
