@@ -550,8 +550,8 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols(
     zarea = zatot;
     zvol = zvtot;
     const double base = length(pxp2 - pxp1);
-//    const double fac = (znump[z] == 3 ? 3. : 4.);
-    const double sdl = znump[z] * sarea / base;
+    const double fac = (znump[z] == 3 ? 3. : 4.);
+    const double sdl = fac * sarea / base;
 
     ctemp[s0] = sdl;
     __syncthreads();
