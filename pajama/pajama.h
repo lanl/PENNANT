@@ -36,6 +36,7 @@ class Pajama {
   kernel_map_t kernel_map_;
   bool module_compiled_ = false;
   bool module_loaded_ = false;
+  int rank_ = 0;
 };
 
 template<typename T>

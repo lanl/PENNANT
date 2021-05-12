@@ -71,6 +71,7 @@ __constant__ int* corners_by_point;
 __constant__ int* first_corner_of_point;
 __constant__ int2* first_corner_and_corner_count;
 
+
 __constant__ double2 *px, *pxp;
 __constant__ double2 *pu, *pu0;
 __constant__ const double* zm;
@@ -1302,9 +1303,41 @@ void hydroInit(
       { "${pu}", jit_string(puD) },
       { "${pxp}", jit_string(pxpD) },
       { "${px}", jit_string(pxD) },
+      {"${pgamma}", jit_string(pgammaH) },
+      {"${pssmin}", jit_string(pssminH) },
+      {"${tssmin}", jit_string(tssminH) },
+      {"${talfa}", jit_string(talfaH) },
+      {"${qgamma}", jit_string(qgammaH) },
+      {"${q1}", jit_string(q1H) },
+      {"${q2}", jit_string(q2H) },
+      {"${zdu}", jit_string(zduD) },
+      {"${schsfirst}", jit_string(schsfirstD) },
+      {"${schslast}", jit_string(schslastD) },
+      {"${mapsp1}", jit_string(mapsp1D) },
+      {"${mapsp2}", jit_string(mapsp2D) },
+      {"${mapsz}", jit_string(mapszD) },
+      {"${mapss4}", jit_string(mapss4D) },
+      {"${zvol0}", jit_string(zvol0D) },
+      {"${zvol}", jit_string(zvolD) },
+      {"${znump}", jit_string(znumpD) },
+      {"${zdl}", jit_string(zdlD) },
+      {"${zm}", jit_string(zmD) },
+      {"${zp}", jit_string(zpD) },
+      {"${zss}", jit_string(zssD) },
+      {"${cmaswt}", jit_string(cmaswtD) },
+      {"${smf}", jit_string(smfD) },
+      {"${zr}", jit_string(zrD) },
+      {"${ze}", jit_string(zeD) },
+      {"${pu}", jit_string(puD) },
+      {"${sfpq}", jit_string(sfpqD) },
+      {"${cftot}", jit_string(cftotD) },
+      {"${zp}", jit_string(zpD) },
+      {"${zwrate}", jit_string(zwrateD) },
+      {"${numsbad_pinned}", jit_string(numsbad_pinned) }
     };
     jit = std::unique_ptr<Pajama>(new Pajama("../src.jit/kernels.cc", replacements, mype));
     jit->load_kernel("gpuMain1_jit");
+    jit->load_kernel("gpuMain2_jit");
 #endif // USE_JIT
     hipEventCreate(&mainLoopEvent);
 }
@@ -1513,17 +1546,20 @@ void hydroDoCycle(
       DEVICE_TIMER("Kernels", "gpuMain1_jit", 0);
       jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
     }
+    {
+       DEVICE_TIMER("Kernels", "gpuMain2_jit", 0);
+       jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
+    }
 #else
     {
       DEVICE_TIMER("Kernels", "gpuMain1", 0);
       hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
     }
-#endif
     {
        DEVICE_TIMER("Kernels", "gpuMain2", 0);
        hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
     }
-
+#endif
     {
       HOST_TIMER("Other", "meshCheckBadSides");
       meshCheckBadSides();

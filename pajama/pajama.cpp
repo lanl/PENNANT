@@ -18,7 +18,8 @@ Pajama::Pajama(std::string source_fname, replacement_t replacements, int rank)
   : source_fname_(source_fname),
     source_with_replacements_fname_(fname_extension_change(source_fname, ".pj", true, rank, true)),
     co_fname_(fname_extension_change(source_with_replacements_fname_, ".co", false, rank, false)),
-    source_(read_file_as_string(source_fname))
+    source_(read_file_as_string(source_fname)),
+    rank_(rank)
 {
   replace(source_, replacements);
   save(source_, source_with_replacements_fname_);
@@ -101,6 +102,9 @@ void Pajama::hipclang_compile(){
   command += source_with_replacements_fname_.c_str();
   command += " -o ";
   command += co_fname_;
+  command += " > /tmp/jit.";
+  command += std::to_string(rank_);
+  command += ".out 2>&1";
   auto result = system(command.c_str());
   if(result){
     std::string message("Pajama::compile: failed to compile ");
