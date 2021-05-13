@@ -1132,10 +1132,20 @@ void hydroInit(
 
 #ifdef USE_MPI
   using Parallel::mype;
+#ifdef USE_JIT
+  using Parallel::numpe;
+#endif
 #else
   int mype = 0;
+#ifdef USE_JIT
+  int numpe = 1;
+#endif
 #endif
 
+#ifdef USE_JIT
+  bool doLocalReduceToPointInGpuMain3 = (numpe == 1);
+#endif
+  
     if(mype == 0){ printf("Running Hydro on device...\n"); }
 
     computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
@@ -1303,56 +1313,71 @@ void hydroInit(
       { "${pu}", jit_string(puD) },
       { "${pxp}", jit_string(pxpD) },
       { "${px}", jit_string(pxD) },
-      {"${pgamma}", jit_string(pgammaH) },
-      {"${pssmin}", jit_string(pssminH) },
-      {"${tssmin}", jit_string(tssminH) },
-      {"${talfa}", jit_string(talfaH) },
-      {"${qgamma}", jit_string(qgammaH) },
-      {"${q1}", jit_string(q1H) },
-      {"${q2}", jit_string(q2H) },
-      {"${zdu}", jit_string(zduD) },
-      {"${schsfirst}", jit_string(schsfirstD) },
-      {"${schslast}", jit_string(schslastD) },
-      {"${mapsp1}", jit_string(mapsp1D) },
-      {"${mapsp2}", jit_string(mapsp2D) },
-      {"${mapsz}", jit_string(mapszD) },
-      {"${mapss4}", jit_string(mapss4D) },
-      {"${zvol0}", jit_string(zvol0D) },
-      {"${zvol}", jit_string(zvolD) },
-      {"${znump}", jit_string(znumpD) },
-      {"${zdl}", jit_string(zdlD) },
-      {"${zm}", jit_string(zmD) },
-      {"${zp}", jit_string(zpD) },
-      {"${zss}", jit_string(zssD) },
-      {"${cmaswt}", jit_string(cmaswtD) },
-      {"${smf}", jit_string(smfD) },
-      {"${zr}", jit_string(zrD) },
-      {"${ze}", jit_string(zeD) },
-      {"${pu}", jit_string(puD) },
-      {"${sfpq}", jit_string(sfpqD) },
-      {"${cftot}", jit_string(cftotD) },
-      {"${zp}", jit_string(zpD) },
-      {"${zwrate}", jit_string(zwrateD) },
-      {"${numsbad_pinned}", jit_string(numsbad_pinned) }
+      { "${cftot}", jit_string(cftotD) },
+      { "${cmaswt}", jit_string(cmaswtD) },
+      { "${corners_by_point}", jit_string(corners_by_pointD) },
+      { "${first_corner_and_corner_count}", jit_string(first_corner_and_corner_countD) },
+      { "${mapsp1}", jit_string(mapsp1D) },
+      { "${mapsp2}", jit_string(mapsp2D) },
+      { "${mapss4}", jit_string(mapss4D) },
+      { "${mapsz}", jit_string(mapszD) },
+      { "${numsbad_pinned}", jit_string(numsbad_pinned) },
+      { "${pgamma}", jit_string(pgammaH) },
+      { "${pssmin}", jit_string(pssminH) },
+      { "${pu}", jit_string(puD) },
+      { "${q1}", jit_string(q1H) },
+      { "${q2}", jit_string(q2H) },
+      { "${qgamma}", jit_string(qgammaH) },
+      { "${schsfirst}", jit_string(schsfirstD) },
+      { "${schslast}", jit_string(schslastD) },
+      { "${sfpq}", jit_string(sfpqD) },
+      { "${smf}", jit_string(smfD) },
+      { "${talfa}", jit_string(talfaH) },
+      { "${tssmin}", jit_string(tssminH) },
+      { "${zdl}", jit_string(zdlD) },
+      { "${zdu}", jit_string(zduD) },
+      { "${ze}", jit_string(zeD) },
+      { "${zm}", jit_string(zmD) },
+      { "${znump}", jit_string(znumpD) },
+      { "${zp}", jit_string(zpD) },
+      { "${zp}", jit_string(zpD) },
+      { "${zr}", jit_string(zrD) },
+      { "${zss}", jit_string(zssD) },
+      { "${zvol0}", jit_string(zvol0D) },
+      { "${zvol}", jit_string(zvolD) },
+      { "${zwrate}", jit_string(zwrateD) },
+
+      { "${pmaswt}", jit_string(pmaswtD) },
+      { "${pf}", jit_string(pfD) },
+      { "${bcx0}", jit_string(bcxH[0]) },
+      { "${bcx1}", jit_string(bcxH[1]) },
+      { "${bcy0}", jit_string(bcyH[0]) },
+      { "${bcy1}", jit_string(bcyH[1]) },
+      { "${vfixx}", jit_string(vfixxH) },
+      { "${vfixy}", jit_string(vfixyH) },
+      { "${doLocalReduceToPoints}", jit_string(doLocalReduceToPointInGpuMain3) },
+	/*
+      { "${}", jit_string() },
+      { "${}", jit_string() },
+      { "${}", jit_string() },
+	*/
     };
+    // need to deal with small arrays in constant memory.
+    // for now, manually unroll the boundary condition loop
+    // in gpuMain3.
+    assert(numbcxH == 2);
+    assert(numbcyH == 2);
+
     jit = std::unique_ptr<Pajama>(new Pajama("../src.jit/kernels.cc", replacements, mype));
     jit->load_kernel("gpuMain1_jit");
     jit->load_kernel("gpuMain2_jit");
+    jit->load_kernel("gpuMain3_jit");
+    jit->load_kernel("localReduceToPoints_k_jit");
 #endif // USE_JIT
     hipEventCreate(&mainLoopEvent);
 }
 
 #ifdef USE_MPI
-__launch_bounds__(256)
-__global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_slave_buffer_D,
-						      double2* pf_slave_buffer_D){
-  int slave = blockIdx.x * blockDim.x + threadIdx.x;
-  if(slave >= numslv) { return; }
-  int point = mapslvp[slave];
-  pmaswt_slave_buffer_D[slave] = pmaswt[point];
-  pf_slave_buffer_D[slave] = pf[point];
-}
-
 __launch_bounds__(256)
 __global__ void copySlavePointDataToMPIBuffers_kernel_test(double* pmaswt_pf_slave_buffer_D){
 
@@ -1383,16 +1408,6 @@ void copySlavePointDataToMPIBuffers(){
 
 
 __launch_bounds__(256)
-__global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_slave_buffer_D,
-						      double2* pf_slave_buffer_D){
-  int slave = blockIdx.x * blockDim.x + threadIdx.x;
-  if(slave >= numslv) { return; }
-  int point = mapslvp[slave];
-  pmaswt[point] = pmaswt_slave_buffer_D[slave];
-  pf[point] = pf_slave_buffer_D[slave];
-}
-
-__launch_bounds__(256)
 __global__ void copyMPIBuffersToSlavePointData_kernel_test(double* pmaswt_pf_slave_buffer_D){
 
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1419,18 +1434,6 @@ void copyMPIBuffersToSlavePointData(){
 
 
 __launch_bounds__(256)
-__global__ void reduceToMasterPoints(double* pmaswt_proxy_buffer_D,
-					   double2* pf_proxy_buffer_D){
-  int proxy = blockIdx.x * blockDim.x + threadIdx.x;
-  if(proxy >= numprx) { return; }
-
-  int point = mapprxp[proxy];
-  atomicAdd(&pmaswt[point], pmaswt_proxy_buffer_D[proxy]);
-  atomicAdd(&pf[point].x, pf_proxy_buffer_D[proxy].x);
-  atomicAdd(&pf[point].y, pf_proxy_buffer_D[proxy].y);
-}
-
-__launch_bounds__(256)
 __global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
 
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1443,18 +1446,6 @@ __global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
   atomicAdd(&pf[point].y, pmaswt_pf_proxy_buffer_D[pos+2]);
 }
 
-
-
-__launch_bounds__(256)
-__global__ void copyPointValuesToProxies(double* pmaswt_proxy_buffer_D,
-					 double2* pf_proxy_buffer_D){
-  int proxy = blockIdx.x * blockDim.x + threadIdx.x;
-  if(proxy >= numprx) { return; }
-
-  int point = mapprxp[proxy];
-  pmaswt_proxy_buffer_D[proxy] = pmaswt[point];
-  pf_proxy_buffer_D[proxy] = pf[point];
-}
 
 
 __launch_bounds__(256)
@@ -1571,18 +1562,32 @@ void hydroDoCycle(
       // local reduction to points needs to be done either way, but if numpe == 1, then
       // we can do it in gpuMain3, which saves a kernel call
       doLocalReduceToPointInGpuMain3 = false;
+#ifdef USE_JIT
+      {
+	DEVICE_TIMER("Kernels", "localReduceToPoints_k_jit", 0);
+	jit->call_preloaded("localReduceToPoints_k_jit", dim3(gridSizeP), dim3(chunkSize), 0, 0, gpu_args_wrapper);
+      }
+#else
       {
 	DEVICE_TIMER("Kernels", "localReduceToPoints", 0);
 	hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
       }
+#endif
       globalReduceToPoints();
     }
 #endif
+#ifdef USE_JIT
+    {
+      DEVICE_TIMER("Kernels", "gpuMain3_jit", 0);
+      jit->call_preloaded("gpuMain3_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
+    }
+#else
     {
       DEVICE_TIMER("Kernels", "gpuMain3", 0);
       hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
 			 dt, doLocalReduceToPointInGpuMain3);
     }
+#endif
 
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);

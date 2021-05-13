@@ -31,24 +31,25 @@ extern "C" {
 
   //-- gpuMain2 and supporting device functions -------------------------
 
-  __device__ void calcZoneCtrs_SideVols_ZoneVols_jit(
-						     const int s,
-						     const int s0,
-						     const double2 pxp1,
-						     const double2 pxp2,
-						     double2& __restrict__ zx,
-						     double&  sarea,
-						     double& zarea,
-						     double& zvol,
-						     int dss4[CHUNK_SIZE],
-						     double2 ctemp2[CHUNK_SIZE],
-						     double ctemp[CHUNK_SIZE],
-						     double ctemp1[CHUNK_SIZE],
-						     int* __restrict__ numsbad_pinned,
-						     //const int s3, 
-						     const int z,
-						     const int* __restrict__ znump,
-						     double* __restrict__ zdl)
+  __device__ inline
+  void calcZoneCtrs_SideVols_ZoneVols_jit(
+					  const int s,
+					  const int s0,
+					  const double2 pxp1,
+					  const double2 pxp2,
+					  double2& __restrict__ zx,
+					  double&  sarea,
+					  double& zarea,
+					  double& zvol,
+					  int dss4[CHUNK_SIZE],
+					  double2 ctemp2[CHUNK_SIZE],
+					  double ctemp[CHUNK_SIZE],
+					  double ctemp1[CHUNK_SIZE],
+					  int* __restrict__ numsbad_pinned,
+					  //const int s3, 
+					  const int z,
+					  const int* __restrict__ znump,
+					  double* __restrict__ zdl)
   {
     ctemp2[s0] = pxp1;
     __syncthreads();
@@ -91,16 +92,17 @@ extern "C" {
     zdl[z] = sdlmin;
   }
 
-  __device__ void pgasCalcStateAtHalf_jit(const int z,
-					  const double rx,
-					  const double zvolp,
-					  const double* __restrict__ zvol0,
-					  const double* __restrict__ ze,
-					  const double* __restrict__ zwrate,
-					  const double  zm,
-					  const double dt,
-					  double &zp,
-					  double &zss)
+  __device__ inline
+  void pgasCalcStateAtHalf_jit(const int z,
+			       const double rx,
+			       const double zvolp,
+			       const double* __restrict__ zvol0,
+			       const double* __restrict__ ze,
+			       const double* __restrict__ zwrate,
+			       const double  zm,
+			       const double dt,
+			       double &zp,
+			       double &zss)
   {
     constexpr double pgamma = ${pgamma};
     constexpr double pssmin = ${pssmin};
@@ -132,16 +134,17 @@ extern "C" {
   }
 
 
-  static __device__ void ttsCalcForce_jit(const int s,
-					  const int z,
-					  const double zareap,
-					  const double zrp,
-					  const double zssz,
-					  const double sareap,
-					  const double* __restrict__ smf,
-					  const double2 ssurf,
-					  double2 &sft) {
-
+  __device__ inline
+  void ttsCalcForce_jit(const int s,
+			const int z,
+			const double zareap,
+			const double zrp,
+			const double zssz,
+			const double sareap,
+			const double* __restrict__ smf,
+			const double2 ssurf,
+			double2 &sft) {
+    
     constexpr double tssmin = ${tssmin};
     constexpr double talfa = ${talfa};
 
@@ -153,28 +156,29 @@ extern "C" {
     sft = -sdp * ssurf;
   }
 
-  __device__ void qcsSetCornerDiv_jit(const int s,
-				      const int s0,
-				      const int s4,
-				      const int s04,
-				      const int z,
-				      const int p1,
-				      const int p2,
-				      const double2 pxpp0,
-				      const double2 pxpp1,
-				      const double2 pxpp2,
-				      const double2 pup0,
-				      const double2 pup1,
-				      const double2 pup2,
-				      const double2  zxp,
-				      const double zrp,
-				      const double zss1,
-				      double2& sfq,
-				      int dss4[CHUNK_SIZE],
-				      double2 ctemp2[CHUNK_SIZE],
-				      double sh_ccos[CHUNK_SIZE],
-				      double ctemp[CHUNK_SIZE],
-				      double2 ctemp1[CHUNK_SIZE*2]) {
+  __device__ inline
+  void qcsSetCornerDiv_jit(const int s,
+			   const int s0,
+			   const int s4,
+			   const int s04,
+			   const int z,
+			   const int p1,
+			   const int p2,
+			   const double2 pxpp0,
+			   const double2 pxpp1,
+			   const double2 pxpp2,
+			   const double2 pup0,
+			   const double2 pup1,
+			   const double2 pup2,
+			   const double2  zxp,
+			   const double zrp,
+			   const double zss1,
+			   double2& sfq,
+			   int dss4[CHUNK_SIZE],
+			   double2 ctemp2[CHUNK_SIZE],
+			   double sh_ccos[CHUNK_SIZE],
+			   double ctemp[CHUNK_SIZE],
+			   double2 ctemp1[CHUNK_SIZE*2]) {
     
     constexpr double qgamma = ${qgamma};
     constexpr double q1 = ${q1};
@@ -281,19 +285,20 @@ extern "C" {
 	   ctemp[s04] * ( ctemp1[2*s04] + sh_ccos[s04] * ctemp1[2*s04+1]))/elen;
   }
 
-   __device__ void qcsSetVelDiff_jit(
-				     const int s,
-				     const int s0,
-				     const int p1,
-				     const int p2,
-				     const double2 pxpp1,
-				     const double2 pxpp2,
-				     const double2 pup1,
-				     const double2 pup2,
-				     const int z,
-				     const double zss1,
-				     int dss4[CHUNK_SIZE],
-				     double ctemp[CHUNK_SIZE]) {
+  __device__ inline
+  void qcsSetVelDiff_jit(
+			 const int s,
+			 const int s0,
+			 const int p1,
+			 const int p2,
+			 const double2 pxpp1,
+			 const double2 pxpp2,
+			 const double2 pup1,
+			 const double2 pup2,
+			 const int z,
+			 const double zss1,
+			 int dss4[CHUNK_SIZE],
+			 double ctemp[CHUNK_SIZE]) {
     double* zdu = ${zdu};
     constexpr double q1 = ${q1};
     constexpr double q2 = ${q2};
@@ -317,9 +322,9 @@ extern "C" {
   }
 
 #if defined(__gfx908__) or defined(__HIP_ARCH_GFX908__)
-__launch_bounds__(64,4)
+  __launch_bounds__(64,4)
 #else
-__launch_bounds__(64)
+  __launch_bounds__(64)
 #endif
   __global__ void gpuMain2_jit(double dt)
   {
@@ -428,5 +433,145 @@ __launch_bounds__(64)
     zp[z] = zpz;
     zss[z] = zssz;
   }
+
+  //-- gpuMain3 and supporting device functions -------------------------
+
+  __device__ inline
+  void applyFixedBC_jit(const int p,
+			const double2 px,
+			double2 &pu,
+			double2 &pf,
+			const double2 vfix,
+			const double bcconst) {
+
+    const double eps = 1.e-12;
+    double dp = dot(px, vfix);
+
+    if (fabs(dp - bcconst) < eps) {
+      pu = project(pu, vfix);
+      pf = project(pf, vfix);
+    }
+  }
+
+  __device__ inline
+  void localReduceToPoints_jit(const int p,
+			       const double* __restrict__ cmaswt,
+			       double* __restrict__ pmaswt,
+			       const double2* __restrict__ cftot,
+			       double2* __restrict__ pf)
+  {
+    const int2* const first_corner_and_corner_count = ${first_corner_and_corner_count};
+    const int* const corners_by_point = ${corners_by_point};
+    
+    
+    double cmaswt_sum = 0.;
+    double2 cftot_sum = make_double2(0., 0.);
+
+    int2 first_and_count = first_corner_and_corner_count[p];
+    int c = first_and_count.x;
+    int count = first_and_count.y;
+
+    union {
+      int4 i4;
+      int a[4];
+    } corners4;
+
+    for(; count > 0; count -=4, c += 4){
+      // load in batches of 4. Safe to do, even near the end of the array
+      // 'corners_by_point', since it has been over-allocated sufficiently,
+      // and we don't use the over-allocated values.
+#if !defined(__CUDACC__)
+      corners4.i4 = * (int4*)(corners_by_point + c);
+#else
+      corners4.a[0] = corners_by_point[c + 0];
+      corners4.a[1] = corners_by_point[c + 1];
+      corners4.a[2] = corners_by_point[c + 2];
+      corners4.a[3] = corners_by_point[c + 3];
+#endif
+      int inner_count = min(count, 4);
+      for(int i = 0; i != inner_count; ++i){
+	int s = corners4.a[i];
+	cmaswt_sum += cmaswt[s];
+	cftot_sum += cftot[s];
+      }
+    }
+
+    pmaswt[p] = cmaswt_sum;
+    pf[p] = cftot_sum;
+  }
+
+  __launch_bounds__(256)
+  __global__ void localReduceToPoints_k_jit()
+  {
+    constexpr int nump = ${nump};
+    const double* const cmaswt = ${cmaswt};
+    double* const pmaswt = ${pmaswt};
+    const double2* const cftot = ${cftot};
+    double2* const pf = ${pf};
+    
+    const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
+    if (p >= nump) return;
+
+    // sum corner masses, forces to points
+    localReduceToPoints_jit(p, cmaswt, pmaswt, cftot, pf);
+  }
+  
+  __launch_bounds__(256)
+  __global__ void gpuMain3_jit(double dt)
+  {
+    constexpr bool doLocalReduceToPoints = ${doLocalReduceToPoints};
+    constexpr int nump = ${nump};
+    double* const cmaswt = ${cmaswt};
+    double* const pmaswt = ${pmaswt};
+    double2* const cftot = ${cftot};
+    double2* const pf = ${pf};
+    double2* const pu0 = ${pu0};
+    double2* const pxp = ${pxp};
+    constexpr double bcx0 = ${bcx0};
+    constexpr double bcx1 = ${bcx1};
+    constexpr double bcy0 = ${bcy0};
+    constexpr double bcy1 = ${bcy1};
+    double2* const px = ${px};
+    double2* const pu = ${pu};
+    constexpr double2 vfixx = ${vfixx};
+    constexpr double2 vfixy = ${vfixy};
+    
+    const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
+    if (p >= nump) return;
+
+    if(doLocalReduceToPoints){
+      // sum corner masses, forces to points
+      localReduceToPoints_jit(p, cmaswt, pmaswt, cftot, pf);
+    }
+
+    // 4a. apply boundary conditions
+    double2 pxpp = pxp[p];
+    double2 pu0p = pu0[p];
+    double2 pfp  = pf[p];
+    // bcx and bcy are arrays of size 2 in constant memory. Need to think how to
+    // deal with that, For now, manually unroll.
+    /*
+      for (int bc = 0; bc < numbcx; ++bc)
+      applyFixedBC(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
+      for (int bc = 0; bc < numbcy; ++bc)
+      applyFixedBC(p, pxpp, pu0p, pfp, vfixy, bcy[bc]);
+    */
+    applyFixedBC_jit(p, pxpp, pu0p, pfp, vfixx, bcx0);
+    applyFixedBC_jit(p, pxpp, pu0p, pfp, vfixx, bcx1);
+    applyFixedBC_jit(p, pxpp, pu0p, pfp, vfixy, bcy0);
+    applyFixedBC_jit(p, pxpp, pu0p, pfp, vfixy, bcy1);
+
+    // 5. compute accelerations
+    const double fuzz = 1.e-99;
+    double2 pa = pfp / max(pmaswt[p], fuzz);
+
+    // ===== Corrector step =====
+    // 6. advance mesh to end of time step
+    pu[p] = pu0p + pa * dt;
+    px[p] = px[p] + 0.5 * (pu[p] + pu0[p]) * dt;
+    pu0[p] = pu0p;
+    pf[p]  = pfp;
+  }
+
 
 } // extern "C"
