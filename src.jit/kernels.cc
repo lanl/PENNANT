@@ -5,6 +5,11 @@
 extern "C" {
 
   namespace {
+    struct double_int {
+      double d;
+      int i;
+    };
+
     constexpr int CHUNK_SIZE = ${CHUNK_SIZE};
     constexpr double bcx0 = ${bcx0};
     constexpr double bcx1 = ${bcx1};
@@ -16,7 +21,9 @@ extern "C" {
     double* const cmaswt = ${cmaswt};
     const int* const corners_by_point = ${corners_by_point};
     constexpr bool doLocalReduceToPoints = ${doLocalReduceToPoints};
+    double_int* const dtnext = ${dtnext};
     const int2* const first_corner_and_corner_count = ${first_corner_and_corner_count};
+    constexpr int gpuMain5_gridsize = ${gpuMain5_gridsize};
     const int* const mapsp1 = ${mapsp1};
     const int* const mapsp2 = ${mapsp2};
     const int* const mapss4 = ${mapss4};
@@ -37,6 +44,7 @@ extern "C" {
     constexpr double q1 = ${q1};
     constexpr double q2 = ${q2};
     constexpr double qgamma = ${qgamma};
+    int* remaining_wg = ${remaining_wg};
     const int* const schsfirst = ${schsfirst};
     const int* const schslast = ${schslast};
     double2* const sfpq = ${sfpq};
@@ -46,16 +54,18 @@ extern "C" {
     constexpr double2 vfixx = ${vfixx};
     constexpr double2 vfixy = ${vfixy};
     double* const zdl = ${zdl};
+    double* const zarea = ${zarea};
     double* zdu = ${zdu};
-    const double* const ze = ${ze};
+    double* const ze = ${ze};
+    double* const zetot = ${zetot};
     double* const zm = ${zm};
     const int* const znump = ${znump};
     double* const zp = ${zp};
-    const double* const zr = ${zr};
+    double* const zr = ${zr};
     double* const zss = ${zss};
     double* const zvol0 = ${zvol0};
-    const double* const zvol = ${zvol};
-    const double* const zwrate = ${zwrate};
+    double* const zvol = ${zvol};
+    double* const zwrate = ${zwrate};
   }
 
 
@@ -550,5 +560,140 @@ extern "C" {
     pf[p]  = pfp;
   }
 
+  //-- gpuMain4 and supporting device functions -------------------------
+
+  __device__ void calcZoneCtrs_SideVols_ZoneVols_main4_jit(
+							   const int s,
+							   const int s0,
+							   const int z,
+							   const double2 px1,
+							   const double2 px2,
+							   double* __restrict__ zarea,
+							   double & zvol_1,
+							   int dss4[CHUNK_SIZE],
+							   double2 ctemp2[CHUNK_SIZE],
+							   double ctemp[CHUNK_SIZE],
+							   double ctemp1[CHUNK_SIZE],
+							   int* __restrict__ numsbad_pinned)
+  {
+    ctemp2[s0] = px1;
+    __syncthreads();
+
+    double2 zxtot = ctemp2[s0];
+    double zct = 1.;
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+      zxtot += ctemp2[sn];
+      zct += 1.;
+    }
+    double2 zx = zxtot / zct;
+
+    const double third = 1. / 3.;
+    const double sa = 0.5 * cross(px2 - px1,  zx - px1);
+    const double sv = third * sa * (px1.x + px2.x + zx.x);
+    if (sv <= 0.) { atomicAdd(numsbad_pinned, 1); }
+
+    ctemp[s0] = sv;
+    ctemp1[s0] = sa;
+    __syncthreads();
+    double zvtot = ctemp[s0];
+    double zatot = ctemp1[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+      zvtot += ctemp[sn];
+      zatot += ctemp1[sn];
+    }
+
+    zarea[z] = zatot;
+    //zvol[z] = zvtot;
+    zvol_1 = zvtot;
+  }
+
+  __device__ void hydroCalcWork_jit(
+				    const int s,
+				    const int s0,
+				    const int z,
+				    const int p1,
+				    const int p2,
+				    const double2* __restrict__ sf,
+				    const double2* __restrict__ pu0,
+				    const double2* __restrict__ pu,
+				    const double2* __restrict__ px,
+				    const double dt,
+				    double &zwz,
+				    double* __restrict__ zetot,
+				    int dss4[CHUNK_SIZE],
+				    double ctemp[CHUNK_SIZE]) {
+
+    // Compute the work done by finding, for each element/node pair
+    //   dwork= force * vavg
+    // where force is the force of the element on the node
+    // and vavg is the average velocity of the node over the time period
+
+    const double sd1 = dot( sf[s], (pu0[p1] + pu[p1]));
+    const double sd2 = dot(-sf[s], (pu0[p2] + pu[p2]));
+    const double dwork = -0.5 * dt * (sd1 * px[p1].x + sd2 * px[p2].x);
+
+    ctemp[s0] = dwork;
+    const double etot = zetot[z];
+    __syncthreads();
+
+    double dwtot = ctemp[s0];
+    for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
+      dwtot += ctemp[sn];
+    }
+    zetot[z] = etot + dwtot;
+    zwz = dwtot;
+  }
+
+  __launch_bounds__(256)
+  __global__ void gpuMain4_jit(double dt)
+  {
+    const int s0 = threadIdx.x;
+    const int sch = blockIdx.x;
+    const int s = schsfirst[sch] + s0;
+    if (s >= schslast[sch]) return;
+
+    const int p1 = mapsp1[s];
+    const int p2 = mapsp2[s];
+    const int z  = mapsz[s];
+
+    const int s4 = mapss4[s];
+    const int s04 = s4 - schsfirst[sch];
+
+    __shared__ int dss4[CHUNK_SIZE];
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double ctemp1[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+    
+    dss4[s0] = s04 - s0;
+
+    __syncthreads();
+
+    // 6a. compute new mesh geometry
+
+    const double2 pxp1 = px[p1];
+    const double2 pxp2 = px[p2];
+    double zvol_1;
+    calcZoneCtrs_SideVols_ZoneVols_main4_jit(s,s0,z, pxp1, pxp2, zarea, zvol_1,dss4, ctemp2, ctemp, ctemp1, numsbad_pinned);
+
+    // 7. compute work
+    double zwz;
+    hydroCalcWork_jit(s, s0, z, p1, p2, sfpq, pu0, pu, pxp, dt,
+		      zwz, zetot, dss4, ctemp);
+
+    const double dvol = zvol_1 - zvol0[z];
+    zwrate[z] = (zwz + zp[z] * dvol) / dt;
+    const double fuzz = 1.e-99;
+    ze[z] = zetot[z] / (zm[z] + fuzz);
+    zr[z] = zm[z] / zvol_1;
+    zvol[z] = zvol_1;
+
+    // reset dtnext and remaining_wg prior to finding the minimum over all sides in the next kernel
+    if(blockIdx.x == 0 and threadIdx.x == 0){
+      dtnext->d = 1.e99;
+      int* remaining_wg = ${remaining_wg};
+      *remaining_wg = gpuMain5_gridsize;
+    }
+
+  }
 
 } // extern "C"

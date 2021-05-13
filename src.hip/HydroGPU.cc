@@ -1316,7 +1316,9 @@ void hydroInit(
       { "${cmaswt}", jit_string(cmaswtD) },
       { "${corners_by_point}", jit_string(corners_by_pointD) },
       { "${doLocalReduceToPoints}", jit_string(doLocalReduceToPointInGpuMain3) },
+      { "${dtnext}", jit_string(dtnext_D) },
       { "${first_corner_and_corner_count}", jit_string(first_corner_and_corner_countD) },
+      { "${gpuMain5_gridsize}", jit_string(numzchH) },
       { "${mapsp1}", jit_string(mapsp1D) },
       { "${mapsp2}", jit_string(mapsp2D) },
       { "${mapss4}", jit_string(mapss4D) },
@@ -1335,6 +1337,7 @@ void hydroInit(
       { "${q1}", jit_string(q1H) },
       { "${q2}", jit_string(q2H) },
       { "${qgamma}", jit_string(qgammaH) },
+      { "${remaining_wg}", jit_string(remaining_wg_D) },
       { "${schsfirst}", jit_string(schsfirstD) },
       { "${schslast}", jit_string(schslastD) },
       { "${sfpq}", jit_string(sfpqD) },
@@ -1343,9 +1346,11 @@ void hydroInit(
       { "${tssmin}", jit_string(tssminH) },
       { "${vfixx}", jit_string(vfixxH) },
       { "${vfixy}", jit_string(vfixyH) },
+      { "${zarea}", jit_string(zareaD) },
       { "${zdl}", jit_string(zdlD) },
       { "${zdu}", jit_string(zduD) },
       { "${ze}", jit_string(zeD) },
+      { "${zetot}", jit_string(zetotD) },
       { "${zm}", jit_string(zmD) },
       { "${znump}", jit_string(znumpD) },
       { "${zp}", jit_string(zpD) },
@@ -1371,6 +1376,7 @@ void hydroInit(
     jit->load_kernel("gpuMain1_jit");
     jit->load_kernel("gpuMain2_jit");
     jit->load_kernel("gpuMain3_jit");
+    jit->load_kernel("gpuMain4_jit");
     jit->load_kernel("localReduceToPoints_k_jit");
 #endif // USE_JIT
     hipEventCreate(&mainLoopEvent);
@@ -1580,19 +1586,25 @@ void hydroDoCycle(
       DEVICE_TIMER("Kernels", "gpuMain3_jit", 0);
       jit->call_preloaded("gpuMain3_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
     }
+
+    {
+      DEVICE_TIMER("Kernels", "gpuMain4_jit", 0);
+      jit->call_preloaded("gpuMain4_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
+    }
 #else
     {
       DEVICE_TIMER("Kernels", "gpuMain3", 0);
       hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
 			 dt, doLocalReduceToPointInGpuMain3);
     }
-#endif
 
     {
       DEVICE_TIMER("Kernels", "gpuMain4", 0);
       hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt,
 			 remaining_wg_D, gridSizeZ);
     }
+#endif
+
 
     *pinned_control_flag = 0;
     {
