@@ -1,19 +1,68 @@
 #include <hip/hip_runtime.h>
 #include "../src.hip/Vec2.hh"
 
-constexpr int CHUNK_SIZE = ${CHUNK_SIZE};
 
 extern "C" {
+
+  namespace {
+    constexpr int CHUNK_SIZE = ${CHUNK_SIZE};
+    constexpr double bcx0 = ${bcx0};
+    constexpr double bcx1 = ${bcx1};
+    constexpr double bcy0 = ${bcy0};
+    constexpr double bcy1 = ${bcy1};
+    // const double2* const cftot = ${cftot};
+    double2* const cftot = ${cftot};
+    // const double* const cmaswt = ${cmaswt};
+    double* const cmaswt = ${cmaswt};
+    const int* const corners_by_point = ${corners_by_point};
+    constexpr bool doLocalReduceToPoints = ${doLocalReduceToPoints};
+    const int2* const first_corner_and_corner_count = ${first_corner_and_corner_count};
+    const int* const mapsp1 = ${mapsp1};
+    const int* const mapsp2 = ${mapsp2};
+    const int* const mapss4 = ${mapss4};
+    const int* const mapsz = ${mapsz};
+    constexpr int nump = ${nump};
+    int* const numsbad_pinned = ${numsbad_pinned};
+    double2* const pf = ${pf};
+    constexpr double pgamma = ${pgamma};
+    double* const pmaswt = ${pmaswt};
+    constexpr double pssmin = ${pssmin};
+    double2* const pu0 = ${pu0};
+    // const double2* const pu = ${pu};
+    double2* const pu = ${pu};
+    // const double2* const pxp = ${pxp};
+    double2* const pxp = ${pxp};
+    // const double2* const px = ${px};
+    double2* const px = ${px};
+    constexpr double q1 = ${q1};
+    constexpr double q2 = ${q2};
+    constexpr double qgamma = ${qgamma};
+    const int* const schsfirst = ${schsfirst};
+    const int* const schslast = ${schslast};
+    double2* const sfpq = ${sfpq};
+    const double* const smf = ${smf};
+    constexpr double talfa = ${talfa};
+    constexpr double tssmin = ${tssmin};
+    constexpr double2 vfixx = ${vfixx};
+    constexpr double2 vfixy = ${vfixy};
+    double* const zdl = ${zdl};
+    double* zdu = ${zdu};
+    const double* const ze = ${ze};
+    double* const zm = ${zm};
+    const int* const znump = ${znump};
+    double* const zp = ${zp};
+    const double* const zr = ${zr};
+    double* const zss = ${zss};
+    double* const zvol0 = ${zvol0};
+    const double* const zvol = ${zvol};
+    const double* const zwrate = ${zwrate};
+  }
+
 
   //-- gpuMain1 ----------------------------------------------------------
   __launch_bounds__(256)
   __global__ void gpuMain1_jit(double dt)
   {
-    constexpr int nump = ${nump};
-    const double2* const px = ${px};
-    const double2* const pu = ${pu};
-    double2* const pu0 = ${pu0};
-    double2* const pxp = ${pxp};
 
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
@@ -104,15 +153,6 @@ extern "C" {
 			       double &zp,
 			       double &zss)
   {
-    constexpr double pgamma = ${pgamma};
-    constexpr double pssmin = ${pssmin};
-    constexpr double tssmin = ${tssmin};
-    constexpr double talfa = ${talfa};
-    constexpr double qgamma = ${qgamma};
-    constexpr double q1 = ${q1};
-    constexpr double q2 = ${q2};
-    double* zdu = ${zdu};
-
     double zper;
 
     const double gm1 = pgamma - 1.;
@@ -144,10 +184,6 @@ extern "C" {
 			const double* __restrict__ smf,
 			const double2 ssurf,
 			double2 &sft) {
-    
-    constexpr double tssmin = ${tssmin};
-    constexpr double talfa = ${talfa};
-
     const double svfacinv = zareap / sareap;
     const double srho = zrp * smf[s] * svfacinv;
     double sstmp = max(zssz, tssmin);
@@ -179,11 +215,6 @@ extern "C" {
 			   double sh_ccos[CHUNK_SIZE],
 			   double ctemp[CHUNK_SIZE],
 			   double2 ctemp1[CHUNK_SIZE*2]) {
-    
-    constexpr double qgamma = ${qgamma};
-    constexpr double q1 = ${q1};
-    constexpr double q2 = ${q2};
-
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pup1;
     __syncthreads();
@@ -299,10 +330,6 @@ extern "C" {
 			 const double zss1,
 			 int dss4[CHUNK_SIZE],
 			 double ctemp[CHUNK_SIZE]) {
-    double* zdu = ${zdu};
-    constexpr double q1 = ${q1};
-    constexpr double q2 = ${q2};
-     
     const double2 du = pup2 - pup1;
     const double2 dx = pxpp2 - pxpp1;
     const double lenx = length(dx);
@@ -318,6 +345,7 @@ extern "C" {
     }
     __syncthreads();
 
+    double* zdu = ${zdu};
     zdu[z] = q1 * zss1 + 2. * q2 * ztmp;
   }
 
@@ -328,30 +356,6 @@ extern "C" {
 #endif
   __global__ void gpuMain2_jit(double dt)
   {
-    const int* const schsfirst = ${schsfirst};
-    const int* const schslast = ${schslast};
-    const int* const mapsp1 = ${mapsp1};
-    const int* const mapsp2 = ${mapsp2};
-    const int* const mapsz = ${mapsz};
-    const int* const mapss4 = ${mapss4};
-    double* const zvol0 = ${zvol0};
-    const double* const zvol = ${zvol};
-    const double2* const pxp = ${pxp};
-    const int* const znump = ${znump};
-    double* const zdl = ${zdl};
-    double* const zp = ${zp};
-    double* const zm = ${zm};
-    double* const zss = ${zss};
-    double* const cmaswt = ${cmaswt};
-    const double* const smf = ${smf};
-    const double* const zr = ${zr};
-    const double* const ze = ${ze};
-    const double2* const pu = ${pu};
-    double2* const sfpq = ${sfpq};
-    double2* const cftot = ${cftot};
-    const double* const zwrate = ${zwrate};
-    int* const numsbad_pinned = ${numsbad_pinned};
-    
     const int s0 = threadIdx.x;
     const int sch = blockIdx.x;
     const int s = schsfirst[sch] + s0;
@@ -460,10 +464,6 @@ extern "C" {
 			       const double2* __restrict__ cftot,
 			       double2* __restrict__ pf)
   {
-    const int2* const first_corner_and_corner_count = ${first_corner_and_corner_count};
-    const int* const corners_by_point = ${corners_by_point};
-    
-    
     double cmaswt_sum = 0.;
     double2 cftot_sum = make_double2(0., 0.);
 
@@ -503,12 +503,6 @@ extern "C" {
   __launch_bounds__(256)
   __global__ void localReduceToPoints_k_jit()
   {
-    constexpr int nump = ${nump};
-    const double* const cmaswt = ${cmaswt};
-    double* const pmaswt = ${pmaswt};
-    const double2* const cftot = ${cftot};
-    double2* const pf = ${pf};
-    
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
@@ -519,23 +513,6 @@ extern "C" {
   __launch_bounds__(256)
   __global__ void gpuMain3_jit(double dt)
   {
-    constexpr bool doLocalReduceToPoints = ${doLocalReduceToPoints};
-    constexpr int nump = ${nump};
-    double* const cmaswt = ${cmaswt};
-    double* const pmaswt = ${pmaswt};
-    double2* const cftot = ${cftot};
-    double2* const pf = ${pf};
-    double2* const pu0 = ${pu0};
-    double2* const pxp = ${pxp};
-    constexpr double bcx0 = ${bcx0};
-    constexpr double bcx1 = ${bcx1};
-    constexpr double bcy0 = ${bcy0};
-    constexpr double bcy1 = ${bcy1};
-    double2* const px = ${px};
-    double2* const pu = ${pu};
-    constexpr double2 vfixx = ${vfixx};
-    constexpr double2 vfixy = ${vfixy};
-    
     const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
     if (p >= nump) return;
 
