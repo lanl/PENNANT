@@ -45,13 +45,19 @@ void Pajama::call(const char* kernel, dim3 grid_dim, dim3 block_dim,
 }
 
 
-int Pajama::call_preloaded(const char* kernel, dim3 grid_dim, dim3 block_dim,
+void Pajama::call_preloaded(const char* kernel, dim3 grid_dim, dim3 block_dim,
 			   unsigned int shmem_bytes, hipStream_t stream, void** kernel_args){
-  return hipModuleLaunchKernel(kernel_map_[kernel],
-			       grid_dim.x, grid_dim.y, grid_dim.z,
-			       block_dim.x, block_dim.y, block_dim.z,
-			       shmem_bytes, stream,
-			       nullptr, kernel_args);
+  auto result = hipModuleLaunchKernel(kernel_map_[kernel],
+				      grid_dim.x, grid_dim.y, grid_dim.z,
+				      block_dim.x, block_dim.y, block_dim.z,
+				      shmem_bytes, stream,
+				      nullptr, kernel_args);
+  if(hipSuccess != result){
+    std::string message("Pajama::call: failed to launch kernel ");
+    message += kernel;
+    message += "\n* Check kernel name";
+    throw std::runtime_error(message);
+  }
 }
 
 

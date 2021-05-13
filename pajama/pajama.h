@@ -16,7 +16,7 @@ class Pajama {
   Pajama(std::string source_fname, replacement_t replacements = replacement_t(), int rank=0);
   void call(const char* kernel, dim3 grid_dim, dim3 block_dim,
 	    unsigned int shmem_bytes, hipStream_t stream, void** kernel_args);
-  int call_preloaded(const char* kernel, dim3 grid_dim, dim3 block_dim,
+  void call_preloaded(const char* kernel, dim3 grid_dim, dim3 block_dim,
 		     unsigned int shmem_bytes, hipStream_t stream, void** kernel_args);
   void compile(); // hard-coded forwarding to either of the two compiler-specific versions
   void hipclang_compile();
