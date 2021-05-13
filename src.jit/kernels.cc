@@ -1,6 +1,7 @@
 #include <hip/hip_runtime.h>
 #include "../src.hip/Vec2.hh"
 
+#define OPT_INLINE
 
 extern "C" {
 
@@ -90,7 +91,7 @@ extern "C" {
 
   //-- gpuMain2 and supporting device functions -------------------------
 
-  __device__ inline
+  __device__ OPT_INLINE
   void calcZoneCtrs_SideVols_ZoneVols_jit(
 					  const int s,
 					  const int s0,
@@ -151,7 +152,7 @@ extern "C" {
     zdl[z] = sdlmin;
   }
 
-  __device__ inline
+  __device__ OPT_INLINE
   void pgasCalcStateAtHalf_jit(const int z,
 			       const double rx,
 			       const double zvolp,
@@ -184,7 +185,7 @@ extern "C" {
   }
 
 
-  __device__ inline
+  __device__ OPT_INLINE
   void ttsCalcForce_jit(const int s,
 			const int z,
 			const double zareap,
@@ -202,7 +203,7 @@ extern "C" {
     sft = -sdp * ssurf;
   }
 
-  __device__ inline
+  __device__ OPT_INLINE
   void qcsSetCornerDiv_jit(const int s,
 			   const int s0,
 			   const int s4,
@@ -326,7 +327,7 @@ extern "C" {
 	   ctemp[s04] * ( ctemp1[2*s04] + sh_ccos[s04] * ctemp1[2*s04+1]))/elen;
   }
 
-  __device__ inline
+  __device__ OPT_INLINE
   void qcsSetVelDiff_jit(
 			 const int s,
 			 const int s0,
@@ -450,7 +451,7 @@ extern "C" {
 
   //-- gpuMain3 and supporting device functions -------------------------
 
-  __device__ inline
+  __device__ OPT_INLINE
   void applyFixedBC_jit(const int p,
 			const double2 px,
 			double2 &pu,
@@ -467,7 +468,7 @@ extern "C" {
     }
   }
 
-  __device__ inline
+  __device__ OPT_INLINE
   void localReduceToPoints_jit(const int p,
 			       const double* __restrict__ cmaswt,
 			       double* __restrict__ pmaswt,
