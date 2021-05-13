@@ -1317,16 +1317,21 @@ void hydroInit(
       { "${corners_by_point}", jit_string(corners_by_pointD) },
       { "${doLocalReduceToPoints}", jit_string(doLocalReduceToPointInGpuMain3) },
       { "${dtnext}", jit_string(dtnext_D) },
+      { "${dtnext_H}", jit_string(dtnext_H) },
       { "${first_corner_and_corner_count}", jit_string(first_corner_and_corner_countD) },
       { "${gpuMain5_gridsize}", jit_string(numzchH) },
+      { "${hcfl}", jit_string(hcflH) },
+      { "${hcflv}", jit_string(hcflvH) },
       { "${mapsp1}", jit_string(mapsp1D) },
       { "${mapsp2}", jit_string(mapsp2D) },
       { "${mapss4}", jit_string(mapss4D) },
       { "${mapsz}", jit_string(mapszD) },
       { "${nump}", jit_string(numpH) },
       { "${numsbad_pinned}", jit_string(numsbad_pinned) },
+      { "${numz}", jit_string(numzH) },
       { "${pf}", jit_string(pfD) },
       { "${pgamma}", jit_string(pgammaH) },
+      { "${pinned_control_flag}", jit_string(pinned_control_flag) },
       { "${pmaswt}", jit_string(pmaswtD) },
       { "${pssmin}", jit_string(pssminH) },
       { "${pu0}", jit_string(pu0D) },
@@ -1377,6 +1382,7 @@ void hydroInit(
     jit->load_kernel("gpuMain2_jit");
     jit->load_kernel("gpuMain3_jit");
     jit->load_kernel("gpuMain4_jit");
+    jit->load_kernel("gpuMain5_jit");
     jit->load_kernel("localReduceToPoints_k_jit");
 #endif // USE_JIT
     hipEventCreate(&mainLoopEvent);
@@ -1605,13 +1611,20 @@ void hydroDoCycle(
     }
 #endif
 
-
     *pinned_control_flag = 0;
+
+#ifdef USE_JIT
+    {
+      DEVICE_TIMER("Kernels", "gpuMain5_jit", 0);
+      jit->call_preloaded("gpuMain5_jit", gridSizeZ, chunkSize, 0, 0, gpu_args_wrapper);
+    }
+#else
     {
       DEVICE_TIMER("Kernels", "gpuMain5", 0);
       hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt,
 			 dtnext_H, remaining_wg_D, pinned_control_flag);
     }
+#endif
 
     {
       HOST_TIMER("Other", "meshCheckBadSides");

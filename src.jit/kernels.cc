@@ -23,16 +23,21 @@ extern "C" {
     const int* const corners_by_point = ${corners_by_point};
     constexpr bool doLocalReduceToPoints = ${doLocalReduceToPoints};
     double_int* const dtnext = ${dtnext};
+    double_int* const dtnext_H = ${dtnext_H};
     const int2* const first_corner_and_corner_count = ${first_corner_and_corner_count};
     constexpr int gpuMain5_gridsize = ${gpuMain5_gridsize};
+    constexpr double hcfl = ${hcfl};
+    constexpr double hcflv = ${hcflv};
     const int* const mapsp1 = ${mapsp1};
     const int* const mapsp2 = ${mapsp2};
     const int* const mapss4 = ${mapss4};
     const int* const mapsz = ${mapsz};
     constexpr int nump = ${nump};
     int* const numsbad_pinned = ${numsbad_pinned};
+    constexpr int numz = ${numz};
     double2* const pf = ${pf};
     constexpr double pgamma = ${pgamma};
+    int* const pinned_control_flag = ${pinned_control_flag};
     double* const pmaswt = ${pmaswt};
     constexpr double pssmin = ${pssmin};
     double2* const pu0 = ${pu0};
@@ -45,7 +50,7 @@ extern "C" {
     constexpr double q1 = ${q1};
     constexpr double q2 = ${q2};
     constexpr double qgamma = ${qgamma};
-    int* remaining_wg = ${remaining_wg};
+    int* const remaining_wg = ${remaining_wg};
     const int* const schsfirst = ${schsfirst};
     const int* const schslast = ${schslast};
     double2* const sfpq = ${sfpq};
@@ -56,7 +61,7 @@ extern "C" {
     constexpr double2 vfixy = ${vfixy};
     double* const zdl = ${zdl};
     double* const zarea = ${zarea};
-    double* zdu = ${zdu};
+    double* const zdu = ${zdu};
     double* const ze = ${ze};
     double* const zetot = ${zetot};
     double* const zm = ${zm};
@@ -356,7 +361,6 @@ extern "C" {
     }
     __syncthreads();
 
-    double* zdu = ${zdu};
     zdu[z] = q1 * zss1 + 2. * q2 * ztmp;
   }
 
@@ -691,10 +695,158 @@ extern "C" {
     // reset dtnext and remaining_wg prior to finding the minimum over all sides in the next kernel
     if(blockIdx.x == 0 and threadIdx.x == 0){
       dtnext->d = 1.e99;
-      int* remaining_wg = ${remaining_wg};
       *remaining_wg = gpuMain5_gridsize;
     }
+  }
 
+  //-- gpuMain5 and supporting device functions -------------------------
+  __device__ void hydroCalcDtCourant_jit(
+					 const int z,
+					 const double* __restrict__ zdu,
+					 const double* __restrict__ zss,
+					 const double* __restrict__ zdl,
+					 double& dtz,
+					 int& idtz) {
+
+    const double fuzz = 1.e-99;
+    double cdu = max(zdu[z], max(zss[z], fuzz));
+    double dtzcour = zdl[z] * hcfl / cdu;
+    dtz = dtzcour;
+    idtz = z << 1;
+
+  }
+
+  __device__ void hydroCalcDtVolume_jit(
+					const int z,
+					const double* __restrict__ zvol,
+					const double* __restrict__ zvol0,
+					const double dtlast,
+					double& dtz,
+					int& idtz) {
+
+    double zdvov = abs((zvol[z] - zvol0[z]) / zvol0[z]);
+    double dtzvol = dtlast * hcflv / zdvov;
+
+    if (dtzvol < dtz) {
+      dtz = dtzvol;
+      idtz = (z << 1) | 1;
+    }
+
+  }
+
+
+  __device__ double atomicMin_jit(double* address, double val)
+  {
+    unsigned long long int* address_as_ull =
+      (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed,
+		      __double_as_longlong(min(val,
+					       __longlong_as_double(assumed))));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+  }
+
+
+  __device__ void hydroFindMinDt_jit(
+				     const int z,
+				     const int z0,
+				     const int zlength,
+				     const double dtz,
+				     const int idtz,
+				     double ctemp[CHUNK_SIZE],
+				     double2 ctemp2[CHUNK_SIZE],
+				     double_int* dtnext,
+				     double_int* dtnext_H,
+				     int* remaining_wg,
+				     int* pinned_control_flag) {
+
+    int* ctempi = (int*) ctemp2;
+
+    ctemp[z0] = dtz;
+    ctempi[z0] = idtz;
+    __syncthreads();
+
+    int len = zlength;
+    int half = len >> 1;
+    while (z0 < half) {
+      len = half + (len & 1);
+      if (ctemp[z0+len] < ctemp[z0]) {
+	ctemp[z0]  = ctemp[z0+len];
+	ctempi[z0] = ctempi[z0+len];
+      }
+      __syncthreads();
+      half = len >> 1;
+    }
+    if (z0 == 0 && ctemp[0] < dtnext->d) {
+      atomicMin_jit(&(dtnext->d), ctemp[0]);
+      // This line isn't 100% thread-safe, but since it is only for
+      // a debugging aid, I'm not going to worry about it.
+      if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
+    }
+    if(threadIdx.x == 0){
+      int old = atomicSub(remaining_wg, 1);
+      bool this_wg_is_last = (old == 1);
+      if(this_wg_is_last){
+	// force reloading of dtnext->d from L2 into register
+	atomicMin_jit(&(dtnext->d), ctemp[0]);
+	// write values to pinned host memory
+	dtnext_H->d = dtnext->d;
+	dtnext_H->i = dtnext->i;
+#ifdef __CUDACC__
+	*pinned_control_flag = 1;
+	__threadfence_system();
+#else
+	int one = 1;
+	__atomic_store(pinned_control_flag, &one, __ATOMIC_RELEASE);
+#endif
+      }
+    }
+  }
+
+
+  __device__ void hydroCalcDt_jit(
+				  const int z,
+				  const int z0,
+				  const int zlength,
+				  const double* __restrict__ zdu,
+				  const double* __restrict__ zss,
+				  const double* __restrict__ zdl,
+				  const double* __restrict__ zvol,
+				  const double* __restrict__ zvol0,
+				  const double dtlast,
+				  double ctemp[CHUNK_SIZE],
+				  double2 ctemp2[CHUNK_SIZE],
+				  double_int* dtnext,
+				  double_int* dtnext_H,
+				  int* remaining_wg,
+				  int* pinned_control_flag) {
+
+    double dtz;
+    int idtz;
+    hydroCalcDtCourant_jit(z, zdu, zss, zdl, dtz, idtz);
+    hydroCalcDtVolume_jit(z, zvol, zvol0, dtlast, dtz, idtz);
+    hydroFindMinDt_jit(z, z0, zlength, dtz, idtz, ctemp, ctemp2, dtnext,
+		       dtnext_H, remaining_wg, pinned_control_flag);
+  }
+
+  __launch_bounds__(256)
+  __global__ void gpuMain5_jit(double dt)
+  {
+    const int z = blockIdx.x * CHUNK_SIZE + threadIdx.x;
+    if (z >= numz) return;
+
+    const int z0 = threadIdx.x;
+    const int zlength = min((int)CHUNK_SIZE, (int)(numz - blockIdx.x * CHUNK_SIZE));
+
+    __shared__ double ctemp[CHUNK_SIZE];
+    __shared__ double2 ctemp2[CHUNK_SIZE];
+
+    // compute timestep for next cycle
+    hydroCalcDt_jit(z, z0, zlength, zdu, zss, zdl, zvol, zvol0, dt,
+		    ctemp, ctemp2, dtnext, dtnext_H, remaining_wg, pinned_control_flag);
   }
 
 } // extern "C"
