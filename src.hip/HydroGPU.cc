@@ -289,19 +289,25 @@ __device__ void hydroCalcDtVolume(
 
 }
 
-
-__device__ double atomicMin(double* address, double val)
-{
+// Older HIP versions don't provide the atomicMin below; newer versions do.
+// To prevent redefinition issues in the latter case, we wrap atomicMin in an
+// unnamed namespace, so that it hides the one in newer HIP versions. Once
+// those versions have been around long enough, we can remove the definition
+// here, and let the HIP version take over.
+namespace {
+  __device__ double atomicMin(double* address, double val)
+  {
     unsigned long long int* address_as_ull =
-            (unsigned long long int*)address;
+      (unsigned long long int*)address;
     unsigned long long int old = *address_as_ull, assumed;
     do {
-        assumed = old;
-        old = atomicCAS(address_as_ull, assumed,
-                __double_as_longlong(min(val,
-                __longlong_as_double(assumed))));
+      assumed = old;
+      old = atomicCAS(address_as_ull, assumed,
+		      __double_as_longlong(min(val,
+		      __longlong_as_double(assumed))));
     } while (assumed != old);
     return __longlong_as_double(old);
+  }
 }
 
 
