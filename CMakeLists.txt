@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(pennant LANGUAGES CXX)
+project(pennant LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -154,7 +154,7 @@ if(PENNANT_USE_MPI)
     MPI_mpi_LIBRARY)
 
   target_compile_definitions(pennant PRIVATE USE_MPI)
-  target_link_libraries(pennant PRIVATE MPI::MPI_CXX)
+  target_link_libraries(pennant PRIVATE MPI::MPI_C)
 endif()
 
 if(PENNANT_USE_GPU_AWARE_MPI)
