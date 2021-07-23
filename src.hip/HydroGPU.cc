@@ -308,6 +308,10 @@ namespace {
     } while (assumed != old);
     return __longlong_as_double(old);
   }
+
+  __device__ inline double indirectAtomicMin(double* address, double val){
+    return atomicMin(address, val);
+  }
 }
 
 
@@ -342,7 +346,7 @@ __device__ void hydroFindMinDt(
         half = len >> 1;
     }
     if (z0 == 0 && ctemp[0] < dtnext->d) {
-      atomicMin(&(dtnext->d), ctemp[0]);
+      indirectAtomicMin(&(dtnext->d), ctemp[0]);
         // This line isn't 100% thread-safe, but since it is only for
         // a debugging aid, I'm not going to worry about it.
         if (dtnext->d == ctemp[0]) dtnext->i = ctempi[0];
@@ -352,7 +356,7 @@ __device__ void hydroFindMinDt(
       bool this_wg_is_last = (old == 1);
       if(this_wg_is_last){
 	// force reloading of dtnext->d from L2 into register
-	atomicMin(&(dtnext->d), ctemp[0]);
+	indirectAtomicMin(&(dtnext->d), ctemp[0]);
 	// write values to pinned host memory
 	dtnext_H->d = dtnext->d;
 	dtnext_H->i = dtnext->i;
