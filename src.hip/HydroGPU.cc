@@ -155,6 +155,15 @@ std::unique_ptr<Pajama> jit;
 
 hipEvent_t mainLoopEvent;
 
+__device__
+inline
+double2 __shfl(double2 var, int src_lane, int width = warpSize){
+  double2 tmp;
+  tmp.x = __shfl(var.x, src_lane, width);
+  tmp.y = __shfl(var.y, src_lane, width);
+  return tmp;
+}
+
 int checkCudaError(const hipError_t err, const char* cmd)
 {
     if(err) {
@@ -594,8 +603,7 @@ __device__ void qcsSetCornerDiv(
         int dss4[CHUNK_SIZE],
         double2 ctemp2[CHUNK_SIZE],
         double sh_ccos[CHUNK_SIZE],
-	double ctemp[CHUNK_SIZE],
-        double2 ctemp1[CHUNK_SIZE*2]) {
+	double ctemp[CHUNK_SIZE]) {
 
     // [1] Compute a zone-centered velocity
     ctemp2[s0] = pup1;
@@ -688,20 +696,14 @@ __device__ void qcsSetCornerDiv(
     const double elen2 = length(pxpp2 - pxpp1);
     // Compute: cqe(1,2,3)=edge 1, y component (2nd), 3rd corner
     //          cqe(2,1,3)=edge 2, x component (1st)
-      ctemp1[2*s0]    = rmu * (pup1 - pup0) / elen1;
-      ctemp1[2*s0+1]    = rmu * (pup2 - pup1) / elen2;
-      __syncthreads();
-
+    double2 u_even = rmu * (pup1 - pup0) / elen1;
+    double2 u_odd = rmu * (pup2 - pup1) / elen2;
 
     // [5.2] Set-Up the forces on corners
     // Edge length for c1, c2 contribution to s
     const double elen = length(pxpp1 - pxpp2);
-     sfq = (ctemp[s0] * (  ctemp1[2*s0+1] + sh_ccos[s0] * ctemp1[2*s0]) +
-                     ctemp[s04] * ( ctemp1[2*s04] + sh_ccos[s04] * ctemp1[2*s04+1]))/elen;
-
-
-
-
+    sfq = (ctemp[s0] * (  u_odd + sh_ccos[s0] * u_even) +
+	   ctemp[s04] * ( __shfl(u_even, s04) + sh_ccos[s04] * __shfl(u_odd, s04)))/elen;
 }
 
 
@@ -767,7 +769,6 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
     __shared__ double ctemp[CHUNK_SIZE];
     __shared__ double2 ctemp2[CHUNK_SIZE];
     __shared__ double ctemp1[CHUNK_SIZE];
-    __shared__ double2 ctemp3[CHUNK_SIZE*2];
 
     dss4[s0] = s04 - s0;
     dss3[s04] = s0 - s04;
@@ -820,7 +821,7 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
    const double2 pup1 = pu[p1];
    const double2 pup2 = pu[p2];
    qcsSetCornerDiv(s, s0,  s4, s04, z, p1, p2, pxpp0, pxpp1, pxpp2, pup0, pup1,pup2, 
-		   	zxp, zrp, zssz, sfq, dss4, ctemp2,ctemp, ctemp1, ctemp3);
+		   	zxp, zrp, zssz, sfq, dss4, ctemp2,ctemp, ctemp1);
 
 
    sfpq[s] = sfp + sfq;
