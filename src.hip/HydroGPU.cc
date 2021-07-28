@@ -824,9 +824,9 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
 // invocations.
 __device__ void localReduceToPoints(const int p,
                                     const double* __restrict__ cmaswt,
-                                    double* __restrict__ pmaswt,
+                                    double& pmaswtp,
                                     const double2* __restrict__ cftot,
-                                    double2* __restrict__ pf)
+                                    double2& pfp)
 {
   double cmaswt_sum = 0.;
   double2 cftot_sum = make_double2(0., 0.);
@@ -860,8 +860,8 @@ __device__ void localReduceToPoints(const int p,
     }
   }
 
-  pmaswt[p] = cmaswt_sum;
-  pf[p] = cftot_sum;
+  pmaswtp = cmaswt_sum;
+  pfp = cftot_sum;
 }
 
 
@@ -873,7 +873,11 @@ __global__ void localReduceToPoints()
   if (p >= nump) return;
 
   // sum corner masses, forces to points
-  localReduceToPoints(p, cmaswt, pmaswt, cftot, pf);
+  double pmaswtp;
+  double2 pfp;
+  localReduceToPoints(p, cmaswt, pmaswtp, cftot, pfp);
+  pmaswt[p] = pmaswtp;
+  pf[p] = pfp;
 }
 #endif
 
@@ -883,15 +887,21 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
   if (p >= nump) return;
 
+  double pmaswtp;
+  double2 pfp;
   if(doLocalReduceToPoints){
     // sum corner masses, forces to points
-    localReduceToPoints(p, cmaswt, pmaswt, cftot, pf);
+    localReduceToPoints(p, cmaswt, pmaswtp, cftot, pfp);
+  } else {
+    pmaswtp = pmaswt[p];
+    pfp = pf[p];
   }
 
   // 4a. apply boundary conditions
+  double2 px_p = px[p];
   double2 pxpp = pxp[p];
   double2 pu0p = pu0[p];
-  double2 pfp  = pf[p];
+  double2 pu0p_orig = pu0p;
   for (int bc = 0; bc < numbcx; ++bc)
     applyFixedBC(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
   for (int bc = 0; bc < numbcy; ++bc)
@@ -899,13 +909,14 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 
   // 5. compute accelerations
   const double fuzz = 1.e-99;
-  double2 pa = pfp / max(pmaswt[p], fuzz);
+  double2 pa = pfp / max(pmaswtp, fuzz);
 
   // ===== Corrector step =====
   // 6. advance mesh to end of time step
   pu[p] = pu0p + pa * dt;
-  px[p] = px[p] + 0.5 * (pu[p] + pu0[p]) * dt;
+  px[p] = px_p + 0.5 * (pu[p] + pu0p_orig) * dt;
   pu0[p] = pu0p;
+  pmaswt[p] = pmaswtp;
   pf[p]  = pfp;
 }
 
