@@ -483,9 +483,8 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols(
         double ctemp[CHUNK_SIZE],
         double ctemp1[CHUNK_SIZE],
         int* __restrict__ numsbad_pinned,
-	//const int s3, 
 	const int z,
-        const int* __restrict__ znump,
+        int znumpz,
         double* __restrict__ zdl)
 {
      ctemp2[s0] = pxp1;
@@ -517,7 +516,7 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols(
     zarea = zatot;
     zvol = zvtot;
     const double base = length(pxp2 - pxp1);
-    const double fac = (znump[z] == 3 ? 3. : 4.);
+    const double fac = (znumpz == 3 ? 3. : 4.);
     const double sdl = fac * sarea / base;
 
     ctemp[s0] = sdl;
@@ -534,9 +533,9 @@ __device__ void pgasCalcStateAtHalf(
     const int z,
     const double rx,
     const double zvolp,
-    const double* __restrict__ zvol0,
-    const double* __restrict__ ze,
-    const double* __restrict__ zwrate,
+    double zvolz,
+    double zez,
+    double zwratez,
     const double  zm,
     const double dt,
     double &zp,
@@ -547,7 +546,7 @@ __device__ void pgasCalcStateAtHalf(
     const double gm1 = pgamma - 1.;
     const double ss2 = max(pssmin * pssmin, 1.e-99);
 
-    const double ex = max(ze[z], 0.0);
+    const double ex = max(zez, 0.0);
     const double csqd = max(ss2, gm1 * ex * pgamma);
     const double z_t = gm1 * rx * ex;
     zper = gm1 * rx;
@@ -555,10 +554,10 @@ __device__ void pgasCalcStateAtHalf(
 
     const double dth = 0.5 * dt;
     const double zminv = 1. / zm ;
-    const double dv = (zvolp - zvol0[z]) * zminv;
+    const double dv = (zvolp - zvolz) * zminv;
     const double bulk = rx * rx * csqd;
     const double denom = 1. + 0.5 * zper * dv;
-    const double src = zwrate[z] * dth * zminv;
+    const double src = zwratez * dth * zminv;
     zp = z_t + (zper * src - bulk * dv) / denom;
 }
 
@@ -569,12 +568,12 @@ static __device__ void ttsCalcForce(
         const double zrp,
         const double zssz,
         const double sareap,
-        const double* __restrict__ smf,
+        double smfs,
         const double2 ssurf,
         double2 &sft) {
 
     const double svfacinv = zareap / sareap;
-    const double srho = zrp * smf[s] * svfacinv;
+    const double srho = zrp * smfs * svfacinv;
     double sstmp = max(zssz, tssmin);
     sstmp = talfa * sstmp * sstmp;
     const double sdp = sstmp * (srho - zrp);
@@ -779,47 +778,54 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
 
 
     // save off zone variable values from previous cycle
-    zvol0[z] = zvol[z];
+    double zvolz = zvol[z];
+    zvol0[z] = zvolz;
 
     double2 zxp = {0., 0.};
     double zareap, zvolp, sareap;
     const double2 pxpp1 = pxp[p1];
     const double2 pxpp2 = pxp[p2];
 
-    calcZoneCtrs_SideVols_ZoneVols(s,s0,pxpp1, pxpp2, zxp,
-        			sareap,zareap, zvolp,dss4,
-				ctemp2, ctemp, ctemp1, numsbad_pinned,
-        			z,znump, zdl);
-    double2 ssurf = rotateCCW(0.5 * (pxpp1 + pxpp2) - zxp);
-
-
-    // 2. compute corner masses
+    int znumpz = znump[z];
     double zmz = zm[z];
     double zpz = zp[z];
     double zssz = zss[z];
+    double smfs = smf[s];
+    double smfs3 = smf[s3];
+    double rx = zr[z];
+    double zez = ze[z];
+    double zwratez = zwrate[z];
+    const int p0 = mapsp1[s3];
+    const double2 pup1 = pu[p1];
+    const double2 pup2 = pu[p2];
+
+    calcZoneCtrs_SideVols_ZoneVols(s,s0,pxpp1, pxpp2, zxp,
+        			sareap,zareap, zvolp,dss4,
+				ctemp2, ctemp, ctemp1, numsbad_pinned,
+        			z,znumpz, zdl);
+    double2 ssurf = rotateCCW(0.5 * (pxpp1 + pxpp2) - zxp);
+    
+    const double2 pxpp0 = pxp[p0];
+    const double2 pup0 = pu[p0];
+
+
+    // 2. compute corner masses
     double zrp = zmz / zvolp;
-    cmaswt[s] = zrp * zareap * 0.5 * (smf[s] + smf[s3]);
+    cmaswt[s] = zrp * zareap * 0.5 * (smfs + smfs3);
 
     // 3. compute material state (half-advanced)
     // call this routine from only one thread per zone
     //if (s3 > s) 
-    double rx = zr[z];
-    pgasCalcStateAtHalf(z, rx, zvolp, zvol0, ze, zwrate, zmz, dt, zpz, zssz);
+    pgasCalcStateAtHalf(z, rx, zvolp, zvolz, zez, zwratez, zmz, dt, zpz, zssz);
 
     
     // 4. compute forces
     const double2 sfp = -zpz * ssurf;
     double2 sft;
-    ttsCalcForce(s, z, zareap, zrp, zssz, sareap, smf, ssurf, sft);
+    ttsCalcForce(s, z, zareap, zrp, zssz, sareap, smfs, ssurf, sft);
 
 
    double2 sfq = { 0., 0. };
-
-   const int p0 = mapsp1[s3];
-   const double2 pxpp0 = pxp[p0];
-   const double2 pup0 = pu[p0];
-   const double2 pup1 = pu[p1];
-   const double2 pup2 = pu[p2];
    qcsSetCornerDiv(s, s0,  s4, s04, z, p1, p2, pxpp0, pxpp1, pxpp2, pup0, pup1,pup2, 
 		   	zxp, zrp, zssz, sfq, dss4, ctemp2,ctemp, ctemp1);
 
