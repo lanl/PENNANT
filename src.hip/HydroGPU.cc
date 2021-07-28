@@ -225,13 +225,15 @@ __device__ void hydroCalcWork(const int s,
                               const int z,
                               const int p1,
                               const int p2,
-                              const double2* __restrict__ sf,
-                              const double2* __restrict__ pu0,
-                              const double2* __restrict__ pu,
-                              const double2* __restrict__ px,
+                              double2 sfs,
+                              double2 pu0p1,
+                              double2 pu0p2,
+                              double2 pup1,
+                              double2 pup2,
+                              double pxp1x,
+                              double pxp2x,
                               const double dt,
                               double &zwz,
-                              double* __restrict__ zetot,
                               int dss4[CHUNK_SIZE],
                               double ctemp[CHUNK_SIZE]) {
 
@@ -240,20 +242,17 @@ __device__ void hydroCalcWork(const int s,
   // where force is the force of the element on the node
   // and vavg is the average velocity of the node over the time period
 
-  const double sd1 = dot( sf[s], (pu0[p1] + pu[p1]));
-  const double sd2 = dot(-sf[s], (pu0[p2] + pu[p2]));
-  const double dwork = -0.5 * dt * (sd1 * px[p1].x + sd2 * px[p2].x);
+  const double sd1 = dot( sfs, (pu0p1 + pup1));
+  const double sd2 = dot(-sfs, (pu0p2 + pup2));
+  const double dwork = -0.5 * dt * (sd1 * pxp1x + sd2 * pxp2x);
 
   ctemp[s0] = dwork;
-  const double etot = zetot[z];
   __syncthreads();
 
-  double dwtot = ctemp[s0];
+  zwz = ctemp[s0];
   for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
-    dwtot += ctemp[sn];
+    zwz += ctemp[sn];
   }
-  zetot[z] = etot + dwtot;
-  zwz = dwtot;
 }
 
 
@@ -915,8 +914,8 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(const int s,
                                                      const int z,
                                                      const double2 px1,
                                                      const double2 px2,
-                                                     double* __restrict__ zarea,
-                                                     double & zvol_1,
+                                                     double& zatot,
+                                                     double& zvol_1,
                                                      int dss4[CHUNK_SIZE],
                                                      double2 ctemp2[CHUNK_SIZE],
                                                      double ctemp[CHUNK_SIZE],
@@ -942,17 +941,15 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(const int s,
   ctemp[s0] = sv;
   ctemp1[s0] = sa;
   __syncthreads();
-  double zvtot = ctemp[s0];
-  double zatot = ctemp1[s0];
+  zvol_1 = ctemp[s0];
+  zatot = ctemp1[s0];
   for (int sn = s0 + dss4[s0]; sn != s0; sn += dss4[sn]) {
-    zvtot += ctemp[sn];
+    zvol_1 += ctemp[sn];
     zatot += ctemp1[sn];
   }
-
-  zarea[z] = zatot;
-  //zvol[z] = zvtot;
-  zvol_1 = zvtot;
 }
+
+
 __launch_bounds__(256)
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
                          int* remaining_wg, int gpuMain5_gridsize)
@@ -969,6 +966,15 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
   const int s4 = mapss4[s];
   const int s04 = s4 - schsfirst[sch];
 
+  const double2 pxp1 = px[p1];
+  const double2 pxp2 = px[p2];
+  const double2 pu0p1 = pu0[p1];
+  const double2 pu0p2 = pu0[p2];
+  const double2 pup1 = pu[p1];
+  const double2 pup2 = pu[p2];
+  const double2 sfs = sfpq[s];
+  const double etot = zetot[z];
+
   __shared__ int dss4[CHUNK_SIZE];
   __shared__ double ctemp[CHUNK_SIZE];
   __shared__ double ctemp1[CHUNK_SIZE];
@@ -980,19 +986,19 @@ __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
 
   // 6a. compute new mesh geometry
 
-  const double2 pxp1 = px[p1];
-  const double2 pxp2 = px[p2];
+  double zatot;
   double zvol_1;
-  calcZoneCtrs_SideVols_ZoneVols_main4(s,s0,z, pxp1, pxp2, zarea, zvol_1,dss4, ctemp2, ctemp, ctemp1, numsbad_pinned);
-
+  calcZoneCtrs_SideVols_ZoneVols_main4(s,s0,z, pxp1, pxp2, zatot, zvol_1, dss4, ctemp2, ctemp, ctemp1, numsbad_pinned);
   // 7. compute work
   double zwz;
-  hydroCalcWork(s, s0, z, p1, p2, sfpq, pu0, pu, pxp, dt,
-                zwz, zetot, dss4, ctemp);
+  hydroCalcWork(s, s0, z, p1, p2, sfs, pu0p1, pu0p2, pup1, pup2, pxp1.x, pxp2.x, dt,
+                zwz, dss4, ctemp);
 
   const double dvol = zvol_1 - zvol0[z];
-  zwrate[z] = (zwz + zp[z] * dvol) / dt;
   const double fuzz = 1.e-99;
+  zetot[z] = etot + zwz;
+  zarea[z] = zatot;
+  zwrate[z] = (zwz + zp[z] * dvol) / dt;
   ze[z] = zetot[z] / (zm[z] + fuzz);
   zr[z] = zm[z] / zvol_1;
   zvol[z] = zvol_1;
