@@ -881,6 +881,10 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
   if (p >= nump) return;
 
+  double2 px_p = px[p];
+  double2 pxpp = pxp[p];
+  double2 pu0p = pu0[p];
+
   double pmaswtp;
   double2 pfp;
   if(doLocalReduceToPoints){
@@ -892,9 +896,6 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
   }
 
   // 4a. apply boundary conditions
-  double2 px_p = px[p];
-  double2 pxpp = pxp[p];
-  double2 pu0p = pu0[p];
   double2 pu0p_orig = pu0p;
   for (int bc = 0; bc < numbcx; ++bc)
     applyFixedBC(p, pxpp, pu0p, pfp, vfixx, bcx[bc]);
