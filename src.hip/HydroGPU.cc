@@ -770,6 +770,8 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
   const int p0 = mapsp1[s3];
   const double2 pup1 = pu[p1];
   const double2 pup2 = pu[p2];
+  const double2 pxpp0 = pxp[p0];
+  const double2 pup0 = pu[p0];
 
   calcZoneCtrs_SideVols_ZoneVols(s,s0,pxpp1, pxpp2, zxp,
                                  sareap,zareap, zvolp,dss4,
@@ -777,10 +779,6 @@ __global__ void gpuMain2(int* numsbad_pinned, double dt)
                                  z,znumpz, zdl);
   double2 ssurf = rotateCCW(0.5 * (pxpp1 + pxpp2) - zxp);
     
-  const double2 pxpp0 = pxp[p0];
-  const double2 pup0 = pu[p0];
-
-
   // 2. compute corner masses
   double zrp = zmz / zvolp;
   cmaswt[s] = zrp * zareap * 0.5 * (smfs + smfs3);
