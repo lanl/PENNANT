@@ -66,9 +66,7 @@ __constant__ const int* mapsz;
 __constant__ const int* mapss4;
 __constant__ const int *mappsfirst, *mapssnext;
 __constant__ const int* znump;
-__constant__ int* corners_per_point;
 __constant__ int* corners_by_point;
-__constant__ int* first_corner_of_point;
 __constant__ int2* first_corner_and_corner_count;
 
 
@@ -80,7 +78,6 @@ __constant__ double *ze, *zetot;
 __constant__ double *zwrate;
 __constant__ double *zp, *zss;
 __constant__ const double* smf;
-__constant__ double   *zvolp;
 __constant__ double   *zarea, *zvol, *zvol0;
 __constant__ double *zdl, *zdu;
 __constant__ double *cmaswt, *pmaswt;
@@ -1253,15 +1250,12 @@ void hydroInit(const int numpH,
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zp), &zpD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zss), &zssD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(smf), &smfD, sizeof(void*)));
-  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(zvolp), &zvolpD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cmaswt), &cmaswtD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pmaswt), &pmaswtD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(sfpq), &sfpqD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(cftot), &cftotD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(pf), &pfD, sizeof(void*)));
-  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_per_point), &corners_per_pointD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(corners_by_point), &corners_by_pointD, sizeof(void*)));
-  CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(first_corner_of_point), &first_corner_of_pointD, sizeof(void*)));
   CHKERR(hipMemcpyToSymbol(HIP_SYMBOL(first_corner_and_corner_count), &first_corner_and_corner_countD, sizeof(void*)));
 
   CHKERR(hipMemcpy(schsfirstD, schsfirstH, numschH*sizeof(int), hipMemcpyHostToDevice));
