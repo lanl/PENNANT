@@ -876,7 +876,6 @@ __global__ void localReduceToPoints()
 }
 #endif
 
-__launch_bounds__(256)
 __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
 {
   const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
