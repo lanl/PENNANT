@@ -24,6 +24,7 @@ option(PENNANT_ARCH_GFX906 "Build with support for gfx906 (vega20, MI50/60)" OFF
 option(PENNANT_ARCH_GFX908 "Build with support for gfx908 (vega7nm, MI100)" OFF)
 option(PENNANT_ARCH_GFX90A "Build with support for gfx90a (MI200)" OFF)
 option(PENNANT_ARCH_GFX1030 "Build with support for gfx1030 (Navi21)" OFF)
+option(PENNANT_SAVE_TEMPS "Save temporary compilation files for sources with device code" OFF)
 
 # Pick your favorite GPU vendor
 set(PENNANT_GPU_VENDOR "AMD" CACHE STRING "Are we using AMD or NVIDIA GPUs?")
@@ -112,22 +113,27 @@ endif()
 if(PENNANT_GPU_VENDOR STREQUAL "AMD")
   if(PENNANT_ARCH_GFX900)
     list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx900")
+    list(APPEND PENNANT_ARCH_LIST "gfx900")
     set(PENNANT_HAVE_ARCH true)
   endif()
   if(PENNANT_ARCH_GFX906)
     list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx906")
+    list(APPEND PENNANT_ARCH_LIST "gfx906")
     set(PENNANT_HAVE_ARCH true)
   endif()
   if(PENNANT_ARCH_GFX908)
     list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx908")
+    list(APPEND PENNANT_ARCH_LIST "gfx908")
     set(PENNANT_HAVE_ARCH true)
   endif()
   if(PENNANT_ARCH_GFX90A)
     list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx90a")
+    list(APPEND PENNANT_ARCH_LIST "gfx90a")
     set(PENNANT_HAVE_ARCH true)
   endif()
   if(PENNANT_ARCH_GFX1030)
     list(APPEND PENNANT_COMPILATION_OPTIONS "--amdgpu-target=gfx1030")
+    list(APPEND PENNANT_ARCH_LIST "gfx1030")
     set(PENNANT_HAVE_ARCH true)
   endif()
   if(NOT PENNANT_HAVE_ARCH)
@@ -140,6 +146,10 @@ if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
 endif()
 
 target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
+# Add compilation option to save temporary files just for the one source file that has device code
+if(PENNANT_SAVE_TEMPS)
+  set_source_files_properties(src.hip/HydroGPU.cc PROPERTIES COMPILE_FLAGS -save-temps)
+endif()
 
 # Optionally configure MPI 
 if(PENNANT_USE_MPI)
@@ -169,3 +179,20 @@ endif()
 if(PENNANT_TIMERS)
   target_compile_definitions(pennant PRIVATE USE_TIMERS)
 endif()
+
+# If we save temporary files for the single file with device code, do a bit of
+# automatic cleanup: only save the file(s) with the GPU ISA, and remove the rest
+if(PENNANT_SAVE_TEMPS)
+  foreach(PENNANT_ARCH ${PENNANT_ARCH_LIST})
+    add_custom_command(TARGET pennant POST_BUILD
+      COMMAND mv HydroGPU-hip-*${PENNANT_ARCH}.s HydroGPU.${PENNANT_ARCH}.s)
+  endforeach()
+    add_custom_command(TARGET pennant POST_BUILD
+      COMMAND rm -f *-hip-* *-host-*)
+endif()
+
+# "make clean" doesn't take care of the (renamed) temporary ISA file for the single source
+# file with device code; add that file to the list of files to be removed by "make clean".
+foreach(PENNANT_ARCH ${PENNANT_ARCH_LIST})
+  set_property(TARGET pennant APPEND PROPERTY ADDITIONAL_CLEAN_FILES HydroGPU.${PENNANT_ARCH}.s)
+endforeach()
