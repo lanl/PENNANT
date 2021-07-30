@@ -955,7 +955,7 @@ __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(const int s,
 }
 
 
-__launch_bounds__(256)
+__launch_bounds__(256,5)
 __global__ void gpuMain4(double_int* dtnext, int* numsbad_pinned, double dt,
                          int* remaining_wg, int gpuMain5_gridsize)
 {
