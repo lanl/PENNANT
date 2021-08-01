@@ -830,8 +830,8 @@ __device__ void localReduceToPoints(const int p,
                                     const double2* __restrict__ cftot,
                                     double2& pfp)
 {
-  double cmaswt_sum = 0.;
-  double2 cftot_sum = make_double2(0., 0.);
+  pmaswtp = 0.;
+  make_double2(0., 0.);
 
   int2 first_and_count = first_corner_and_corner_count[p];
   int c = first_and_count.x;
@@ -866,13 +866,10 @@ __device__ void localReduceToPoints(const int p,
     #pragma unroll 4
     for(int i = 0; i != 4; ++i){
       int s = corners4.a[i];
-      cmaswt_sum += cmaswt[s];
-      cftot_sum += cftot[s];
+      pmaswtp += cmaswt[s];
+      pfp += cftot[s];
     }
   }
-
-  pmaswtp = cmaswt_sum;
-  pfp = cftot_sum;
 }
 
 
