@@ -430,6 +430,13 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
   }
   first_corner_and_corner_count[p].x = first;
   first_corner_and_corner_count[p].y = corners_per_point[p];
+
+  // One thread takes care of over-allocated arrays:
+  // cmaswt and cftot are padded with one null value;
+  if(blockIdx.x == threadIdx.x == 0){
+    cmaswt[nums] = 0.0;
+    cftot[nums] = make_double2(0.0, 0.0);
+  }
 }
 
 
@@ -830,9 +837,11 @@ __device__ void localReduceToPoints(const int p,
   int c = first_and_count.x;
   int count = first_and_count.y;
 
+  using int_v4 = __attribute__((__vector_size__(4 * sizeof(int)))) int;
+  
   union {
-    int4 i4;
-    int a[4];
+    int4  i4;
+    int_v4 a;
   } corners4;
 
   for(; count > 0; count -=4, c += 4){
@@ -848,7 +857,14 @@ __device__ void localReduceToPoints(const int p,
     corners4.a[3] = corners_by_point[c + 3];
 #endif
     int inner_count = min(count, 4);
-    for(int i = 0; i != inner_count; ++i){
+    for(int i = inner_count; i != 4; ++i){
+      // cfmaswt[nums] and cftot[nums] are padded array entries
+      // with zero values. This allows us to run the next loop
+      // 4 times (instead of inner_count times) and unroll it.
+      corners4.a[i] = nums;
+    }
+    #pragma unroll 4
+    for(int i = 0; i != 4; ++i){
       int s = corners4.a[i];
       cmaswt_sum += cmaswt[s];
       cftot_sum += cftot[s];
@@ -1208,10 +1224,10 @@ void hydroInit(const int numpH,
   CHKERR(hipMalloc(&zssD, numzH*sizeof(double)));
   CHKERR(hipMalloc(&smfD, numsH*sizeof(double)));
   CHKERR(hipMalloc(&zvolpD, numzH*sizeof(double)));
-  CHKERR(hipMalloc(&cmaswtD, numsH*sizeof(double)));
+  CHKERR(hipMalloc(&cmaswtD, (numsH+1)*sizeof(double)));
   CHKERR(hipMalloc(&pmaswtD, numpH*sizeof(double)));
   CHKERR(hipMalloc(&sfpqD, numsH*sizeof(double2)));
-  CHKERR(hipMalloc(&cftotD, numcH*sizeof(double2)));
+  CHKERR(hipMalloc(&cftotD, (numcH+1)*sizeof(double2)));
   CHKERR(hipMalloc(&pfD, numpH*sizeof(double2)));
   CHKERR(hipMalloc(&mapspkeyD, numsH*sizeof(int)));
   CHKERR(hipMalloc(&mapspvalD, numsH*sizeof(int)));
