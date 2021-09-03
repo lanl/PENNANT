@@ -32,10 +32,6 @@
 #include "Memory.hh"
 #include "Vec2.hh"
 
-#ifdef USE_JIT
-#include "pajama.h"
-#endif
-
 using namespace std;
 
 const int CHUNK_SIZE = 64;
@@ -145,10 +141,6 @@ double *pmaswt_pf_proxy_buffer_H, *pmaswt_pf_slave_buffer_H;
 
 #endif // USE_GPU_AWARE_MPI
 #endif // USE_MPI
-
-#ifdef USE_JIT
-std::unique_ptr<Pajama> jit;
-#endif
 
 hipEvent_t mainLoopEvent;
 
@@ -1140,20 +1132,10 @@ void hydroInit(const int numpH,
 
 #ifdef USE_MPI
   using Parallel::mype;
-#ifdef USE_JIT
-  using Parallel::numpe;
-#endif
 #else
   int mype = 0;
-#ifdef USE_JIT
-  int numpe = 1;
-#endif
 #endif
 
-#ifdef USE_JIT
-  bool doLocalReduceToPointInGpuMain3 = (numpe == 1);
-#endif
-  
   if(mype == 0){ printf("Running Hydro on device...\n"); }
 
   computeChunks(numsH, numzH, mapszH, CHUNK_SIZE, numschH,
@@ -1309,87 +1291,6 @@ void hydroInit(const int numpH,
   hipDeviceSynchronize();
   hipFree(first_corner_of_pointD);
   hipFree(corners_per_pointD);
-#ifdef USE_JIT
-  
-  replacement_t replacements {
-    { "${CHUNK_SIZE}", jit_string(CHUNK_SIZE) },
-    { "${bcx0}", jit_string(bcxH[0]) },
-    { "${bcx1}", jit_string(bcxH[1]) },
-    { "${bcy0}", jit_string(bcyH[0]) },
-    { "${bcy1}", jit_string(bcyH[1]) },
-    { "${cftot}", jit_string(cftotD) },
-    { "${cmaswt}", jit_string(cmaswtD) },
-    { "${corners_by_point}", jit_string(corners_by_pointD) },
-    { "${doLocalReduceToPoints}", jit_string(doLocalReduceToPointInGpuMain3) },
-    { "${dtnext}", jit_string(dtnext_D) },
-    { "${dtnext_H}", jit_string(dtnext_H) },
-    { "${first_corner_and_corner_count}", jit_string(first_corner_and_corner_countD) },
-    { "${gpuMain5_gridsize}", jit_string(numzchH) },
-    { "${hcfl}", jit_string(hcflH) },
-    { "${hcflv}", jit_string(hcflvH) },
-    { "${mapsp1}", jit_string(mapsp1D) },
-    { "${mapsp2}", jit_string(mapsp2D) },
-    { "${mapss4}", jit_string(mapss4D) },
-    { "${mapsz}", jit_string(mapszD) },
-    { "${nump}", jit_string(numpH) },
-    { "${numsbad_pinned}", jit_string(numsbad_pinned) },
-    { "${numz}", jit_string(numzH) },
-    { "${pf}", jit_string(pfD) },
-    { "${pgamma}", jit_string(pgammaH) },
-    { "${pinned_control_flag}", jit_string(pinned_control_flag) },
-    { "${pmaswt}", jit_string(pmaswtD) },
-    { "${pssmin}", jit_string(pssminH) },
-    { "${pu0}", jit_string(pu0D) },
-    { "${pu}", jit_string(puD) },
-    { "${pu}", jit_string(puD) },
-    { "${pxp}", jit_string(pxpD) },
-    { "${px}", jit_string(pxD) },
-    { "${q1}", jit_string(q1H) },
-    { "${q2}", jit_string(q2H) },
-    { "${qgamma}", jit_string(qgammaH) },
-    { "${remaining_wg}", jit_string(remaining_wg_D) },
-    { "${schsfirst}", jit_string(schsfirstD) },
-    { "${schslast}", jit_string(schslastD) },
-    { "${sfpq}", jit_string(sfpqD) },
-    { "${smf}", jit_string(smfD) },
-    { "${talfa}", jit_string(talfaH) },
-    { "${tssmin}", jit_string(tssminH) },
-    { "${vfixx}", jit_string(vfixxH) },
-    { "${vfixy}", jit_string(vfixyH) },
-    { "${zarea}", jit_string(zareaD) },
-    { "${zdl}", jit_string(zdlD) },
-    { "${zdu}", jit_string(zduD) },
-    { "${ze}", jit_string(zeD) },
-    { "${zetot}", jit_string(zetotD) },
-    { "${zm}", jit_string(zmD) },
-    { "${znump}", jit_string(znumpD) },
-    { "${zp}", jit_string(zpD) },
-    { "${zp}", jit_string(zpD) },
-    { "${zr}", jit_string(zrD) },
-    { "${zss}", jit_string(zssD) },
-    { "${zvol0}", jit_string(zvol0D) },
-    { "${zvol}", jit_string(zvolD) },
-    { "${zwrate}", jit_string(zwrateD) },
-      /*
-        { "${}", jit_string() },
-        { "${}", jit_string() },
-        { "${}", jit_string() },
-      */
-  };
-  // need to deal with small arrays in constant memory.
-  // for now, manually unroll the boundary condition loop
-  // in gpuMain3.
-  assert(numbcxH == 2);
-  assert(numbcyH == 2);
-
-  jit = std::unique_ptr<Pajama>(new Pajama("../src.jit/kernels.cc", replacements, mype));
-  jit->load_kernel("gpuMain1_jit");
-  jit->load_kernel("gpuMain2_jit");
-  jit->load_kernel("gpuMain3_jit");
-  jit->load_kernel("gpuMain4_jit");
-  jit->load_kernel("gpuMain5_jit");
-  jit->load_kernel("localReduceToPoints_k_jit");
-#endif // USE_JIT
   hipEventCreate(&mainLoopEvent);
 }
 
@@ -1536,27 +1437,6 @@ void hydroDoCycle(
   gridSizeZ = numzchH;
   chunkSize = CHUNK_SIZE;
     
-#ifdef USE_JIT
-  struct {
-    double dt;
-  } gpu_args;
-  gpu_args.dt = dt;
-  size_t gpu_args_size = sizeof(gpu_args);
-  void* gpu_args_wrapper[] = { HIP_LAUNCH_PARAM_BUFFER_POINTER, &gpu_args,
-                               HIP_LAUNCH_PARAM_BUFFER_SIZE, &gpu_args_size,
-                               HIP_LAUNCH_PARAM_END };
-#endif
-
-#ifdef USE_JIT
-  {
-    DEVICE_TIMER("Kernels", "gpuMain1_jit", 0);
-    jit->call_preloaded("gpuMain1_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
-  }
-  {
-    DEVICE_TIMER("Kernels", "gpuMain2_jit", 0);
-    jit->call_preloaded("gpuMain2_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
-  }
-#else
   {
     DEVICE_TIMER("Kernels", "gpuMain1", 0);
     // MI200-specific grid dim. TODO: look up #CUs from device properties (outsize main loop)
@@ -1572,7 +1452,6 @@ void hydroDoCycle(
     DEVICE_TIMER("Kernels", "gpuMain2", 0);
     hipLaunchKernelGGL((gpuMain2), dim3(gridSizeS), dim3(chunkSize), 0, 0, numsbad_pinned, dt);
   }
-#endif
   {
     HOST_TIMER("Other", "meshCheckBadSides");
     meshCheckBadSides();
@@ -1584,31 +1463,13 @@ void hydroDoCycle(
     // local reduction to points needs to be done either way, but if numpe == 1, then
     // we can do it in gpuMain3, which saves a kernel call
     doLocalReduceToPointInGpuMain3 = false;
-#ifdef USE_JIT
-    {
-      DEVICE_TIMER("Kernels", "localReduceToPoints_k_jit", 0);
-      jit->call_preloaded("localReduceToPoints_k_jit", dim3(gridSizeP), dim3(chunkSize), 0, 0, gpu_args_wrapper);
-    }
-#else
     {
       DEVICE_TIMER("Kernels", "localReduceToPoints", 0);
       hipLaunchKernelGGL((localReduceToPoints), dim3(gridSizeP), dim3(chunkSize), 0, 0);
     }
-#endif
     globalReduceToPoints();
   }
 #endif
-#ifdef USE_JIT
-  {
-    DEVICE_TIMER("Kernels", "gpuMain3_jit", 0);
-    jit->call_preloaded("gpuMain3_jit", gridSizeP, chunkSize, 0, 0, gpu_args_wrapper);
-  }
-
-  {
-    DEVICE_TIMER("Kernels", "gpuMain4_jit", 0);
-    jit->call_preloaded("gpuMain4_jit", gridSizeS, chunkSize, 0, 0, gpu_args_wrapper);
-  }
-#else
   {
     DEVICE_TIMER("Kernels", "gpuMain3", 0);
     hipLaunchKernelGGL((gpuMain3), dim3(gridSizeP), dim3(chunkSize), 0, 0,
@@ -1620,22 +1481,14 @@ void hydroDoCycle(
     hipLaunchKernelGGL((gpuMain4), dim3(gridSizeS), dim3(chunkSize), 0, 0, dtnext_D, numsbad_pinned, dt,
                        remaining_wg_D, gridSizeZ);
   }
-#endif
 
   *pinned_control_flag = 0;
 
-#ifdef USE_JIT
-  {
-    DEVICE_TIMER("Kernels", "gpuMain5_jit", 0);
-    jit->call_preloaded("gpuMain5_jit", gridSizeZ, chunkSize, 0, 0, gpu_args_wrapper);
-  }
-#else
   {
     DEVICE_TIMER("Kernels", "gpuMain5", 0);
     hipLaunchKernelGGL((gpuMain5), dim3(gridSizeZ), dim3(chunkSize), 0, 0, dtnext_D, dt,
                        dtnext_H, remaining_wg_D, pinned_control_flag);
   }
-#endif
 
   {
     HOST_TIMER("Other", "meshCheckBadSides");
