@@ -52,21 +52,21 @@ set(CMAKE_CXX_COMPILER ${HIP_HIPCC_EXECUTABLE})
 
 # Basic set of PENNANT source files
 set(pennant_sources
-  src.hip/Driver.cc
-  src.hip/ExportGold.cc
-  src.hip/GenMesh.cc
-  src.hip/HydroBC.cc
-  src.hip/Hydro.cc
-  src.hip/HydroGPU.cc
-  src.hip/ImportGMV.cc
-  src.hip/InputFile.cc
-  src.hip/main.cc
-  src.hip/Mesh.cc
-  src.hip/Parallel.cc
-  src.hip/PolyGas.cc
-  src.hip/QCS.cc
-  src.hip/TTS.cc
-  src.hip/WriteXY.cc)
+  src/Driver.cc
+  src/ExportGold.cc
+  src/GenMesh.cc
+  src/HydroBC.cc
+  src/Hydro.cc
+  src/HydroGPU.cc
+  src/ImportGMV.cc
+  src/InputFile.cc
+  src/main.cc
+  src/Mesh.cc
+  src/Parallel.cc
+  src/PolyGas.cc
+  src/QCS.cc
+  src/TTS.cc
+  src/WriteXY.cc)
 
 if(PENNANT_USE_GPU_AWARE_MPI)
   SET(PENNANT_USE_MPI ON CACHE BOOL "Build with MPI support" FORCE)
@@ -74,7 +74,7 @@ endif()
 
 # PENNANT source file that handles MPI comms, if MPI is supported
 if(PENNANT_USE_MPI)
-  list(APPEND pennant_sources src.hip/HydroMPI.cc)
+  list(APPEND pennant_sources src/HydroMPI.cc)
 endif()
 
 if(PENNANT_USE_JIT)
@@ -148,7 +148,7 @@ endif()
 target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
 # Add compilation option to save temporary files just for the one source file that has device code
 if(PENNANT_SAVE_TEMPS)
-  set_source_files_properties(src.hip/HydroGPU.cc PROPERTIES COMPILE_FLAGS -save-temps)
+  set_source_files_properties(src/HydroGPU.cc PROPERTIES COMPILE_FLAGS -save-temps)
 endif()
 
 # Optionally configure MPI 

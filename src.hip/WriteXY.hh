@@ -1,1 +1,0 @@
-../src/WriteXY.hh
