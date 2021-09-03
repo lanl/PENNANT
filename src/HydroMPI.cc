@@ -51,7 +51,9 @@ void parallelGather(const int numslvpe, const int nummstrpe,
         int nslv = mstrpenumslv[mstrpe];
         int slv1 = mapmstrpeslv1[mstrpe];
 #ifdef USE_ROCTX
-	roctxRangePush("MPI_Send");
+	std::string range("MPI_Send to rank ");
+	range += std::to_string(pe);
+	roctxRangePush(range.c_str());
 #endif
         MPI_Send(&pmaswt_pf_slave_buffer[slv1 * 3], nslv * 3 * sizeof(double), MPI_BYTE,
                 pe, tagmpi, MPI_COMM_WORLD);
@@ -61,9 +63,15 @@ void parallelGather(const int numslvpe, const int nummstrpe,
     }
 
     // Wait for all receives to complete.
+#ifdef USE_ROCTX
+	std::string range("MPI_Waitall ");
+	range += std::to_string(numslvpe);
+	roctxRangePush(range.c_str());
+#endif
     static MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
     MPI_Waitall(numslvpe, &request[0], &status[0]);
 #ifdef USE_ROCTX
+    roctxRangePop();
     roctxRangePop();
 #endif
 }
@@ -94,7 +102,9 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
         int nprx = slvpenumprx[slvpe];
         int prx1 = mapslvpeprx1[slvpe];
 #ifdef USE_ROCTX
-	roctxRangePush("MPI_Send");
+	std::string range("MPI_Send to rank ");
+	range += std::to_string(pe);
+	roctxRangePush(range.c_str());
 #endif
         MPI_Send((void*)&pmaswt_pf_proxy_buffer[prx1*3], nprx * 3 * sizeof(double), MPI_BYTE,
                 pe, tagmpi, MPI_COMM_WORLD);
@@ -105,8 +115,14 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
 
     // Wait for all receives to complete.
     static MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
+#ifdef USE_ROCTX
+	std::string range("MPI_Waitall ");
+	range += std::to_string(numslvpe);
+	roctxRangePush(range.c_str());
+#endif
     MPI_Waitall(nummstrpe, &request[0], &status[0]);
 #ifdef USE_ROCTX
+    roctxRangePop();
     roctxRangePop();
 #endif
 }
