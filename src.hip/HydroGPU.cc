@@ -924,8 +924,6 @@ __global__ void gpuMain3(double dt, bool doLocalReduceToPoints)
   pu[p] = pu0p + pa * dt;
   px[p] = px_p + 0.5 * (pu[p] + pu0p_orig) * dt;
   pu0[p] = pu0p;
-  pmaswt[p] = pmaswtp;
-  pf[p]  = pfp;
 }
 
 __device__ void calcZoneCtrs_SideVols_ZoneVols_main4(const int s,
