@@ -1296,7 +1296,7 @@ void hydroInit(const int numpH,
 
 #ifdef USE_MPI
 __launch_bounds__(256)
-__global__ void copySlavePointDataToMPIBuffers_kernel_test(double* pmaswt_pf_slave_buffer_D){
+__global__ void copySlavePointDataToMPIBuffers_kernel(double* pmaswt_pf_slave_buffer_D){
 
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
   if(slave >= numslv) { return; }
@@ -1311,8 +1311,8 @@ void copySlavePointDataToMPIBuffers(){
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
   {
-    DEVICE_TIMER("MPI device overhead", "copySlavePointDataToMPIBuffers_kernel_test", 0);
-    hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel_test, blocks, blocksize, 0, 0,
+    DEVICE_TIMER("MPI device overhead", "copySlavePointDataToMPIBuffers_kernel", 0);
+    hipLaunchKernelGGL(copySlavePointDataToMPIBuffers_kernel, blocks, blocksize, 0, 0,
                        pmaswt_pf_slave_buffer_D);
   }
 
@@ -1325,7 +1325,7 @@ void copySlavePointDataToMPIBuffers(){
 
 
 __launch_bounds__(256)
-__global__ void copyMPIBuffersToSlavePointData_kernel_test(double* pmaswt_pf_slave_buffer_D){
+__global__ void copyMPIBuffersToSlavePointData_kernel(double* pmaswt_pf_slave_buffer_D){
 
   int slave = blockIdx.x * blockDim.x + threadIdx.x;
   if(slave >= numslv) { return; }
@@ -1343,15 +1343,15 @@ void copyMPIBuffersToSlavePointData(){
   constexpr int blocksize = 256;
   const int blocks = (numslvH + blocksize - 1) / blocksize;
   {
-    DEVICE_TIMER("MPI device overhead", "copyMPIBuffersToSlavePointData_kernel_test", 0);
-    hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel_test, blocks, blocksize, 0, 0,
+    DEVICE_TIMER("MPI device overhead", "copyMPIBuffersToSlavePointData_kernel", 0);
+    hipLaunchKernelGGL(copyMPIBuffersToSlavePointData_kernel, blocks, blocksize, 0, 0,
                        pmaswt_pf_slave_buffer_D);
   }
 }
 
 
 __launch_bounds__(256)
-__global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
+__global__ void reduceToMasterPoints(double* pmaswt_pf_proxy_buffer_D){
 
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
   if(proxy >= numprx) { return; }
@@ -1366,7 +1366,7 @@ __global__ void reduceToMasterPoints_test(double* pmaswt_pf_proxy_buffer_D){
 
 
 __launch_bounds__(256)
-__global__ void copyPointValuesToProxies_test(double* pmaswt_pf_proxy_buffer_D){
+__global__ void copyPointValuesToProxies(double* pmaswt_pf_proxy_buffer_D){
 
   int proxy = blockIdx.x * blockDim.x + threadIdx.x;
   if(proxy >= numprx) { return; }
@@ -1386,13 +1386,13 @@ void reduceToMasterPointsAndProxies(){
   constexpr int blocksize = 256;
   const int blocks = (numprxH + blocksize - 1) / blocksize;
   {
-    DEVICE_TIMER("Kernels", "reduceToMasterPoints_test", 0);
-    hipLaunchKernelGGL(reduceToMasterPoints_test, blocks, blocksize, 0, 0,
+    DEVICE_TIMER("Kernels", "reduceToMasterPoints", 0);
+    hipLaunchKernelGGL(reduceToMasterPoints, blocks, blocksize, 0, 0,
                        pmaswt_pf_proxy_buffer_D);
   }
   {
-    DEVICE_TIMER("MPI device overhead", "copyPointValuesToProxies_test", 0);
-    hipLaunchKernelGGL(copyPointValuesToProxies_test, blocks, blocksize, 0, 0,
+    DEVICE_TIMER("MPI device overhead", "copyPointValuesToProxies", 0);
+    hipLaunchKernelGGL(copyPointValuesToProxies, blocks, blocksize, 0, 0,
                        pmaswt_pf_proxy_buffer_D);
   }
 #ifndef USE_GPU_AWARE_MPI
@@ -1405,20 +1405,20 @@ void reduceToMasterPointsAndProxies(){
 void globalReduceToPoints() {
   copySlavePointDataToMPIBuffers();
   {
-    HOST_TIMER("MPI", "parallelGather_test");
-    parallelGather_test( numslvpeD, nummstrpeD,
-                         mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-                         mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
-                         pmaswt_pf_proxy_buffer, pmaswt_pf_slave_buffer);
+    HOST_TIMER("MPI", "parallelGather");
+    parallelGather( numslvpeD, nummstrpeD,
+		    mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		    mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,
+		    pmaswt_pf_proxy_buffer, pmaswt_pf_slave_buffer);
   }
 
   reduceToMasterPointsAndProxies();
   {
-    HOST_TIMER("MPI", "parallelScatter_test");
-    parallelScatter_test( numslvpeD, nummstrpeD,
-                          mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
-                          mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
-                          pmaswt_pf_proxy_buffer, pmaswt_pf_slave_buffer);
+    HOST_TIMER("MPI", "parallelScatter");
+    parallelScatter( numslvpeD, nummstrpeD,
+		     mapslvpepeD,  slvpenumprxD,  mapslvpeprx1D,
+		     mapmstrpepeD,  mstrpenumslvD,  mapmstrpeslv1D,  mapslvpD,
+		     pmaswt_pf_proxy_buffer, pmaswt_pf_slave_buffer);
   }
 
   copyMPIBuffersToSlavePointData();
