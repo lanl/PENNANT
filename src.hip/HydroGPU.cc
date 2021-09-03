@@ -443,17 +443,18 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 __launch_bounds__(256)
 __global__ void gpuMain1(double dt)
 {
-  const int p = blockIdx.x * CHUNK_SIZE + threadIdx.x;
-  if (p >= nump) return;
-
   double dth = 0.5 * dt;
+  for(int p = blockIdx.x * blockDim.x + threadIdx.x;
+      p < nump;
+      p += gridDim.x * blockDim.x){
 
-  // save off point variable values from previous cycle
-  pu0[p] = pu[p];
+    // save off point variable values from previous cycle
+    pu0[p] = pu[p];
 
-  // ===== Predictor step =====
-  // 1. advance mesh to center of time step
-  pxp[p] = px[p] + pu0[p] * dth;
+    // ===== Predictor step =====
+    // 1. advance mesh to center of time step
+    pxp[p] = px[p] + pu0[p] * dth;
+  }
 }
 
 
@@ -1558,7 +1559,14 @@ void hydroDoCycle(
 #else
   {
     DEVICE_TIMER("Kernels", "gpuMain1", 0);
-    hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
+    // MI200-specific grid dim. TODO: look up #CUs from device properties (outsize main loop)
+    const int threadsPerBlock = 256;
+    const int numCUs = 110;
+    const int waves = 8;
+    int blocks = (gridSizeP * chunkSize + threadsPerBlock -1 ) / threadsPerBlock;
+    blocks = std::min(numCUs * waves, blocks);
+    hipLaunchKernelGGL((gpuMain1), dim3(waves * numCUs), dim3(threadsPerBlock), 0, 0, dt);
+    // hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
   }
   {
     DEVICE_TIMER("Kernels", "gpuMain2", 0);
