@@ -17,13 +17,19 @@
 #include "Memory.hh"
 #include "HydroMPI.hh"
 
+#ifdef USE_ROCTX
+#include <roctx.h>
+#endif
+
 // TODO: wrap static heap objects in a unique_ptr with a custom deleter
 
 void parallelGather(const int numslvpe, const int nummstrpe,
                     const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                     const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1,
                     double* pmaswt_pf_proxy_buffer, double* pmaswt_pf_slave_buffer){
-
+#ifdef USE_ROCTX
+  roctxRangePush("parallelGather");
+#endif
     using Parallel::numpe;
     using Parallel::mype;
     // This routine gathers slave values for which MYPE owns the masters.
@@ -44,19 +50,31 @@ void parallelGather(const int numslvpe, const int nummstrpe,
         int pe = mapmstrpepe[mstrpe];
         int nslv = mstrpenumslv[mstrpe];
         int slv1 = mapmstrpeslv1[mstrpe];
+#ifdef USE_ROCTX
+	roctxRangePush("MPI_Send");
+#endif
         MPI_Send(&pmaswt_pf_slave_buffer[slv1 * 3], nslv * 3 * sizeof(double), MPI_BYTE,
                 pe, tagmpi, MPI_COMM_WORLD);
+#ifdef USE_ROCTX
+	roctxRangePop();
+#endif
     }
 
     // Wait for all receives to complete.
     static MPI_Status* status = Memory::alloc<MPI_Status>(numslvpe);
     MPI_Waitall(numslvpe, &request[0], &status[0]);
+#ifdef USE_ROCTX
+    roctxRangePop();
+#endif
 }
 
 void parallelScatter(const int numslvpe, const int nummstrpe,
                      const int *mapslvpepe, const int *slvpenumprx, const int *mapslvpeprx1,
                      const int *mapmstrpepe, const int *mstrpenumslv, const int *mapmstrpeslv1, const int *mapslvp,
                      double* pmaswt_pf_proxy_buffer, double* pmaswt_pf_slave_buffer){
+#ifdef USE_ROCTX
+  roctxRangePush("parallelScatter");
+#endif
     const int tagmpi = 200;
     using Parallel::mype;
     // Post receives for incoming messages from masters.
@@ -75,13 +93,22 @@ void parallelScatter(const int numslvpe, const int nummstrpe,
         int pe = mapslvpepe[slvpe];
         int nprx = slvpenumprx[slvpe];
         int prx1 = mapslvpeprx1[slvpe];
+#ifdef USE_ROCTX
+	roctxRangePush("MPI_Send");
+#endif
         MPI_Send((void*)&pmaswt_pf_proxy_buffer[prx1*3], nprx * 3 * sizeof(double), MPI_BYTE,
                 pe, tagmpi, MPI_COMM_WORLD);
+#ifdef USE_ROCTX
+	roctxRangePop();
+#endif
     }
 
     // Wait for all receives to complete.
     static MPI_Status* status = Memory::alloc<MPI_Status>(nummstrpe);
     MPI_Waitall(nummstrpe, &request[0], &status[0]);
+#ifdef USE_ROCTX
+    roctxRangePop();
+#endif
 }
 
 #endif // USE_MPI

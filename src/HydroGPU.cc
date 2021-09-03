@@ -29,6 +29,11 @@
 #include "HydroMPI.hh"
 #endif
 
+#ifdef USE_ROCTX
+#include <roctx.h>
+#include <string>
+#endif
+
 #include "Memory.hh"
 #include "Vec2.hh"
 
@@ -1430,6 +1435,13 @@ void hydroDoCycle(
                   const double dt,
                   double& dtnextH,
                   int& idtnextH) {
+#ifdef USE_ROCTX
+  static int cycle = 1;           // Pennant counts the first cycle as 1 in its output, so
+  std::string cycleStr("cycle "); // let's match that for the roctx ranges
+  cycleStr += std::to_string(cycle);
+  ++cycle;
+  roctxRangePush(cycleStr.c_str());
+#endif
   int gridSizeS, gridSizeP, gridSizeZ, chunkSize;
 
   gridSizeS = numschH;
@@ -1501,6 +1513,9 @@ void hydroDoCycle(
     dtnextH = dtnext_H->d;
     idtnextH = dtnext_H->i;
   }
+#ifdef USE_ROCTX
+  roctxRangePop();
+#endif
 }
 
 

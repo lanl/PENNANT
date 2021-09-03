@@ -17,6 +17,7 @@ list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH}/hip ${ROCM_PATH})
 option(PENNANT_USE_MPI "Build with MPI support" ON)
 option(PENNANT_USE_GPU_AWARE_MPI "Build with GPU-aware MPI. Requires supporting MPI stack" OFF)
 option(PENNANT_TIMERS "Put timers around important code sections and print stats" OFF)
+option(PENNANT_ROCTX "Put important code sections in roctx ranges" OFF)
 option(PENNANT_FAST_MATH "Use math optimizations that may not be IEEE 764 compliant" OFF)
 option(PENNANT_ARCH_GFX900 "Build with support for gfx900 (vega10)" OFF)
 option(PENNANT_ARCH_GFX906 "Build with support for gfx906 (vega20, MI50/60)" OFF)
@@ -136,7 +137,15 @@ if(PENNANT_GPU_VENDOR STREQUAL "NVIDIA")
   list(APPEND PENNANT_COMPILATION_OPTIONS "-arch=sm_70")
 endif()
 
+if(PENNANT_ROCTX)
+  list(APPEND PENNANT_COMPILATION_OPTIONS "-I/opt/rocm/roctracer/include")
+  target_compile_definitions(pennant PRIVATE USE_ROCTX)
+  target_link_options(pennant PRIVATE "-L/opt/rocm/lib")
+  target_link_libraries(pennant PRIVATE "roctx64")
+endif()
+
 target_compile_options(pennant PRIVATE ${PENNANT_COMPILATION_OPTIONS})
+
 # Add compilation option to save temporary files just for the one source file that has device code
 if(PENNANT_SAVE_TEMPS)
   set_source_files_properties(src/HydroGPU.cc PROPERTIES COMPILE_FLAGS -save-temps)
