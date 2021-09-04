@@ -438,12 +438,12 @@ __global__ void storeCornersByPoint(int* first_corner_of_point, int* corners_by_
 
 
 __launch_bounds__(256)
-__global__ void gpuMain1(double dt)
+__global__ void gpuMain1(double dt, size_t stride)
 {
   double dth = 0.5 * dt;
-  for(int p = blockIdx.x * blockDim.x + threadIdx.x;
+  for(size_t p = blockIdx.x * blockDim.x + threadIdx.x;
       p < nump;
-      p += gridDim.x * blockDim.x){
+      p += stride){
 
     // save off point variable values from previous cycle
     pu0[p] = pu[p];
@@ -1431,6 +1431,14 @@ void globalReduceToPoints() {
 #endif
 
 
+int getNumCUs(){
+  int deviceId;
+  CHKERR(hipGetDevice(&deviceId));
+  hipDeviceProp_t prop;
+  CHKERR(hipGetDeviceProperties(&prop, deviceId));
+  return prop.multiProcessorCount;
+}
+
 void hydroDoCycle(
                   const double dt,
                   double& dtnextH,
@@ -1453,11 +1461,12 @@ void hydroDoCycle(
     DEVICE_TIMER("Kernels", "gpuMain1", 0);
     // MI200-specific grid dim. TODO: look up #CUs from device properties (outsize main loop)
     const int threadsPerBlock = 256;
-    const int numCUs = 110;
-    const int waves = 8;
+    static const int numCUs = getNumCUs();
+    const int threadBlocksPerCU = 4;
     int blocks = (gridSizeP * chunkSize + threadsPerBlock -1 ) / threadsPerBlock;
-    blocks = std::min(numCUs * waves, blocks);
-    hipLaunchKernelGGL((gpuMain1), dim3(waves * numCUs), dim3(threadsPerBlock), 0, 0, dt);
+    blocks = std::min(numCUs * threadBlocksPerCU, blocks);
+    const size_t stride = blocks * threadsPerBlock;
+    hipLaunchKernelGGL((gpuMain1), dim3(blocks), dim3(threadsPerBlock), 0, 0, dt, stride);
     // hipLaunchKernelGGL((gpuMain1), dim3(gridSizeP), dim3(chunkSize), 0, 0, dt);
   }
   {
