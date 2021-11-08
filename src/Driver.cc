@@ -4,51 +4,71 @@
  *  Created on: Jan 23, 2012
  *      Author: cferenba
  *
- * Copyright (c) 2012, Los Alamos National Security, LLC.
+ * Copyright (c) 2012, Triad National Security, LLC.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style open-source
  * license; see top-level LICENSE file for full license text.
  */
 
 #include "Driver.hh"
-
 #include <cstdlib>
+#include <cstring>
 #include <sys/time.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <iomanip>
 #ifdef _OPENMP
 #include "omp.h"
 #endif
 
+#ifdef USE_MPI
+#include "Parallel.hh"
+#endif
 #include "InputFile.hh"
 #include "Mesh.hh"
 #include "Hydro.hh"
+
+#include "scoped_timers.h"
 
 using namespace std;
 
 
 Driver::Driver(const InputFile* inp, const string& pname)
         : probname(pname) {
-    cout << "********************" << endl;
-    cout << "Running PENNANT v0.6" << endl;
-    cout << "********************" << endl;
-    cout << endl;
-
-#ifdef _OPENMP
-    cout << "Running on " << omp_get_max_threads() << " threads" << endl;
+#ifdef USE_MPI
+    using Parallel::numpe;
+    using Parallel::mype;
+#else
+    constexpr int mype = 0;
 #endif
+
+    if (mype == 0) {
+        cout << "********************" << endl;
+        cout << "Running PENNANT v0.9" << endl;
+        cout << "********************" << endl;
+        cout << endl;
+
+#ifdef USE_MPI
+        cout << "Running on " << numpe << " MPI PE(s)" << endl;
+#endif
+#ifdef _OPENMP
+        cout << "Running on " << omp_get_max_threads() << " thread(s)"
+             << endl;
+#endif
+    }  // if mype == 0
 
     cstop = inp->getInt("cstop", 999999);
     tstop = inp->getDouble("tstop", 1.e99);
     if (cstop == 999999 && tstop == 1.e99) {
-        cerr << "Must specify either cstop or tstop" << endl;
+        if (mype == 0)
+            cerr << "Must specify either cstop or tstop" << endl;
         exit(1);
     }
     dtmax = inp->getDouble("dtmax", 1.e99);
     dtinit = inp->getDouble("dtinit", 1.e99);
     dtfac = inp->getDouble("dtfac", 1.2);
-    dtreport = inp->getInt("dtreport", 10);
+    dtreport = inp->getInt("dtreport", 1);
 
     // initialize mesh, hydro
     mesh = new Mesh(inp);
@@ -64,32 +84,43 @@ Driver::~Driver() {
 }
 
 void Driver::run() {
-
-    const int numz = mesh->numz;
+#ifdef USE_MPI
+    using Parallel::mype;
+#else
+    constexpr int mype = 0;
+#endif
 
     time = 0.0;
     cycle = 0;
 
-    // get starting timestamp;
-    struct timeval sbegin;
-    gettimeofday(&sbegin, NULL);
-    double tbegin = sbegin.tv_sec + sbegin.tv_usec * 1.e-6;
-    double tlast = tbegin;
+    // do energy check
+    hydro->writeEnergyCheck();
 
+    double tbegin, tlast;
+    if (mype == 0) {
+        // get starting timestamp
+        struct timeval sbegin;
+        gettimeofday(&sbegin, NULL);
+        tbegin = sbegin.tv_sec + sbegin.tv_usec * 1.e-6;
+        tlast = tbegin;
+    }
     // main event loop
     while (cycle < cstop && time < tstop) {
 
         cycle += 1;
 
         // get timestep
-        calcGlobalDt();
+	calcGlobalDt_opt();
 
         // begin hydro cycle
         hydro->doCycle(dt);
 
         time += dt;
 
-        if (cycle == 1 || cycle % dtreport == 0) {
+	{
+	  HOST_TIMER("Other", "Periodic report printing");
+	  if (mype == 0 &&
+	      (cycle == 1 || cycle % dtreport == 0)) {
             struct timeval scurr;
             gettimeofday(&scurr, NULL);
             double tcurr = scurr.tv_sec + scurr.tv_usec * 1.e-6;
@@ -103,41 +134,95 @@ void Driver::run() {
             cout << "dt limiter: " << msgdt << endl;
 
             tlast = tcurr;
-        } // if cycle...
+	  } // if mype...
+	}
 
     } // while cycle...
 
-    // get stopping timestamp;
-    struct timeval send;
-    gettimeofday(&send, NULL);
-    double tend = send.tv_sec + send.tv_usec * 1.e-6;
-    double runtime = tend - tbegin;
+    {
+      HOST_TIMER("Other", "hydro->getData()");
+      hydro->getData();
+    }
+    if (mype == 0) {
 
-    hydro->getData();
+        // get stopping timestamp
+        struct timeval send;
+        gettimeofday(&send, NULL);
+        double tend = send.tv_sec + send.tv_usec * 1.e-6;
+        double runtime = tend - tbegin;
+        // write end message
+        cout << endl;
+        cout << "Run complete" << endl;
+	cout << "Zones: " << mesh->gnumz << endl;
+        cout << scientific << setprecision(6);
+        cout << "cycle = " << setw(6) << cycle
+             << ",         cstop = " << setw(6) << cstop << endl;
+        cout << "time  = " << setw(14) << time
+             << ", tstop = " << setw(14) << tstop << endl;
 
-    // write end message
-    cout << endl;
-    cout << "Run complete" << endl;
-    cout << scientific << setprecision(6);
-    cout << "cycle = " << setw(6) << cycle
-         << ",         cstop = " << setw(6) << cstop << endl;
-    cout << "time  = " << setw(14) << time
-         << ", tstop = " << setw(14) << tstop << endl;
+        cout << endl;
+        cout << "*************************************" << endl;
+        cout << "hydro cycle run time = " << setw(14) << runtime << endl;
+	cout << "FOM =                  " << setw(14) << (double) mesh->gnumz * cycle / runtime << endl;
+        cout << "*************************************" << endl;
 
-    cout << endl;
-    cout << "**************************************" << endl;
-    cout << "hydro cycle run time= " << setw(14) << runtime << endl;
-    cout << "**************************************" << endl;
+	TIMER_REPORT();
+    } // if mype
+
+    // do energy check
+    hydro->writeEnergyCheck();
 
     // do final mesh output
-    mesh->write(probname, cycle, time,
-            hydro->zr, hydro->ze, hydro->zp);
+    //mesh->write(probname, cycle, time,
+    //        hydro->zr, hydro->ze, hydro->zp);
 
 }
 
 
-void Driver::calcGlobalDt() {
+void  Driver::calcGlobalDt_opt(){
+#ifdef USE_MPI
+    using Parallel::mype;
+    using Parallel::numpe;
+#else
+    constexpr int mype = 0;
+#endif
 
+	// Save timestep from last cycle
+    	dtlast = dt;
+        dt = dtmax;
+	if (cycle == 1) {
+        // compare to initial timestep
+        	if (dtinit < dt) {
+            		dt = dtinit;
+		}
+    	} else {
+       		// compare to factor * previous timestep
+       		double dtrecover = dtfac * dtlast;
+		if (dtrecover < dt) {
+			dt = dtrecover;
+    		}
+	}
+	if ((tstop - time) < dt) {
+        	dt = tstop - time;
+    	}
+	// compare to hydro dt
+     	hydro->getDtHydro(dt, msgdt);
+#ifdef USE_MPI
+     	if ( numpe > 1){
+	  HOST_TIMER("MPI", "Allreduce");
+        	MPI_Allreduce(MPI_IN_PLACE, &dt, 1, MPI_DOUBLE, MPI_MIN,
+            		MPI_COMM_WORLD);
+        }
+#endif
+	if(mype == 0){
+	ostringstream oss;
+        oss << msgdt; // TODO: we did not get the msgdt from the PE with the lowest dt value. Fix.
+        msgdt = oss.str();
+	}
+     
+}
+
+void Driver::calcGlobalDt() {
     // Save timestep from last cycle
     dtlast = dt;
     msgdtlast = msgdt;
@@ -150,8 +235,7 @@ void Driver::calcGlobalDt() {
         // compare to initial timestep
         if (dtinit < dt) {
             dt = dtinit;
-            msgdt = "Initial timestep";
-        }
+	}
     } else {
         // compare to factor * previous timestep
         double dtrecover = dtfac * dtlast;
@@ -172,6 +256,41 @@ void Driver::calcGlobalDt() {
 
     // compare to hydro dt
     hydro->getDtHydro(dt, msgdt);
+   
+
+#ifdef USE_MPI
+    using Parallel::mype;
+
+    int pedt;
+    Parallel::globalMinLoc(dt, pedt);
+
+    // if the global min isn't on this PE, get the right message
+    if (pedt > 0) {
+        const int tagmpi = 300;
+        if (mype == pedt) {
+            char cmsgdt[80];
+            strncpy(cmsgdt, msgdt.c_str(), 80);
+            MPI_Send(cmsgdt, 80, MPI_CHAR, 0, tagmpi,
+                    MPI_COMM_WORLD);
+        }
+        else if (mype == 0) {
+            char cmsgdt[80];
+            MPI_Status status;
+            MPI_Recv(cmsgdt, 80, MPI_CHAR, pedt, tagmpi,
+                    MPI_COMM_WORLD, &status);
+            cmsgdt[79] = '\0';
+            msgdt = string(cmsgdt);
+        }
+    }  // if pedt > 0
+
+    // if timestep was determined by hydro, report which PE
+    // caused it
+    if (mype == 0 && msgdt.substr(0, 5) == "Hydro") {
+        ostringstream oss;
+        oss << "PE " << pedt << ", " << msgdt;
+        msgdt = oss.str();
+    }
+#endif
 
 }
 

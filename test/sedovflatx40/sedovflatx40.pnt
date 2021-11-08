@@ -1,0 +1,14 @@
+tstop   1.0
+meshtype rect
+meshparams 19200 21600 1.0 1.125
+subregion 0.0 1.0  0.0 0.025
+rinitsub 1.0
+einitsub 12.569
+bcx     0.0 1.0
+bcy     0.0 1.125
+ssmin   0.1
+q1      0.1
+q2      1.0
+dtinit  5.e-8
+dtreport 100
+chunksize 1024

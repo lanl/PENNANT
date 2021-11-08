@@ -4,7 +4,7 @@
  *  Created on: Dec 21, 2011
  *      Author: cferenba
  *
- * Copyright (c) 2012, Los Alamos National Security, LLC.
+ * Copyright (c) 2012, Triad National Security, LLC.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style open-source
  * license; see top-level LICENSE file for full license text.
@@ -19,7 +19,8 @@
 #include <ostream>
 
 
-#ifdef __CUDACC__
+#if defined(__HIPCC__) or defined(__CUDACC__)
+#include <hip/hip_runtime.h>
 #define FNQUALIFIERS __host__ __device__
 #else
 #define FNQUALIFIERS
@@ -30,8 +31,8 @@
 // Only the functions involving strings and I/O are
 // out-of-line.
 
-#ifndef __CUDACC__
-// we are not in CUDA, so need to define our own double2 struct
+#if !defined(__HIPCC__) and !defined(__CUDACC__)
+// we are not in HIP or CUDA, so need to define our own double2 struct
 struct double2
 {
     typedef double value_type;
@@ -82,24 +83,8 @@ inline double2 make_double2(const double& x_, const double& y_) {
     return(double2(x_, y_));
 }
 
-#else
+#elif defined(__CUDACC__) 
 // we are in CUDA; double2 is defined but needs op= operators
-FNQUALIFIERS
-inline double2& operator+=(double2& v, const double2& v2)
-{
-    v.x += v2.x;
-    v.y += v2.y;
-    return(v);
-}
-
-FNQUALIFIERS
-inline double2& operator-=(double2& v, const double2& v2)
-{
-    v.x -= v2.x;
-    v.y -= v2.y;
-    return(v);
-}
-
 FNQUALIFIERS
 inline double2& operator*=(double2& v, const double& r)
 {
@@ -115,25 +100,41 @@ inline double2& operator/=(double2& v, const double& r)
     v.y /= r;
     return(v);
 }
+
+FNQUALIFIERS
+inline double2& operator+=(double2& v, const double2& w)
+{
+    v.x += w.x;
+    v.y += w.y;
+    return(v);
+}
+
+FNQUALIFIERS
+inline double2 operator+(const double2& v, const double2& w)
+{
+  double2 result(v);
+  result+=w;
+  return result;
+}
+
+FNQUALIFIERS
+inline double2& operator-=(double2& v, const double2& w)
+{
+    v.x -= w.x;
+    v.y -= w.y;
+    return(v);
+}
+
+FNQUALIFIERS
+inline double2 operator-(const double2& v, const double2& w)
+{
+  double2 result(v);
+  result-=w;
+  return result;
+}
+
 #endif
 
-
-
-// comparison operators:
-
-// equals
-FNQUALIFIERS
-inline bool operator==(const double2& v1, const double2& v2)
-{
-    return((v1.x == v2.x) && (v1.y == v2.y));
-}
-
-// not-equals
-FNQUALIFIERS
-inline bool operator!=(const double2& v1, const double2& v2)
-{
-    return(!(v1 == v2));
-}
 
 
 // unary operators:
@@ -153,21 +154,8 @@ inline double2 operator-(const double2& v)
 }
 
 
+#if !defined(__HIPCC)
 // binary operators:
-
-// add
-FNQUALIFIERS
-inline double2 operator+(const double2& v1, const double2& v2)
-{
-    return(make_double2(v1.x + v2.x, v1.y + v2.y));
-}
-
-// subtract
-FNQUALIFIERS
-inline double2 operator-(const double2& v1, const double2& v2)
-{
-    return(make_double2(v1.x - v2.x, v1.y - v2.y));
-}
 
 // multiply vector by scalar
 FNQUALIFIERS
@@ -182,6 +170,7 @@ inline double2 operator*(const double& r, const double2& v)
 {
     return(make_double2(v.x * r, v.y * r));
 }
+#endif
 
 // divide vector by scalar
 FNQUALIFIERS
@@ -212,7 +201,7 @@ inline double cross(const double2& v1, const double2& v2)
 FNQUALIFIERS
 inline double length(const double2& v)
 {
-    return(std::sqrt(v.x * v.x + v.y * v.y));
+    return(sqrt(v.x * v.x + v.y * v.y));
 }
 
 // length squared

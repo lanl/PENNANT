@@ -4,26 +4,31 @@
  *  Created on: Jan 23, 2012
  *      Author: cferenba
  *
- * Copyright (c) 2012, Los Alamos National Security, LLC.
+ * Copyright (c) 2012, Triad National Security, LLC.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style open-source
  * license; see top-level LICENSE file for full license text.
  */
 
 #include <cstdlib>
+#include <string>
 #include <iostream>
 
+#include "Parallel.hh"
 #include "InputFile.hh"
 #include "Driver.hh"
 
 using namespace std;
 
 
-int main(const int argc, const char** argv)
+int main(const int argc, char** argv)
 {
+    Parallel::init(argc, argv);
+
     if (argc != 2) {
-       cerr << "Usage: pennant <filename>" << endl;
-       exit(1);
+        if (Parallel::mype == 0)
+            cerr << "Usage: pennant <filename>" << endl;
+        exit(1);
     }
 
     const char* filename = argv[1];
@@ -38,6 +43,8 @@ int main(const int argc, const char** argv)
     Driver drv(&inp, probname);
 
     drv.run();
+
+    Parallel::final();
 
     return 0;
 

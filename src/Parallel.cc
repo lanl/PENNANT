@@ -4,7 +4,7 @@
  *  Created on: May 31, 2013
  *      Author: cferenba
  *
- * Copyright (c) 2012, Los Alamos National Security, LLC.
+ * Copyright (c) 2013, Triad National Security, LLC.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style open-source
  * license; see top-level LICENSE file for full license text.
@@ -33,9 +33,9 @@ int mype = 0;
 #endif
 
 
-void init() {
+void init(int argc, char** argv) {
 #ifdef USE_MPI
-    MPI_Init(0, 0);
+    MPI_Init(&argc,&argv);
     MPI_Comm_size(MPI_COMM_WORLD, &numpe);
     MPI_Comm_rank(MPI_COMM_WORLD, &mype);
 #endif
@@ -74,6 +74,26 @@ void globalSum(int& x) {
 #ifdef USE_MPI
     int y;
     MPI_Allreduce(&x, &y, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    x = y;
+#endif
+}
+
+
+void globalSum(int64_t& x) {
+    if (numpe == 1) return;
+#ifdef USE_MPI
+    int64_t y;
+    MPI_Allreduce(&x, &y, 1, MPI_INT64_T, MPI_SUM, MPI_COMM_WORLD);
+    x = y;
+#endif
+}
+
+
+void globalSum(double& x) {
+    if (numpe == 1) return;
+#ifdef USE_MPI
+    double y;
+    MPI_Allreduce(&x, &y, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     x = y;
 #endif
 }

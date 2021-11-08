@@ -4,7 +4,7 @@
  *  Created on: Aug 2, 2012
  *      Author: cferenba
  *
- * Copyright (c) 2012, Los Alamos National Security, LLC.
+ * Copyright (c) 2012, Triad National Security, LLC.
  * All rights reserved.
  * Use of this source code is governed by a BSD-style open-source
  * license; see top-level LICENSE file for full license text.
@@ -57,16 +57,35 @@ void hydroDoCycle(
         int& idtnextH);
 
 void hydroGetData(
+	double *zareaH,
+        double *zetot,
+        double *zvol,
         const int numpH,
         const int numzH,
         double2* pxH,
         double* zrH,
         double* zeH,
-        double* zpH);
+        double* zpH,
+	double2* puH);
 
 void hydroInitGPU();
 
 void hydroFinalGPU();
 
+#ifdef USE_MPI
+void hydroInitMPI(
+	const int nummstrpe,
+	const int numslvpe,
+	const int numprx,
+	const int numslv,
+	const int* mapslvpepe,
+	const int* mapslvpeprx1,
+	const int* mapprxp,
+	const int* slvpenumprx,
+	const int* mapmstrpepe,
+	const int* mstrpenumslv,
+	const int* mapmstrpeslv1,
+	const int* mapslvp);
+#endif
 
 #endif /* HYDROGPU_HH_ */
