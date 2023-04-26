@@ -1,17 +1,15 @@
-BUILDDIR := build_hip
+# if ROCM_PATH is undefined, issue a 'module load rocm'
+# if MPICH_DIR is undefined, issue a 'module load cray-mpich'
+
+BUILDDIR := build
 PRODUCT := pennant
-# uncomment the line below, or set MPI as an environment variable, to compile with MPI support
-MPI := OpenMPI
-# uncomment the line below, or set an environment variable JIT to any value, to compile with JIT support
-# JIT = 1
 # uncomment the line below, or set an environment variable TIMERS to any value, to compile with Timers support
 # TIMERS = 1
+# uncomment the line below, or set an environment variable ROCTX to any value, to compile with roctracer support
+# ROCTX = 1
+# THERM = 1
 
-ifndef ROCM_PATH
-    ROCM_PATH := /opt/rocm
-endif
-
-SRCDIR := src.hip
+SRCDIR := src
 THRUSTDIR := ${ROCM_PATH}/rocthrust
 PRIMDIR := ${ROCM_PATH}/rocprim
 
@@ -22,9 +20,9 @@ DEPS := $(SRCS:$(SRCDIR)/%.cc=$(BUILDDIR)/%.d)
 
 BINARY := $(BUILDDIR)/$(PRODUCT)
 
-CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include
-CPPFLAGS += -std=c++14 -Wall -Werror
-CPPFLAGS += -Wno-unused-command-line-argument
+CPPFLAGS := -I. -I$(THRUSTDIR)/include -I$(PRIMDIR)/include  -I$(MPICH_DIR)/include -I$(ROCM_PATH)/include 
+CPPFLAGS += -std=c++14 -Wall -Werror -DUSE_MPI #-D__HIP_ARCH_GFX908__
+CPPFLAGS += -Wno-unused-command-line-argument -amdgpu-target=gfx90a -ffp-contract=fast -ffast-math -funsafe-math-optimizations
 
 # hipcc flags:
 CXX := ${ROCM_PATH}/bin/hipcc
@@ -48,58 +46,45 @@ ifdef TIMERS
     CPPFLAGS += -DUSE_TIMERS
 endif
 
-# JIT support for GPU kernels
-ifdef JIT
-    PAJAMADIR := pajama
+LD := $(CXX) -O3
+LDFLAGS := -Wno-unused-command-line-argument -L${MPICH_DIR}/../../../gtl/lib -lmpi_gtl_hsa -L$(MPICH_DIR)/lib -lmpi
 
-    PJ_HDRS := $(PAJAMADIR)/pajama.h
-    PJ_SRCS := $(PAJAMADIR)/pajama.cpp
-    PJ_OBJS := $(PJ_SRCS:$(PAJAMADIR)/%.cpp=$(BUILDDIR)/%.o)
-    PJ_DEPS := $(PJ_SRCS:$(PAJAMADIR)/%.cpp=$(BUILDDIR)/%.d)
-
-    HDRS += $(PJ_HDRS)
-    SRCS += $(PJ_SRCS)
-    OBJS += $(PJ_OBJS)
-    DEPS += $(PJ_DEPS)
-
-    CPPFLAGS += -DUSE_JIT -I$(PAJAMADIR) 
-    CPPFLAGS += -Wno-c++17-extensions
+ifdef ROCTX
+    CPPFLAGS += -DUSE_ROCTX -I${ROCM_PATH}/roctracer/include
+    LDFLAGS += -L${ROCM_PATH}/lib -lroctx64
 endif
 
-LD := $(CXX)
-LDFLAGS := -Wno-unused-command-line-argument
+ifdef THERM
+    CPPFLAGS += -DUSE_THERM  -I${ROCM_PATH}/rocm_smi/include
+    LDFLAGS += -L${ROCM_PATH}/rocm_smi/lib -lrocm_smi64
+endif
 
 # select optimized or debug
 CXXFLAGS := $(CXXFLAGS_OPT) $(CPPFLAGS) -g
 
-# MPI compile and link flags
-ifeq ($(MPI),OpenMPI)
-	CXXFLAGS += $(shell mpicc.openmpi --showme:compile) -DUSE_MPI
-	LDFLAGS += $(shell mpicc.openmpi --showme:link)
-endif
-
 # ------------------------------------------------------------
-# Are we compiling with/without MPI/JIT? Compiler flags can be hard
+# Are we compiling with/without timers and rocTracer support? Compiler flags can be hard
 # to spot, so we shot the build configuration before and after building
 
 BUILDCONF_MSG := "| Build configuration:"
-
-ifeq ($(findstring -DUSE_MPI,${CXXFLAGS}),-DUSE_MPI)
-BUILDCONF_MSG += "| with MPI"
-else
-BUILDCONF_MSG += "| without MPI"
-endif
-
-ifeq ($(findstring -DUSE_JIT,${CXXFLAGS}),-DUSE_JIT)
-BUILDCONF_MSG += "| with JIT"
-else
-BUILDCONF_MSG += "| without JIT"
-endif
 
 ifeq ($(findstring -DUSE_TIMERS,${CXXFLAGS}),-DUSE_TIMERS)
 BUILDCONF_MSG += "| with Timers"
 else
 BUILDCONF_MSG += "| without Timers"
+endif
+
+ifeq ($(findstring -DUSE_ROCTX,${CXXFLAGS}),-DUSE_ROCTX)
+BUILDCONF_MSG += "| with rocTracer support"
+else
+BUILDCONF_MSG += "| without rocTracer support"
+endif
+
+
+ifeq ($(findstring -DUSE_THERM,${CXXFLAGS}),-DUSE_THERM)
+BUILDCONF_MSG += "| with Thermal output"
+else
+BUILDCONF_MSG += "| without Thermal output"
 endif
 
 BUILDCONF_MSG += "|"
@@ -157,7 +142,7 @@ endef
 
 # keep *.d dependency files, otherwise, "make clean" will remake them, and then remove them.
 clean :
-	rm -f $(BINARY) $(OBJS)
+	rm -f $(BINARY) $(OBJS) build/*.d
 
 cleanall :
 	rm -rf $(BUILDDIR)
