@@ -318,6 +318,7 @@ void Hydro::advPosHalf(
     double dth = 0.5 * dt;
 
     #pragma ivdep
+    #pragma GCC unroll 2
     for (int p = pfirst; p < plast; ++p) {
         pxp[p] = px0[p] + pu0[p] * dth;
     }
@@ -478,6 +479,7 @@ void Hydro::calcEnergy(
 
     const double fuzz = 1.e-99;
     #pragma ivdep
+    #pragma GCC unroll 2
     for (int z = zfirst; z < zlast; ++z) {
         ze[z] = zetot[z] / (zm[z] + fuzz);
     }
